@@ -86,8 +86,6 @@ export interface ChatSessionMessage {
   agentName?: string;
   content: string;
   timestamp: string;
-  isStreaming?: boolean;
-  toolActivity?: string | null;
   files?: { path: string; name: string; size?: number; mime?: string }[];
 }
 
@@ -593,17 +591,17 @@ export class SygenAPI {
 
   static async deleteChatSession(sessionId: string): Promise<void> {
     if (USE_MOCK) return;
-    await fetchAPI(`/api/chat/sessions/${sessionId}`, { method: "DELETE" });
+    await fetchAPI(`/api/chat/sessions/${encodeURIComponent(sessionId)}`, { method: "DELETE" });
   }
 
   static async getChatHistory(sessionId: string): Promise<ChatSessionMessage[]> {
     if (USE_MOCK) return [];
-    return fetchAPI<ChatSessionMessage[]>(`/api/chat/sessions/${sessionId}/messages`);
+    return fetchAPI<ChatSessionMessage[]>(`/api/chat/sessions/${encodeURIComponent(sessionId)}/messages`);
   }
 
   static async saveChatHistory(sessionId: string, messages: ChatSessionMessage[]): Promise<void> {
     if (USE_MOCK) return;
-    await fetchAPI(`/api/chat/sessions/${sessionId}/messages`, {
+    await fetchAPI(`/api/chat/sessions/${encodeURIComponent(sessionId)}/messages`, {
       method: "PUT",
       body: JSON.stringify({ messages }),
     });

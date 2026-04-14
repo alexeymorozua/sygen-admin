@@ -5,7 +5,7 @@ Web-based administration interface for the [Sygen](https://github.com/alexeymoro
 ## Features
 
 - **Dashboard** — real CPU, RAM, and disk metrics from `/proc` with sparkline history charts (last 30 readings), auto-refresh every 10 seconds, and manual refresh
-- **Real-time Chat** — WebSocket-based streaming chat with any agent
+- **Real-time Chat** — WebSocket-based streaming chat with any agent, multi-session support (create/switch/delete sessions per agent with server-side persistence)
 - **Cron Jobs** — full CRUD with modal forms, client-side cron expression validation with real-time hints, human-readable schedule descriptions, preset schedule picker, and enabled/disabled toggle
 - **Webhooks** — full CRUD management via modal forms with test button (sends POST, shows status/response in toast)
 - **Background Tasks** — monitor running tasks with auto-refresh every 5 seconds, create tasks from UI, expandable result/output view, running task count indicator with pulse animation
@@ -300,9 +300,19 @@ All endpoints require `Authorization: Bearer <token>` header unless noted.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/api/chat?agent={id}` | Get chat history |
-| `POST` | `/api/chat/{agentId}` | Send message to agent |
+| `GET` | `/api/chat?agent={id}` | Get chat history (legacy) |
+| `POST` | `/api/chat/{agentId}` | Send message to agent (legacy) |
 | `WS` | `/ws/admin` | Real-time streaming (auth required) |
+
+### Chat Sessions
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/chat/sessions?agent={id}` | List chat sessions (optional agent filter) |
+| `POST` | `/api/chat/sessions` | Create chat session (`{agent, title?}`) |
+| `DELETE` | `/api/chat/sessions/{id}` | Delete chat session and its history |
+| `GET` | `/api/chat/sessions/{id}/messages` | Get session message history |
+| `PUT` | `/api/chat/sessions/{id}/messages` | Save session messages (`{messages: [...]}`) |
 
 ### Cron Jobs
 

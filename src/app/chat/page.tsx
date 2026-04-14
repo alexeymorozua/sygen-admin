@@ -19,7 +19,6 @@ import {
   FileAudio,
   File as FileIcon,
   MessageSquare,
-  ChevronLeft,
 } from "lucide-react";
 import StreamingMessage from "@/components/StreamingMessage";
 import type { StreamingMessageProps, FileAttachment } from "@/components/StreamingMessage";
@@ -138,23 +137,27 @@ export default function ChatPage() {
     []
   );
 
-  // Save messages to server (debounced via effect)
+  // Save messages to server (debounced)
   useEffect(() => {
     if (!activeSessionId || !messagesBySession[activeSessionId]) return;
     const msgs = messagesBySession[activeSessionId];
     if (msgs.some((m) => m.isStreaming)) return;
     if (msgs.length === 0) return;
 
-    const saveMsgs: ChatSessionMessage[] = msgs.map((m) => ({
-      id: m.id,
-      sender: m.sender as "user" | "agent",
-      agentName: m.agentName,
-      content: m.content,
-      timestamp: m.timestamp,
-      files: m.files,
-    }));
+    const timer = setTimeout(() => {
+      const saveMsgs: ChatSessionMessage[] = msgs.map((m) => ({
+        id: m.id,
+        sender: m.sender as "user" | "agent",
+        agentName: m.agentName,
+        content: m.content,
+        timestamp: m.timestamp,
+        files: m.files,
+      }));
 
-    SygenAPI.saveChatHistory(activeSessionId, saveMsgs).catch(() => {});
+      SygenAPI.saveChatHistory(activeSessionId, saveMsgs).catch(() => {});
+    }, 1000);
+
+    return () => clearTimeout(timer);
   }, [messagesBySession, activeSessionId]);
 
   // Load sessions when agent changes
