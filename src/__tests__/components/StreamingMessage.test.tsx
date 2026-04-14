@@ -45,7 +45,7 @@ describe("StreamingMessage", () => {
     const { container } = render(
       <StreamingMessage {...baseProps} isStreaming={true} />
     );
-    const cursor = container.querySelector(".animate-pulse.bg-blue-400");
+    const cursor = container.querySelector(".animate-pulse.bg-brand-400");
     expect(cursor).toBeInTheDocument();
   });
 
@@ -53,7 +53,7 @@ describe("StreamingMessage", () => {
     const { container } = render(
       <StreamingMessage {...baseProps} isStreaming={false} />
     );
-    const cursor = container.querySelector(".animate-pulse.bg-blue-400");
+    const cursor = container.querySelector(".animate-pulse.bg-brand-400");
     expect(cursor).not.toBeInTheDocument();
   });
 

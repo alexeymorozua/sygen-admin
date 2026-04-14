@@ -41,7 +41,7 @@ const TYPE_ICONS: Record<SearchItem["type"], typeof Search> = {
 
 const TYPE_COLORS: Record<SearchItem["type"], string> = {
   page: "text-text-secondary",
-  agent: "text-blue-400",
+  agent: "text-brand-400",
   cron: "text-yellow-400",
   webhook: "text-purple-400",
   task: "text-green-400",

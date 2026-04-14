@@ -11,7 +11,7 @@ describe("StatusBadge", () => {
   const statuses = [
     { status: "active" as const, expectedClass: "bg-green-500/20", text: "Active" },
     { status: "online" as const, expectedClass: "bg-green-500/20", text: "Online" },
-    { status: "running" as const, expectedClass: "bg-blue-500/20", text: "Running" },
+    { status: "running" as const, expectedClass: "bg-brand-500/20", text: "Running" },
     { status: "paused" as const, expectedClass: "bg-yellow-500/20", text: "Paused" },
     { status: "completed" as const, expectedClass: "bg-green-500/20", text: "Completed" },
     { status: "error" as const, expectedClass: "bg-red-500/20", text: "Error" },

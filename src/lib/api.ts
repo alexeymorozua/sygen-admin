@@ -72,6 +72,25 @@ export interface AuditEntry {
   details: string;
 }
 
+export interface ChatSession {
+  id: string;
+  agent: string;
+  title: string;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface ChatSessionMessage {
+  id: string;
+  sender: "user" | "agent";
+  agentName?: string;
+  content: string;
+  timestamp: string;
+  isStreaming?: boolean;
+  toolActivity?: string | null;
+  files?: { path: string; name: string; size?: number; mime?: string }[];
+}
+
 // ---------------------------------------------------------------------------
 // Token & user storage helpers
 // ---------------------------------------------------------------------------
@@ -546,6 +565,48 @@ export class SygenAPI {
     } catch {
       return false;
     }
+  }
+
+  // ---- Chat Sessions ----
+
+  static async getChatSessions(agentId?: string): Promise<ChatSession[]> {
+    if (USE_MOCK) return [];
+    const params = agentId ? `?agent=${encodeURIComponent(agentId)}` : "";
+    return fetchAPI<ChatSession[]>(`/api/chat/sessions${params}`);
+  }
+
+  static async createChatSession(agentId: string, title?: string): Promise<ChatSession> {
+    if (USE_MOCK) {
+      return {
+        id: `session-${Date.now()}`,
+        agent: agentId,
+        title: title || `Chat ${new Date().toLocaleString()}`,
+        created_at: Date.now() / 1000,
+        updated_at: Date.now() / 1000,
+      };
+    }
+    return fetchAPI<ChatSession>("/api/chat/sessions", {
+      method: "POST",
+      body: JSON.stringify({ agent: agentId, title }),
+    });
+  }
+
+  static async deleteChatSession(sessionId: string): Promise<void> {
+    if (USE_MOCK) return;
+    await fetchAPI(`/api/chat/sessions/${sessionId}`, { method: "DELETE" });
+  }
+
+  static async getChatHistory(sessionId: string): Promise<ChatSessionMessage[]> {
+    if (USE_MOCK) return [];
+    return fetchAPI<ChatSessionMessage[]>(`/api/chat/sessions/${sessionId}/messages`);
+  }
+
+  static async saveChatHistory(sessionId: string, messages: ChatSessionMessage[]): Promise<void> {
+    if (USE_MOCK) return;
+    await fetchAPI(`/api/chat/sessions/${sessionId}/messages`, {
+      method: "PUT",
+      body: JSON.stringify({ messages }),
+    });
   }
 
   // ---- Chat (kept for compatibility) ----

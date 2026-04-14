@@ -13,7 +13,7 @@ export default function AgentCard({ agent }: { agent: Agent }) {
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-accent/30 flex items-center justify-center">
-            <Bot size={20} className="text-blue-400" />
+            <Bot size={20} className="text-brand-400" />
           </div>
           <div>
             <h3 className="font-semibold text-text-primary">{agent.displayName}</h3>

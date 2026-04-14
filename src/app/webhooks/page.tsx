@@ -241,12 +241,12 @@ export default function WebhooksPage() {
       label: t('webhooks.endpoint'),
       render: (w) => (
         <div className="flex items-center gap-2">
-          <span className="text-xs bg-accent/30 text-blue-400 px-1.5 py-0.5 rounded font-mono">{w.method}</span>
+          <span className="text-xs bg-accent/30 text-brand-400 px-1.5 py-0.5 rounded font-mono">{w.method}</span>
           <code className="text-xs text-text-secondary">{w.url}</code>
         </div>
       ),
     },
-    { key: "agent", label: t('common.agent'), sortable: true, render: (w) => <span className="text-blue-400">{w.agent}</span> },
+    { key: "agent", label: t('common.agent'), sortable: true, render: (w) => <span className="text-brand-400">{w.agent}</span> },
     { key: "status", label: t('common.status'), render: (w) => <StatusBadge status={w.status} /> },
     {
       key: "triggerCount",
@@ -390,13 +390,13 @@ export default function WebhooksPage() {
             <div>
               <p className="text-xs text-text-secondary mb-1">{t('webhooks.endpoint')}</p>
               <div className="flex items-center gap-2">
-                <span className="text-xs bg-accent/30 text-blue-400 px-1.5 py-0.5 rounded font-mono">{selected.method}</span>
+                <span className="text-xs bg-accent/30 text-brand-400 px-1.5 py-0.5 rounded font-mono">{selected.method}</span>
                 <code className="text-xs break-all">{selected.url}</code>
               </div>
             </div>
             <div>
               <p className="text-xs text-text-secondary mb-1">{t('common.agent')}</p>
-              <p className="text-sm text-blue-400">{selected.agent}</p>
+              <p className="text-sm text-brand-400">{selected.agent}</p>
             </div>
             <div>
               <p className="text-xs text-text-secondary mb-1">{t('common.description')}</p>
@@ -422,7 +422,7 @@ export default function WebhooksPage() {
               <button
                 type="button"
                 onClick={() => setShowForm("edit")}
-                className="flex-1 py-2 text-xs font-medium rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors"
+                className="flex-1 py-2 text-xs font-medium rounded-lg bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 transition-colors"
               >
                 {t('common.edit')}
               </button>

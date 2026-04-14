@@ -194,7 +194,7 @@ export default function TasksPage() {
   const columns: Column<Task>[] = [
     { key: "name", label: t('common.name'), sortable: true, render: (task) => <span className="font-medium">{task.name}</span> },
     { key: "status", label: t('common.status'), render: (task) => <StatusBadge status={task.status} /> },
-    { key: "agent", label: t('common.agent'), sortable: true, render: (task) => <span className="text-blue-400">{task.agent}</span> },
+    { key: "agent", label: t('common.agent'), sortable: true, render: (task) => <span className="text-brand-400">{task.agent}</span> },
     {
       key: "provider",
       label: t('agents.provider'),
@@ -243,7 +243,7 @@ export default function TasksPage() {
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold">{t('tasks.title')}</h1>
             {runningCount > 0 && (
-              <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full animate-pulse">
+              <span className="text-xs bg-brand-500/20 text-brand-400 px-2 py-1 rounded-full animate-pulse">
                 {runningCount} {t('tasks.running')}
               </span>
             )}
@@ -330,7 +330,7 @@ export default function TasksPage() {
             </div>
             <div>
               <p className="text-xs text-text-secondary mb-1">{t('common.agent')}</p>
-              <p className="text-sm text-blue-400">{selected.agent}</p>
+              <p className="text-sm text-brand-400">{selected.agent}</p>
             </div>
             <div>
               <p className="text-xs text-text-secondary mb-1">{t('agents.provider')}</p>

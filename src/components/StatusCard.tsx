@@ -15,7 +15,7 @@ export default function StatusCard({ title, value, icon: Icon, trend, accent }: 
     <div className="bg-bg-card border border-border rounded-xl p-5 hover:border-accent/50 transition-colors">
       <div className="flex items-center justify-between mb-3">
         <span className="text-text-secondary text-sm font-medium">{title}</span>
-        <div className={`p-2 rounded-lg ${accent ? "bg-danger/20 text-danger" : "bg-accent/30 text-blue-400"}`}>
+        <div className={`p-2 rounded-lg ${accent ? "bg-danger/20 text-danger" : "bg-accent/30 text-brand-400"}`}>
           <Icon size={18} />
         </div>
       </div>

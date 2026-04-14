@@ -116,7 +116,7 @@ export default function MemoryPage() {
                 onClick={() => selectModule(mod)}
                 className={cn(
                   "w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-white/5 transition-colors border-b border-border/30",
-                  selected?.id === mod.id && "bg-accent/20 border-l-2 border-l-blue-400"
+                  selected?.id === mod.id && "bg-accent/20 border-l-2 border-l-brand-400"
                 )}
               >
                 <FileText size={16} className="text-text-secondary mt-0.5 shrink-0" />

@@ -64,6 +64,12 @@ const en: Record<string, string> = {
   "chat.clearHistoryConfirm": "Clear chat history for",
   "chat.clearAllConfirm": "Clear ALL chat history for all agents on this server?",
   "chat.message": "Message",
+  "chat.sessions": "Sessions",
+  "chat.deleteSession": "Delete session",
+  "chat.deleteSessionConfirm": "Delete this chat session?",
+  "chat.noSessions": "No sessions yet",
+  "chat.sessionTitle": "Session",
+  "chat.allChats": "All Chats",
 
   // Cron
   "cron.title": "Cron Jobs",

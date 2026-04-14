@@ -112,7 +112,7 @@ function CronFormDialog({
                 <button
                   type="button"
                   onClick={() => setShowPresets(!showPresets)}
-                  className="flex items-center gap-1 text-[10px] text-blue-400 hover:text-blue-300 transition-colors"
+                  className="flex items-center gap-1 text-[10px] text-brand-400 hover:text-brand-300 transition-colors"
                 >
                   <Clock size={10} />
                   {t('cron.presets')}
@@ -312,7 +312,7 @@ export default function CronPage() {
       </div>
     )},
     { key: "schedule", label: t('cron.schedule'), render: (j) => <code className="text-xs bg-bg-primary px-2 py-0.5 rounded">{j.schedule}</code> },
-    { key: "agent", label: t('common.agent'), sortable: true, render: (j) => <span className="text-blue-400">{j.agent}</span> },
+    { key: "agent", label: t('common.agent'), sortable: true, render: (j) => <span className="text-brand-400">{j.agent}</span> },
     { key: "status", label: t('common.status'), render: (j) => <StatusBadge status={j.status} /> },
     { key: "lastRun", label: t('cron.lastRun'), sortable: true, render: (j) => <span className="text-text-secondary">{formatDateTime(j.lastRun)}</span> },
     {
@@ -433,7 +433,7 @@ export default function CronPage() {
             </div>
             <div>
               <p className="text-xs text-text-secondary mb-1">{t('common.agent')}</p>
-              <p className="text-sm text-blue-400">{selected.agent}</p>
+              <p className="text-sm text-brand-400">{selected.agent}</p>
             </div>
             <div>
               <p className="text-xs text-text-secondary mb-1">{t('common.description')}</p>
@@ -455,7 +455,7 @@ export default function CronPage() {
               <button type="button" onClick={() => handleToggle(selected)} className={`flex-1 py-2 text-xs font-medium rounded-lg transition-colors ${selected.status === "active" ? "bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30" : "bg-green-500/20 text-green-400 hover:bg-green-500/30"}`}>
                 {selected.status === "active" ? t('cron.pause') : t('cron.resume')}
               </button>
-              <button type="button" onClick={() => handleRunNow(selected)} className="flex-1 py-2 text-xs font-medium rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors">
+              <button type="button" onClick={() => handleRunNow(selected)} className="flex-1 py-2 text-xs font-medium rounded-lg bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 transition-colors">
                 {t('cron.runNow')}
               </button>
               <button type="button" onClick={() => handleDelete(selected)} className="py-2 px-3 text-xs font-medium rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors">

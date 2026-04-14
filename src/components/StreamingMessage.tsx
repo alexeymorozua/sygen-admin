@@ -128,7 +128,7 @@ function FilePreview({
 
   return (
     <div className="mt-2 flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-bg-card/50 max-w-sm">
-      <Icon size={18} className="text-blue-400 shrink-0" />
+      <Icon size={18} className="text-brand-400 shrink-0" />
       <span className="text-sm truncate flex-1">{file.name}</span>
       <button
         type="button"
@@ -195,7 +195,7 @@ export default function StreamingMessage({
         {isUser ? (
           <User size={16} />
         ) : (
-          <Bot size={16} className="text-blue-400" />
+          <Bot size={16} className="text-brand-400" />
         )}
       </div>
       <div className={cn("max-w-[75%] min-w-0", isUser && "text-right")}>
@@ -218,12 +218,12 @@ export default function StreamingMessage({
           {isUser ? (
             <p className="whitespace-pre-wrap break-words">{content}</p>
           ) : (
-            <div className="prose prose-invert prose-sm max-w-none break-words [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_pre]:bg-black/30 [&_pre]:rounded-lg [&_pre]:p-3 [&_code]:text-blue-300 [&_a]:text-blue-400">
+            <div className="prose prose-invert prose-sm max-w-none break-words [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_pre]:bg-black/30 [&_pre]:rounded-lg [&_pre]:p-3 [&_code]:text-brand-300 [&_a]:text-brand-400">
               <ReactMarkdown rehypePlugins={[rehypeSanitize]}>
                 {cleanText}
               </ReactMarkdown>
               {isStreaming && (
-                <span className="inline-block w-1.5 h-4 ml-0.5 bg-blue-400 animate-pulse rounded-sm align-middle" />
+                <span className="inline-block w-1.5 h-4 ml-0.5 bg-brand-400 animate-pulse rounded-sm align-middle" />
               )}
             </div>
           )}
@@ -267,7 +267,7 @@ export default function StreamingMessage({
           )}
         >
           {agentName && !isUser && (
-            <span className="font-medium text-blue-400">{agentName}</span>
+            <span className="font-medium text-brand-400">{agentName}</span>
           )}
           <span>{formatTime(timestamp)}</span>
         </div>

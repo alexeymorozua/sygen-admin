@@ -193,7 +193,7 @@ export default function DashboardPage() {
         {/* Agent Status */}
         <div className="bg-bg-card border border-border rounded-xl p-5">
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <Bot size={18} className="text-blue-400" />
+            <Bot size={18} className="text-brand-400" />
             {t('dashboard.agentStatus')}
           </h2>
           <div className="space-y-3">
@@ -212,7 +212,7 @@ export default function DashboardPage() {
         {/* Recent Activity */}
         <div className="bg-bg-card border border-border rounded-xl p-5">
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <Activity size={18} className="text-blue-400" />
+            <Activity size={18} className="text-brand-400" />
             {t('dashboard.recentActivity')}
           </h2>
           <div className="space-y-3">
@@ -222,7 +222,7 @@ export default function DashboardPage() {
             {events.slice(0, 8).map((event) => (
               <div key={event.id} className="flex items-start gap-3 py-2 border-b border-border/50 last:border-0">
                 <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
-                  event.type === "agent" ? "bg-blue-400" :
+                  event.type === "agent" ? "bg-brand-400" :
                   event.type === "cron" ? "bg-green-400" :
                   event.type === "webhook" ? "bg-purple-400" :
                   event.type === "task" ? "bg-yellow-400" : "bg-gray-400"
@@ -239,7 +239,7 @@ export default function DashboardPage() {
         {/* System Health */}
         <div className="bg-bg-card border border-border rounded-xl p-5">
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <Cpu size={18} className="text-blue-400" />
+            <Cpu size={18} className="text-brand-400" />
             {t('dashboard.systemHealth')}
           </h2>
           {health && (

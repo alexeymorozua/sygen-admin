@@ -100,7 +100,7 @@ export default function AgentsPage() {
           <div className="flex items-center justify-between p-5 pb-3">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-accent/30 flex items-center justify-center">
-                <Bot size={20} className="text-blue-400" />
+                <Bot size={20} className="text-brand-400" />
               </div>
               <div>
                 <p className="font-semibold text-sm">{selected.displayName}</p>
@@ -118,7 +118,7 @@ export default function AgentsPage() {
               type="button"
               onClick={() => setDetailTab("info")}
               className={`px-3 py-2 text-xs font-medium transition-colors border-b-2 ${
-                detailTab === "info" ? "border-blue-400 text-blue-400" : "border-transparent text-text-secondary hover:text-text-primary"
+                detailTab === "info" ? "border-brand-400 text-brand-400" : "border-transparent text-text-secondary hover:text-text-primary"
               }`}
             >
               {t('agents.info')}
@@ -127,7 +127,7 @@ export default function AgentsPage() {
               type="button"
               onClick={() => handleShowLogs(selected)}
               className={`px-3 py-2 text-xs font-medium transition-colors border-b-2 flex items-center gap-1 ${
-                detailTab === "logs" ? "border-blue-400 text-blue-400" : "border-transparent text-text-secondary hover:text-text-primary"
+                detailTab === "logs" ? "border-brand-400 text-brand-400" : "border-transparent text-text-secondary hover:text-text-primary"
               }`}
             >
               <FileText size={12} />
@@ -176,7 +176,7 @@ export default function AgentsPage() {
                   </div>
                 )}
                 <div className="pt-2 border-t border-border">
-                  <a href="/chat" className="block w-full py-2 text-center text-xs font-medium rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors">
+                  <a href="/chat" className="block w-full py-2 text-center text-xs font-medium rounded-lg bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 transition-colors">
                     {t('agents.openChat')}
                   </a>
                 </div>

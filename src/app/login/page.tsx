@@ -44,7 +44,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="bg-bg-card border border-border rounded-2xl p-8">
           <div className="flex items-center justify-center w-12 h-12 bg-accent/20 rounded-xl mb-6 mx-auto">
-            <KeyRound size={24} className="text-blue-400" />
+            <KeyRound size={24} className="text-brand-400" />
           </div>
           <h1 className="text-xl font-bold text-center mb-1">{t("login.title")}</h1>
           <p className="text-sm text-text-secondary text-center mb-6">

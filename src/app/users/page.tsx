@@ -24,7 +24,7 @@ const ROLE_ICONS = {
 const ROLE_COLORS = {
   admin: "text-red-400 bg-red-400/10",
   operator: "text-yellow-400 bg-yellow-400/10",
-  viewer: "text-blue-400 bg-blue-400/10",
+  viewer: "text-brand-400 bg-brand-400/10",
 };
 
 export default function UsersPage() {
@@ -312,7 +312,7 @@ function AuditTable({ entries, t }: { entries: AuditEntry[]; t: (key: string) =>
                   "px-2 py-0.5 rounded text-xs font-medium",
                   entry.action.includes("delete") ? "bg-danger/10 text-danger" :
                   entry.action.includes("create") ? "bg-success/10 text-success" :
-                  entry.action === "login" ? "bg-blue-400/10 text-blue-400" :
+                  entry.action === "login" ? "bg-brand-400/10 text-brand-400" :
                   "bg-warning/10 text-warning",
                 )}>
                   {entry.action}

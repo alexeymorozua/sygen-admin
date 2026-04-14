@@ -40,7 +40,7 @@ const colors: Record<ToastType, string> = {
   success: "border-green-500/40 bg-green-500/10 text-green-400",
   error: "border-red-500/40 bg-red-500/10 text-red-400",
   warning: "border-yellow-500/40 bg-yellow-500/10 text-yellow-400",
-  info: "border-blue-500/40 bg-blue-500/10 text-blue-400",
+  info: "border-brand-500/40 bg-brand-500/10 text-brand-400",
 };
 
 function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string) => void }) {

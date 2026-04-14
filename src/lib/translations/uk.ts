@@ -64,6 +64,12 @@ const uk: Record<string, string> = {
   "chat.clearHistoryConfirm": "Очистити історію чату для",
   "chat.clearAllConfirm": "Очистити ВСЮ історію чатів для всіх агентів на цьому сервері?",
   "chat.message": "Повідомлення",
+  "chat.sessions": "Сесії",
+  "chat.deleteSession": "Видалити сесію",
+  "chat.deleteSessionConfirm": "Видалити цю чат-сесію?",
+  "chat.noSessions": "Ще немає сесій",
+  "chat.sessionTitle": "Сесія",
+  "chat.allChats": "Всі чати",
 
   // Cron
   "cron.title": "Cron задачі",
