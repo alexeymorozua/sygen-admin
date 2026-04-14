@@ -70,6 +70,10 @@ const en: Record<string, string> = {
   "chat.noSessions": "No sessions yet",
   "chat.sessionTitle": "Session",
   "chat.allChats": "All Chats",
+  "chat.recording": "Recording",
+  "chat.recordVoice": "Record voice message",
+  "chat.stopRecording": "Stop recording",
+  "chat.voiceMessage": "Voice message",
 
   // Cron
   "cron.title": "Cron Jobs",

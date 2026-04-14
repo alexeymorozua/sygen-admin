@@ -70,6 +70,10 @@ const uk: Record<string, string> = {
   "chat.noSessions": "Ще немає сесій",
   "chat.sessionTitle": "Сесія",
   "chat.allChats": "Всі чати",
+  "chat.recording": "Запис",
+  "chat.recordVoice": "Записати голосове повідомлення",
+  "chat.stopRecording": "Зупинити запис",
+  "chat.voiceMessage": "Голосове повідомлення",
 
   // Cron
   "cron.title": "Cron задачі",

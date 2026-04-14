@@ -70,6 +70,10 @@ const ru: Record<string, string> = {
   "chat.noSessions": "Пока нет сессий",
   "chat.sessionTitle": "Сессия",
   "chat.allChats": "Все чаты",
+  "chat.recording": "Запись",
+  "chat.recordVoice": "Записать голосовое сообщение",
+  "chat.stopRecording": "Остановить запись",
+  "chat.voiceMessage": "Голосовое сообщение",
 
   // Cron
   "cron.title": "Cron задачи",
