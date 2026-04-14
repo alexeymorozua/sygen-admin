@@ -1,0 +1,42 @@
+"use client";
+
+import type { Agent } from "@/lib/mock-data";
+import StatusBadge from "./StatusBadge";
+import { Bot, Clock, Users } from "lucide-react";
+import { formatDate } from "@/lib/utils";
+import { useTranslation } from "@/lib/i18n";
+
+export default function AgentCard({ agent }: { agent: Agent }) {
+  const { t } = useTranslation();
+  return (
+    <div className="bg-bg-card border border-border rounded-xl p-5 hover:border-accent/50 transition-colors">
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-accent/30 flex items-center justify-center">
+            <Bot size={20} className="text-blue-400" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-text-primary">{agent.displayName}</h3>
+            <p className="text-xs text-text-secondary">{agent.name}</p>
+          </div>
+        </div>
+        <StatusBadge status={agent.status} />
+      </div>
+      <p className="text-sm text-text-secondary mb-4 line-clamp-2">{agent.description}</p>
+      <div className="flex items-center gap-4 text-xs text-text-secondary">
+        <span className="flex items-center gap-1">
+          <Bot size={12} />
+          {agent.model}
+        </span>
+        <span className="flex items-center gap-1">
+          <Users size={12} />
+          {agent.sessions} {t('agents.sessions')}
+        </span>
+        <span className="flex items-center gap-1">
+          <Clock size={12} />
+          {formatDate(agent.lastActive)}
+        </span>
+      </div>
+    </div>
+  );
+}

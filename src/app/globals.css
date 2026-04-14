@@ -1,26 +1,80 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-bg-primary: var(--theme-bg-primary);
+  --color-bg-card: var(--theme-bg-card);
+  --color-bg-sidebar: var(--theme-bg-sidebar);
+  --color-accent: var(--theme-accent);
+  --color-accent-hover: var(--theme-accent-hover);
+  --color-danger: var(--theme-danger);
+  --color-text-primary: var(--theme-text-primary);
+  --color-text-secondary: var(--theme-text-secondary);
+  --color-border: var(--theme-border);
+  --color-success: var(--theme-success);
+  --color-warning: var(--theme-warning);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Dark theme (default) */
+:root,
+[data-theme="dark"] {
+  --theme-bg-primary: #0f0f1a;
+  --theme-bg-card: #1a1a2e;
+  --theme-bg-sidebar: #16213e;
+  --theme-accent: #0f3460;
+  --theme-accent-hover: #1a4a80;
+  --theme-danger: #e94560;
+  --theme-text-primary: #ffffff;
+  --theme-text-secondary: #8892b0;
+  --theme-border: #2a2a4a;
+  --theme-success: #00c853;
+  --theme-warning: #ffa726;
+}
+
+/* Light theme */
+[data-theme="light"] {
+  --theme-bg-primary: #f5f5f9;
+  --theme-bg-card: #ffffff;
+  --theme-bg-sidebar: #eef1f8;
+  --theme-accent: #3b6fc0;
+  --theme-accent-hover: #4e83d4;
+  --theme-danger: #d9304a;
+  --theme-text-primary: #1a1a2e;
+  --theme-text-secondary: #5a6378;
+  --theme-border: #d4d8e2;
+  --theme-success: #00a844;
+  --theme-warning: #e58f1a;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--theme-bg-primary);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-secondary);
+}
+
+/* Toast animation */
+@keyframes slide-in-right {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+.animate-in {
+  animation: slide-in-right 0.3s ease-out;
 }

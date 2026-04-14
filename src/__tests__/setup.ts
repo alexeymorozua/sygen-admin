@@ -1,0 +1,44 @@
+import "@testing-library/jest-dom/vitest";
+import { cleanup } from "@testing-library/react";
+import { afterEach, vi } from "vitest";
+import React from "react";
+
+afterEach(() => {
+  cleanup();
+  localStorage.clear();
+  vi.restoreAllMocks();
+});
+
+// Mock next/navigation
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    back: vi.fn(),
+    prefetch: vi.fn(),
+  }),
+  usePathname: () => "/",
+  useSearchParams: () => new URLSearchParams(),
+}));
+
+// Mock lucide-react — create a component factory for any named export
+function createIconMock(name: string) {
+  const component = (props: Record<string, unknown>) =>
+    React.createElement("span", { "data-testid": `icon-${name}`, ...props });
+  component.displayName = name;
+  return component;
+}
+
+vi.mock("lucide-react", async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  // Wrap every export that looks like a component (PascalCase) with a simple span
+  const mocked: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(actual)) {
+    if (/^[A-Z]/.test(key) && typeof value === "function") {
+      mocked[key] = createIconMock(key);
+    } else {
+      mocked[key] = value;
+    }
+  }
+  return mocked;
+});

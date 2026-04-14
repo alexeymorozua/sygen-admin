@@ -1,0 +1,10 @@
+services:
+  sygen-admin:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_SYGEN_API_URL=${NEXT_PUBLIC_SYGEN_API_URL:-http://localhost:8080}
+      - NEXT_PUBLIC_SYGEN_API_TOKEN=${NEXT_PUBLIC_SYGEN_API_TOKEN:-}
+      - NEXT_PUBLIC_USE_MOCK=${NEXT_PUBLIC_USE_MOCK:-true}
+    restart: unless-stopped

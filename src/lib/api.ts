@@ -1,0 +1,819 @@
+import {
+  type Agent,
+  type CronJob,
+  type Webhook,
+  type Task,
+  type ChatMessage,
+  type MemoryModule,
+  type ActivityEvent,
+  type SystemHealth,
+  mockAgents,
+  mockCronJobs,
+  mockWebhooks,
+  mockTasks,
+  mockChatMessages,
+  mockActivityEvents,
+  mockSystemHealth,
+  mockMemoryModules,
+  mockConfig,
+} from "./mock-data";
+import type { SygenServer } from "./servers";
+
+const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
+const API_URL = process.env.NEXT_PUBLIC_SYGEN_API_URL || "http://localhost:8080";
+const API_TOKEN = process.env.NEXT_PUBLIC_SYGEN_API_TOKEN || "";
+
+// ---------------------------------------------------------------------------
+// Active server override (set by ServerContext)
+// ---------------------------------------------------------------------------
+
+let _activeServer: SygenServer | null = null;
+
+export function setActiveServerForApi(server: SygenServer | null) {
+  _activeServer = server;
+}
+
+function getApiUrl(): string {
+  return _activeServer?.url || API_URL;
+}
+
+function getApiToken(): string {
+  return _activeServer?.token || API_TOKEN;
+}
+
+// ---------------------------------------------------------------------------
+// Token storage helpers
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+export interface UserInfo {
+  username: string;
+  role: "admin" | "operator" | "viewer";
+  display_name: string;
+  allowed_agents: string[];
+  active?: boolean;
+  created_at?: number;
+}
+
+export interface LoginResponse {
+  access_token: string;
+  refresh_token: string;
+  user: UserInfo;
+}
+
+export interface AuditEntry {
+  ts: string;
+  user: string;
+  action: string;
+  target: string;
+  details: string;
+}
+
+// ---------------------------------------------------------------------------
+// Token & user storage helpers
+// ---------------------------------------------------------------------------
+
+function getStoredTokens(): { accessToken: string | null; refreshToken: string | null } {
+  if (typeof window === "undefined") return { accessToken: null, refreshToken: null };
+  return {
+    accessToken: localStorage.getItem("sygen_access_token"),
+    refreshToken: localStorage.getItem("sygen_refresh_token"),
+  };
+}
+
+function storeTokens(access: string, refresh?: string) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem("sygen_access_token", access);
+  if (refresh) localStorage.setItem("sygen_refresh_token", refresh);
+}
+
+function storeUser(user: UserInfo) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem("sygen_user", JSON.stringify(user));
+}
+
+export function getStoredUser(): UserInfo | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem("sygen_user");
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function clearTokens() {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem("sygen_access_token");
+  localStorage.removeItem("sygen_refresh_token");
+  localStorage.removeItem("sygen_user");
+}
+
+// ---------------------------------------------------------------------------
+// Core fetch with JWT handling
+// ---------------------------------------------------------------------------
+
+let _refreshPromise: Promise<string | null> | null = null;
+
+async function refreshAccessToken(): Promise<string | null> {
+  const { refreshToken } = getStoredTokens();
+  if (!refreshToken) return null;
+
+  try {
+    const res = await fetch(`${getApiUrl()}/api/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const newAccess = data.access_token;
+    if (newAccess) {
+      storeTokens(newAccess);
+      return newAccess;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  const { accessToken } = getStoredTokens();
+  const token = accessToken || getApiToken();
+  const baseUrl = getApiUrl();
+
+  const res = await fetch(`${baseUrl}${endpoint}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options?.headers,
+    },
+  });
+
+  if (res.status === 401 && accessToken) {
+    // Try refresh once (deduplicated)
+    if (!_refreshPromise) {
+      _refreshPromise = refreshAccessToken().finally(() => { _refreshPromise = null; });
+    }
+    const newToken = await _refreshPromise;
+    if (newToken) {
+      const retry = await fetch(`${baseUrl}${endpoint}`, {
+        ...options,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${newToken}`,
+          ...options?.headers,
+        },
+      });
+      if (retry.ok) {
+        const json = await retry.json();
+        return json.data !== undefined ? json.data : json;
+      }
+    }
+    // Refresh failed — clear tokens and redirect to login
+    clearTokens();
+    if (typeof window !== "undefined") {
+      window.location.href = "/login";
+    }
+    throw new Error("Session expired");
+  }
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.error || `API Error: ${res.status} ${res.statusText}`);
+  }
+
+  const json = await res.json();
+  return json.data !== undefined ? json.data : json;
+}
+
+// ---------------------------------------------------------------------------
+// API class
+// ---------------------------------------------------------------------------
+
+export class SygenAPI {
+  // ---- Auth ----
+
+  static async login(credentials: { username: string; password: string } | { token: string }): Promise<LoginResponse> {
+    const res = await fetch(`${getApiUrl()}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(credentials),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      throw new Error(body?.error || "Login failed");
+    }
+    const data = await res.json();
+    storeTokens(data.access_token, data.refresh_token);
+    if (data.user) {
+      storeUser(data.user);
+    }
+    return data;
+  }
+
+  static async logout(): Promise<void> {
+    const { refreshToken } = getStoredTokens();
+    if (refreshToken) {
+      try {
+        await fetch(`${getApiUrl()}/api/auth/logout`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refresh_token: refreshToken }),
+        });
+      } catch { /* ignore */ }
+    }
+    clearTokens();
+  }
+
+  static isAuthenticated(): boolean {
+    if (USE_MOCK) return true;
+    const { accessToken } = getStoredTokens();
+    return !!(accessToken || getApiToken());
+  }
+
+  // ---- Auto-login with env token ----
+
+  static async autoLogin(): Promise<boolean> {
+    if (!getApiToken()) return false;
+    const { accessToken } = getStoredTokens();
+    if (accessToken) return true;
+    try {
+      await SygenAPI.login({ token: getApiToken() });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  // ---- Agents ----
+
+  static async getAgents(): Promise<Agent[]> {
+    if (USE_MOCK) return mockAgents;
+    const data = await fetchAPI<Record<string, unknown>[]>("/api/agents");
+    return data.map(mapAgent);
+  }
+
+  static async getAgent(name: string): Promise<Agent | undefined> {
+    if (USE_MOCK) return mockAgents.find((a) => a.id === name || a.name === name);
+    try {
+      const data = await fetchAPI<Record<string, unknown>>(`/api/agents/${name}`);
+      return mapAgent(data);
+    } catch {
+      return undefined;
+    }
+  }
+
+  // ---- Cron Jobs ----
+
+  static async getCronJobs(): Promise<CronJob[]> {
+    if (USE_MOCK) return mockCronJobs;
+    const data = await fetchAPI<Record<string, unknown>[]>("/api/cron");
+    return data.map(mapCronJob);
+  }
+
+  static async createCronJob(job: Partial<CronJob>): Promise<CronJob> {
+    if (USE_MOCK) {
+      const newJob: CronJob = {
+        id: `cron-${Date.now()}`,
+        name: job.name || "New Job",
+        schedule: job.schedule || "* * * * *",
+        agent: job.agent || "main",
+        status: "active",
+        lastRun: "-",
+        nextRun: "-",
+        description: job.description || "",
+        executionCount: 0,
+        avgDuration: "0s",
+        ...job,
+      };
+      return newJob;
+    }
+    const body = {
+      id: job.id || `cron-${Date.now()}`,
+      title: job.name,
+      schedule: job.schedule,
+      agent: job.agent,
+      description: job.description,
+      ...job,
+    };
+    const data = await fetchAPI<Record<string, unknown>>("/api/cron", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+    return mapCronJob(data);
+  }
+
+  static async updateCronJob(id: string, data: Partial<CronJob>): Promise<CronJob> {
+    if (USE_MOCK) {
+      const job = mockCronJobs.find((j) => j.id === id);
+      return { ...job!, ...data };
+    }
+    const result = await fetchAPI<Record<string, unknown>>(`/api/cron/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+    return mapCronJob(result);
+  }
+
+  static async deleteCronJob(id: string): Promise<void> {
+    if (USE_MOCK) return;
+    await fetchAPI(`/api/cron/${id}`, { method: "DELETE" });
+  }
+
+  static async runCronJob(id: string): Promise<void> {
+    if (USE_MOCK) return;
+    await fetchAPI(`/api/cron/${id}/run`, { method: "POST" });
+  }
+
+  // ---- Webhooks ----
+
+  static async getWebhooks(): Promise<Webhook[]> {
+    if (USE_MOCK) return mockWebhooks;
+    const data = await fetchAPI<Record<string, unknown>[]>("/api/webhooks");
+    return data.map(mapWebhook);
+  }
+
+  static async createWebhook(wh: Partial<Webhook>): Promise<Webhook> {
+    if (USE_MOCK) {
+      return {
+        id: `wh-${Date.now()}`,
+        name: wh.name || "New Webhook",
+        url: wh.url || "/webhooks/new",
+        method: wh.method || "POST",
+        agent: wh.agent || "main",
+        status: "active",
+        lastTriggered: "-",
+        triggerCount: 0,
+        description: wh.description || "",
+        ...wh,
+      } as Webhook;
+    }
+    const body = {
+      id: wh.id || `wh-${Date.now()}`,
+      ...wh,
+    };
+    const data = await fetchAPI<Record<string, unknown>>("/api/webhooks", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+    return mapWebhook(data);
+  }
+
+  static async updateWebhook(id: string, data: Partial<Webhook>): Promise<Webhook> {
+    if (USE_MOCK) {
+      const wh = mockWebhooks.find((w) => w.id === id);
+      return { ...wh!, ...data };
+    }
+    const result = await fetchAPI<Record<string, unknown>>(`/api/webhooks/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+    return mapWebhook(result);
+  }
+
+  static async deleteWebhook(id: string): Promise<void> {
+    if (USE_MOCK) return;
+    await fetchAPI(`/api/webhooks/${id}`, { method: "DELETE" });
+  }
+
+  // ---- Tasks ----
+
+  static async getTasks(filters?: { status?: string; limit?: number }): Promise<Task[]> {
+    if (USE_MOCK) return mockTasks;
+    const params = new URLSearchParams();
+    if (filters?.status) params.set("status", filters.status);
+    if (filters?.limit) params.set("limit", String(filters.limit));
+    const qs = params.toString();
+    const data = await fetchAPI<Record<string, unknown>[]>(`/api/tasks${qs ? `?${qs}` : ""}`);
+    return data.map(mapTask);
+  }
+
+  static async getTask(id: string): Promise<Task | undefined> {
+    if (USE_MOCK) return mockTasks.find((t) => t.id === id);
+    try {
+      const data = await fetchAPI<Record<string, unknown>>(`/api/tasks/${id}`);
+      return mapTask(data);
+    } catch {
+      return undefined;
+    }
+  }
+
+  static async createTask(data: { name: string; agent?: string; prompt?: string; provider?: string }): Promise<Task> {
+    if (USE_MOCK) {
+      return {
+        id: `task-${Date.now().toString(16)}`,
+        name: data.name,
+        status: "running",
+        agent: data.agent || "main",
+        provider: data.provider || "claude",
+        startedAt: new Date().toISOString(),
+        duration: "0s",
+        description: data.prompt || "",
+      };
+    }
+    const raw = await fetchAPI<Record<string, unknown>>("/api/tasks", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    return mapTask(raw);
+  }
+
+  static async cancelTask(id: string): Promise<void> {
+    if (USE_MOCK) return;
+    await fetchAPI(`/api/tasks/${id}/cancel`, { method: "POST" });
+  }
+
+  // ---- Webhook test ----
+
+  static async testWebhook(url: string): Promise<{ status: number; body: string }> {
+    if (USE_MOCK) {
+      return { status: 200, body: '{"ok": true}' };
+    }
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ test: true, timestamp: new Date().toISOString() }),
+        signal: AbortSignal.timeout(10000),
+      });
+      const text = await res.text();
+      return { status: res.status, body: text.slice(0, 500) };
+    } catch (err) {
+      throw new Error(err instanceof Error ? err.message : "Request failed");
+    }
+  }
+
+  // ---- Sessions ----
+
+  static async getSessions(): Promise<Record<string, unknown>> {
+    if (USE_MOCK) return {};
+    return fetchAPI<Record<string, unknown>>("/api/sessions");
+  }
+
+  static async deleteSession(id: string): Promise<void> {
+    if (USE_MOCK) return;
+    await fetchAPI(`/api/sessions/${id}`, { method: "DELETE" });
+  }
+
+  // ---- Memory ----
+
+  static async getMemory(): Promise<{ content: string }> {
+    if (USE_MOCK) {
+      const main = mockMemoryModules.find((m) => m.type === "main");
+      return { content: main?.content || "" };
+    }
+    return fetchAPI<{ content: string }>("/api/memory");
+  }
+
+  static async updateMemory(content: string): Promise<void> {
+    if (USE_MOCK) return;
+    await fetchAPI("/api/memory", {
+      method: "PUT",
+      body: JSON.stringify({ content }),
+    });
+  }
+
+  static async getMemoryModules(): Promise<MemoryModule[]> {
+    if (USE_MOCK) return mockMemoryModules;
+    const data = await fetchAPI<{ name: string; filename: string; size: number }[]>("/api/memory/modules");
+    return data.map((m, i) => ({
+      id: `mem-${i}`,
+      name: m.name,
+      filename: m.filename,
+      type: m.filename === "MAINMEMORY.md" ? "main" as const
+        : m.filename === "SHAREDMEMORY.md" ? "shared" as const
+        : "agent" as const,
+      lastModified: new Date().toISOString(),
+      size: formatSize(m.size),
+      content: "",
+    }));
+  }
+
+  static async getMemoryModuleContent(filename: string): Promise<string> {
+    if (USE_MOCK) {
+      const mod = mockMemoryModules.find((m) => m.filename === filename);
+      return mod?.content || "";
+    }
+    const data = await fetchAPI<{ filename: string; content: string }>(`/api/memory/modules/${encodeURIComponent(filename)}`);
+    return data.content;
+  }
+
+  static async updateMemoryModule(filename: string, content: string): Promise<void> {
+    if (USE_MOCK) return;
+    await fetchAPI(`/api/memory/modules/${encodeURIComponent(filename)}`, {
+      method: "PUT",
+      body: JSON.stringify({ content }),
+    });
+  }
+
+  // ---- System ----
+
+  static async getSystemStatus(): Promise<SystemHealth> {
+    if (USE_MOCK) return mockSystemHealth;
+    const data = await fetchAPI<Record<string, unknown>>("/api/system/status");
+    return {
+      cpu: Number(data.cpu_percent) || 0,
+      ram: Number(data.ram_percent) || 0,
+      disk: Number(data.disk_percent) || 0,
+      uptime: formatUptime(Number(data.uptime_seconds) || 0),
+      agents: Number(data.agents) || 0,
+      sessions: Number(data.sessions) || 0,
+      cronJobs: Number(data.cron_jobs) || 0,
+      tasksTotal: Number(data.tasks_total) || 0,
+      tasksActive: Number(data.tasks_active) || 0,
+    } as SystemHealth & Record<string, unknown>;
+  }
+
+  static async getLogs(lines?: number, agent?: string): Promise<{ agent: string; lines: string[] }> {
+    if (USE_MOCK) return { agent: agent || "main", lines: ["[mock] No real logs available"] };
+    const params = new URLSearchParams();
+    if (lines) params.set("lines", String(lines));
+    if (agent) params.set("agent", agent);
+    const qs = params.toString();
+    return fetchAPI<{ agent: string; lines: string[] }>(`/api/logs${qs ? `?${qs}` : ""}`);
+  }
+
+  static async checkHealth(): Promise<boolean> {
+    try {
+      const res = await fetch(`${getApiUrl()}/health`);
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  // ---- Chat (kept for compatibility) ----
+
+  static async getChatMessages(agentId?: string): Promise<ChatMessage[]> {
+    if (USE_MOCK) {
+      if (agentId) {
+        return mockChatMessages.filter(
+          (m) => m.agentId === agentId || m.sender === "user"
+        );
+      }
+      return mockChatMessages;
+    }
+    const query = agentId ? `?agent=${agentId}` : "";
+    return fetchAPI<ChatMessage[]>(`/api/chat${query}`);
+  }
+
+  static async sendMessage(agentId: string, content: string): Promise<ChatMessage> {
+    if (USE_MOCK) {
+      return {
+        id: `msg-${Date.now()}`,
+        sender: "user",
+        content,
+        timestamp: new Date().toISOString(),
+      };
+    }
+    return fetchAPI<ChatMessage>(`/api/chat/${agentId}`, {
+      method: "POST",
+      body: JSON.stringify({ content }),
+    });
+  }
+
+  // ---- Activity (dashboard, uses mock fallback) ----
+
+  static async getActivity(): Promise<ActivityEvent[]> {
+    if (USE_MOCK) return mockActivityEvents;
+    return fetchAPI<ActivityEvent[]>("/api/activity");
+  }
+
+  // ---- Config (settings page) ----
+
+  static async getConfig(): Promise<typeof mockConfig> {
+    if (USE_MOCK) return mockConfig;
+    return fetchAPI<typeof mockConfig>("/api/config");
+  }
+
+  // ---- Users (RBAC) ----
+
+  static async getUsers(): Promise<UserInfo[]> {
+    return fetchAPI<UserInfo[]>("/api/users");
+  }
+
+  static async createUser(data: {
+    username: string;
+    password: string;
+    role: string;
+    display_name?: string;
+    allowed_agents?: string[];
+  }): Promise<UserInfo> {
+    return fetchAPI<UserInfo>("/api/users", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  static async updateUser(
+    username: string,
+    data: Partial<{
+      role: string;
+      display_name: string;
+      allowed_agents: string[];
+      active: boolean;
+      password: string;
+    }>,
+  ): Promise<UserInfo> {
+    return fetchAPI<UserInfo>(`/api/users/${encodeURIComponent(username)}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  static async deleteUser(username: string): Promise<void> {
+    await fetchAPI(`/api/users/${encodeURIComponent(username)}`, {
+      method: "DELETE",
+    });
+  }
+
+  // ---- Audit log ----
+
+  static async getAuditLog(limit?: number): Promise<AuditEntry[]> {
+    const qs = limit ? `?limit=${limit}` : "";
+    return fetchAPI<AuditEntry[]>(`/api/audit${qs}`);
+  }
+
+  // ---- Current user ----
+
+  static async getMe(): Promise<UserInfo> {
+    return fetchAPI<UserInfo>("/api/auth/me");
+  }
+
+  // ---- WebSocket for chat ----
+
+  static connectChat(agentId: string, onMessage: (msg: ChatMessage) => void): () => void {
+    if (USE_MOCK) {
+      const timer = setTimeout(() => {
+        onMessage({
+          id: `msg-ws-${Date.now()}`,
+          sender: "agent",
+          agentId,
+          content: "WebSocket connection simulated. Real-time messaging will be available when the API is connected.",
+          timestamp: new Date().toISOString(),
+        });
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+
+    const { accessToken } = getStoredTokens();
+    const token = accessToken || getApiToken();
+    const wsUrl = getApiUrl().replace(/^http/, "ws");
+    const ws = new WebSocket(`${wsUrl}/ws/chat/${agentId}`);
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ type: "auth", token }));
+    };
+    ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data) as ChatMessage;
+        onMessage(msg);
+      } catch {
+        // Ignore unparseable frames
+      }
+    };
+    return () => ws.close();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Mapping helpers: API response → frontend types
+// ---------------------------------------------------------------------------
+
+function mapAgent(raw: Record<string, unknown>): Agent {
+  return {
+    id: String(raw.name || raw.id || ""),
+    name: String(raw.name || ""),
+    displayName: String(raw.display_name || raw.displayName || raw.name || ""),
+    model: String(raw.model || "unknown"),
+    provider: String(raw.provider || "unknown"),
+    status: (raw.status as Agent["status"]) || "offline",
+    sessions: Number(raw.active_sessions || raw.sessions || 0),
+    lastActive: String(raw.last_active || raw.lastActive || ""),
+    description: String(raw.description || ""),
+    allowedUsers: (raw.allowed_users || raw.allowedUsers || []) as string[],
+  };
+}
+
+function mapCronJob(raw: Record<string, unknown>): CronJob {
+  return {
+    id: String(raw.id || ""),
+    name: String(raw.title || raw.name || ""),
+    schedule: String(raw.schedule || ""),
+    agent: String(raw.agent || "main"),
+    status: (raw.status as CronJob["status"]) || "active",
+    lastRun: String(raw.last_run || raw.lastRun || "-"),
+    nextRun: String(raw.next_run || raw.nextRun || "-"),
+    description: String(raw.description || ""),
+    executionCount: Number(raw.execution_count || raw.executionCount || 0),
+    avgDuration: String(raw.avg_duration || raw.avgDuration || "0s"),
+  };
+}
+
+function mapWebhook(raw: Record<string, unknown>): Webhook {
+  return {
+    id: String(raw.id || ""),
+    name: String(raw.name || ""),
+    url: String(raw.url || raw.path || ""),
+    method: String(raw.method || "POST"),
+    agent: String(raw.agent || "main"),
+    status: (raw.status as Webhook["status"]) || "active",
+    lastTriggered: String(raw.last_triggered || raw.lastTriggered || "-"),
+    triggerCount: Number(raw.trigger_count || raw.triggerCount || 0),
+    description: String(raw.description || ""),
+  };
+}
+
+function mapTask(raw: Record<string, unknown>): Task {
+  return {
+    id: String(raw.task_id || raw.id || ""),
+    name: String(raw.name || raw.title || ""),
+    status: mapTaskStatus(String(raw.status || "running")),
+    agent: String(raw.agent || "main"),
+    provider: String(raw.provider || "unknown"),
+    startedAt: String(raw.started_at || raw.startedAt || raw.created_at || ""),
+    duration: String(raw.duration || "0s"),
+    description: String(raw.description || raw.prompt || ""),
+    result: raw.result ? String(raw.result) : undefined,
+  };
+}
+
+function mapTaskStatus(status: string): Task["status"] {
+  const map: Record<string, Task["status"]> = {
+    running: "running",
+    pending: "running",
+    done: "completed",
+    completed: "completed",
+    failed: "failed",
+    cancelled: "cancelled",
+    error: "failed",
+  };
+  return map[status] || "running";
+}
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatUptime(seconds: number): string {
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const parts: string[] = [];
+  if (d > 0) parts.push(`${d}d`);
+  if (h > 0) parts.push(`${h}h`);
+  parts.push(`${m}m`);
+  return parts.join(" ");
+}
+
+// ---------------------------------------------------------------------------
+// Server-specific API instance factory
+// ---------------------------------------------------------------------------
+
+export function createApiForServer(server: SygenServer): {
+  getAgents: () => Promise<Agent[]>;
+  getSystemHealth: () => Promise<SystemHealth>;
+  checkHealth: () => Promise<boolean>;
+} {
+  async function serverFetch<T>(endpoint: string): Promise<T> {
+    const res = await fetch(`${server.url}${endpoint}`, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${server.token}`,
+      },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) throw new Error(`API Error: ${res.status}`);
+    const json = await res.json();
+    return json.data !== undefined ? json.data : json;
+  }
+
+  return {
+    async getAgents(): Promise<Agent[]> {
+      if (USE_MOCK) return mockAgents;
+      const data = await serverFetch<Record<string, unknown>[]>("/api/agents");
+      return data.map(mapAgent);
+    },
+    async getSystemHealth(): Promise<SystemHealth> {
+      if (USE_MOCK) return mockSystemHealth;
+      return serverFetch<SystemHealth>("/api/health");
+    },
+    async checkHealth(): Promise<boolean> {
+      try {
+        const res = await fetch(`${server.url}/health`, {
+          signal: AbortSignal.timeout(5000),
+        });
+        return res.ok;
+      } catch {
+        return false;
+      }
+    },
+  };
+}

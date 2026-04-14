@@ -1,0 +1,467 @@
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
+import { Plus, X, Trash2, Edit2, Save, Play } from "lucide-react";
+import DataTable, { type Column } from "@/components/DataTable";
+import StatusBadge from "@/components/StatusBadge";
+import { LoadingSpinner, ErrorState } from "@/components/LoadingState";
+import { useToast } from "@/components/Toast";
+import { useTranslation } from "@/lib/i18n";
+import { SygenAPI } from "@/lib/api";
+import { formatDateTime } from "@/lib/utils";
+import type { Webhook } from "@/lib/mock-data";
+
+type Filter = "all" | "active" | "paused" | "error";
+
+interface WebhookFormData {
+  id: string;
+  name: string;
+  url: string;
+  method: string;
+  agent: string;
+  description: string;
+}
+
+const EMPTY_FORM: WebhookFormData = { id: "", name: "", url: "", method: "POST", agent: "main", description: "" };
+
+function WebhookFormDialog({
+  initial,
+  isEdit,
+  onSave,
+  onCancel,
+}: {
+  initial: WebhookFormData;
+  isEdit: boolean;
+  onSave: (data: WebhookFormData) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const { t } = useTranslation();
+  const [form, setForm] = useState<WebhookFormData>(initial);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name.trim() || !form.url.trim()) {
+      setError(t('webhooks.nameUrlRequired'));
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      await onSave(form);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save");
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onCancel}>
+      <div className="bg-bg-card border border-border rounded-xl w-full max-w-md mx-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <h3 className="font-semibold">{isEdit ? t('webhooks.editWebhook') : t('webhooks.newWebhookDialog')}</h3>
+          <button type="button" onClick={onCancel} className="p-1 hover:bg-bg-primary rounded-lg">
+            <X size={16} className="text-text-secondary" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          {error && <div className="text-sm text-danger bg-danger/10 rounded-lg px-3 py-2">{error}</div>}
+
+          <div>
+            <label className="block text-xs text-text-secondary mb-1.5">{t('common.name')} *</label>
+            <input
+              type="text"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent"
+              placeholder="GitHub Push Hook"
+            />
+          </div>
+
+          {!isEdit && (
+            <div>
+              <label className="block text-xs text-text-secondary mb-1.5">{t('common.id')}</label>
+              <input
+                type="text"
+                value={form.id}
+                onChange={(e) => setForm({ ...form, id: e.target.value.replace(/[^a-zA-Z0-9_-]/g, "") })}
+                className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent font-mono"
+                placeholder="github-push (auto-generated if empty)"
+              />
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs text-text-secondary mb-1.5">{t('webhooks.urlPath')} *</label>
+            <input
+              type="text"
+              value={form.url}
+              onChange={(e) => setForm({ ...form, url: e.target.value })}
+              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-accent"
+              placeholder="/webhooks/github"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs text-text-secondary mb-1.5">{t('webhooks.method')}</label>
+            <select
+              value={form.method}
+              onChange={(e) => setForm({ ...form, method: e.target.value })}
+              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent"
+            >
+              <option value="POST">POST</option>
+              <option value="GET">GET</option>
+              <option value="PUT">PUT</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs text-text-secondary mb-1.5">{t('common.agent')}</label>
+            <input
+              type="text"
+              value={form.agent}
+              onChange={(e) => setForm({ ...form, agent: e.target.value })}
+              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent"
+              placeholder="main"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs text-text-secondary mb-1.5">{t('common.description')}</label>
+            <textarea
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              rows={2}
+              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent resize-none"
+              placeholder="What this webhook does..."
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <button type="button" onClick={onCancel} className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary transition-colors">
+              {t('common.cancel')}
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-text-primary text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+            >
+              <Save size={14} />
+              {saving ? t('common.saving') : isEdit ? t('common.update') : t('common.create')}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+export default function WebhooksPage() {
+  const [webhooks, setWebhooks] = useState<Webhook[]>([]);
+  const [filter, setFilter] = useState<Filter>("all");
+  const [selected, setSelected] = useState<Webhook | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [showForm, setShowForm] = useState<false | "create" | "edit">(false);
+  const { success, error: toastError } = useToast();
+  const { t } = useTranslation();
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      setWebhooks(await SygenAPI.getWebhooks());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load webhooks");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  const handleTest = async (wh: Webhook) => {
+    try {
+      const result = await SygenAPI.testWebhook(wh.url);
+      success(`Test sent to "${wh.name}" — Status: ${result.status}`);
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Test failed");
+    }
+  };
+
+  const handleDelete = async (wh: Webhook) => {
+    if (!confirm(`${t('common.delete')} "${wh.name}"?`)) return;
+    try {
+      await SygenAPI.deleteWebhook(wh.id);
+      setWebhooks((prev) => prev.filter((w) => w.id !== wh.id));
+      if (selected?.id === wh.id) setSelected(null);
+      success(`Webhook "${wh.name}" deleted`);
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Failed to delete webhook");
+    }
+  };
+
+  const handleCreate = async (data: WebhookFormData) => {
+    const id = data.id || data.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    const created = await SygenAPI.createWebhook({
+      id,
+      name: data.name,
+      url: data.url,
+      method: data.method,
+      agent: data.agent || "main",
+      description: data.description,
+    });
+    setWebhooks((prev) => [...prev, created]);
+    setShowForm(false);
+    success(`Webhook "${data.name}" created`);
+  };
+
+  const handleEdit = async (data: WebhookFormData) => {
+    if (!selected) return;
+    const updated = await SygenAPI.updateWebhook(selected.id, {
+      name: data.name,
+      url: data.url,
+      method: data.method,
+      agent: data.agent,
+      description: data.description,
+    } as Partial<Webhook>);
+    setWebhooks((prev) => prev.map((w) => (w.id === selected.id ? updated : w)));
+    setSelected(updated);
+    setShowForm(false);
+    success(`Webhook "${data.name}" updated`);
+  };
+
+  const filtered = filter === "all" ? webhooks : webhooks.filter((w) => w.status === filter);
+
+  const columns: Column<Webhook>[] = [
+    { key: "name", label: t('common.name'), sortable: true, render: (w) => <span className="font-medium">{w.name}</span> },
+    {
+      key: "url",
+      label: t('webhooks.endpoint'),
+      render: (w) => (
+        <div className="flex items-center gap-2">
+          <span className="text-xs bg-accent/30 text-blue-400 px-1.5 py-0.5 rounded font-mono">{w.method}</span>
+          <code className="text-xs text-text-secondary">{w.url}</code>
+        </div>
+      ),
+    },
+    { key: "agent", label: t('common.agent'), sortable: true, render: (w) => <span className="text-blue-400">{w.agent}</span> },
+    { key: "status", label: t('common.status'), render: (w) => <StatusBadge status={w.status} /> },
+    {
+      key: "triggerCount",
+      label: t('webhooks.triggers'),
+      sortable: true,
+      render: (w) => <span className="text-text-secondary">{w.triggerCount.toLocaleString()}</span>,
+    },
+    {
+      key: "lastTriggered",
+      label: t('webhooks.lastTriggered'),
+      sortable: true,
+      render: (w) => <span className="text-text-secondary">{formatDateTime(w.lastTriggered)}</span>,
+    },
+    {
+      key: "actions",
+      label: "",
+      className: "w-28",
+      render: (w) => (
+        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+          <button
+            type="button"
+            onClick={() => handleTest(w)}
+            className="p-1.5 hover:bg-bg-primary rounded-lg transition-colors text-green-400"
+            title="Test"
+            aria-label="Test webhook"
+          >
+            <Play size={14} />
+          </button>
+          <button
+            type="button"
+            onClick={() => { setSelected(w); setShowForm("edit"); }}
+            className="p-1.5 hover:bg-bg-primary rounded-lg transition-colors text-text-secondary"
+            title="Edit"
+            aria-label="Edit webhook"
+          >
+            <Edit2 size={14} />
+          </button>
+          <button type="button" onClick={() => handleDelete(w)} className="p-1.5 hover:bg-bg-primary rounded-lg transition-colors text-danger" title="Delete" aria-label="Delete webhook">
+            <Trash2 size={14} />
+          </button>
+        </div>
+      ),
+    },
+  ];
+
+  const filters: { label: string; value: Filter }[] = [
+    { label: t('common.all'), value: "all" },
+    { label: t('common.active'), value: "active" },
+    { label: t('status.paused'), value: "paused" },
+    { label: t('common.error'), value: "error" },
+  ];
+
+  if (loading) return <LoadingSpinner />;
+  if (error && webhooks.length === 0) return <ErrorState message={error} onRetry={loadData} />;
+
+  return (
+    <div className="flex gap-6">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold">{t('webhooks.title')}</h1>
+          <button
+            type="button"
+            onClick={() => setShowForm("create")}
+            className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-text-primary text-sm font-medium rounded-lg transition-colors"
+          >
+            <Plus size={16} />
+            {t('webhooks.newWebhook')}
+          </button>
+        </div>
+
+        {error && (
+          <div className="mb-4 text-sm text-danger bg-danger/10 rounded-lg px-3 py-2">{error}</div>
+        )}
+
+        {/* Filters */}
+        <div className="flex items-center gap-2 mb-4">
+          {filters.map((f) => (
+            <button
+              type="button"
+              key={f.value}
+              onClick={() => setFilter(f.value)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                filter === f.value
+                  ? "bg-accent text-text-primary"
+                  : "bg-bg-card text-text-secondary hover:text-text-primary"
+              }`}
+            >
+              {f.label}
+              {f.value !== "all" && (
+                <span className="ml-1.5 opacity-60">
+                  {webhooks.filter((w) => w.status === f.value).length}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Table */}
+        <div className="bg-bg-card border border-border rounded-xl overflow-hidden">
+          <DataTable
+            data={filtered}
+            columns={columns}
+            keyField="id"
+            onRowClick={(item) => setSelected(item)}
+          />
+        </div>
+      </div>
+
+      {/* Detail Panel */}
+      {selected && (
+        <div className="w-80 bg-bg-card border border-border rounded-xl p-5 shrink-0 hidden xl:block h-fit sticky top-8">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold">{t('webhooks.details')}</h3>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setShowForm("edit")}
+                className="p-1.5 hover:bg-bg-primary rounded-lg transition-colors text-text-secondary"
+                title="Edit"
+              >
+                <Edit2 size={14} />
+              </button>
+              <button type="button" onClick={() => setSelected(null)} className="p-1 hover:bg-bg-primary rounded-lg" aria-label="Close details">
+                <X size={16} className="text-text-secondary" />
+              </button>
+            </div>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <p className="text-xs text-text-secondary mb-1">{t('common.name')}</p>
+              <p className="text-sm font-medium">{selected.name}</p>
+            </div>
+            <div>
+              <p className="text-xs text-text-secondary mb-1">{t('common.id')}</p>
+              <p className="text-sm font-mono text-text-secondary">{selected.id}</p>
+            </div>
+            <div>
+              <p className="text-xs text-text-secondary mb-1">{t('common.status')}</p>
+              <StatusBadge status={selected.status} />
+            </div>
+            <div>
+              <p className="text-xs text-text-secondary mb-1">{t('webhooks.endpoint')}</p>
+              <div className="flex items-center gap-2">
+                <span className="text-xs bg-accent/30 text-blue-400 px-1.5 py-0.5 rounded font-mono">{selected.method}</span>
+                <code className="text-xs break-all">{selected.url}</code>
+              </div>
+            </div>
+            <div>
+              <p className="text-xs text-text-secondary mb-1">{t('common.agent')}</p>
+              <p className="text-sm text-blue-400">{selected.agent}</p>
+            </div>
+            <div>
+              <p className="text-xs text-text-secondary mb-1">{t('common.description')}</p>
+              <p className="text-sm text-text-secondary">{selected.description || "—"}</p>
+            </div>
+            <div>
+              <p className="text-xs text-text-secondary mb-1">{t('webhooks.totalTriggers')}</p>
+              <p className="text-sm">{selected.triggerCount.toLocaleString()}</p>
+            </div>
+            <div>
+              <p className="text-xs text-text-secondary mb-1">{t('webhooks.lastTriggered')}</p>
+              <p className="text-sm">{formatDateTime(selected.lastTriggered)}</p>
+            </div>
+            {/* Quick actions */}
+            <div className="pt-2 border-t border-border flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleTest(selected)}
+                className="flex-1 py-2 text-xs font-medium rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors"
+              >
+                Test
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowForm("edit")}
+                className="flex-1 py-2 text-xs font-medium rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors"
+              >
+                {t('common.edit')}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDelete(selected)}
+                className="py-2 px-3 text-xs font-medium rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+              >
+                <Trash2 size={12} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create / Edit Dialog */}
+      {showForm === "create" && (
+        <WebhookFormDialog
+          initial={EMPTY_FORM}
+          isEdit={false}
+          onSave={handleCreate}
+          onCancel={() => setShowForm(false)}
+        />
+      )}
+      {showForm === "edit" && selected && (
+        <WebhookFormDialog
+          initial={{
+            id: selected.id,
+            name: selected.name,
+            url: selected.url,
+            method: selected.method,
+            agent: selected.agent,
+            description: selected.description,
+          }}
+          isEdit={true}
+          onSave={handleEdit}
+          onCancel={() => setShowForm(false)}
+        />
+      )}
+    </div>
+  );
+}
