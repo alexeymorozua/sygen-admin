@@ -9,7 +9,7 @@ import {
 
 beforeEach(() => {
   vi.stubEnv("NEXT_PUBLIC_SYGEN_API_URL", "http://localhost:8080");
-  vi.stubEnv("NEXT_PUBLIC_SYGEN_API_TOKEN", "test-token");
+  // NEXT_PUBLIC_SYGEN_API_TOKEN removed — token login uses server-side proxy
 });
 
 describe("getServers", () => {

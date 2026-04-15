@@ -19,7 +19,7 @@ function mockFetch(response: unknown, options?: { ok?: boolean; status?: number 
 beforeEach(async () => {
   vi.stubEnv("NEXT_PUBLIC_USE_MOCK", "false");
   vi.stubEnv("NEXT_PUBLIC_SYGEN_API_URL", "http://test-api:8080");
-  vi.stubEnv("NEXT_PUBLIC_SYGEN_API_TOKEN", "env-token");
+  // NEXT_PUBLIC_SYGEN_API_TOKEN removed — token login now uses server-side proxy
 
   // Re-import fresh module each time
   vi.resetModules();
@@ -47,20 +47,15 @@ describe("fetchAPI — auth header", () => {
     );
   });
 
-  it("falls back to env token when no localStorage token", async () => {
+  it("sends no Authorization when no localStorage token and no active server", async () => {
     const fetchSpy = mockFetch({ data: [] });
     vi.stubGlobal("fetch", fetchSpy);
 
     await SygenAPI.getAgents();
 
-    expect(fetchSpy).toHaveBeenCalledWith(
-      "http://test-api:8080/api/agents",
-      expect.objectContaining({
-        headers: expect.objectContaining({
-          Authorization: "Bearer env-token",
-        }),
-      })
-    );
+    const callHeaders = fetchSpy.mock.calls[0][1]?.headers as Record<string, string>;
+    // No token available → empty bearer or no header
+    expect(callHeaders.Authorization).toBeUndefined();
   });
 });
 
@@ -206,7 +201,7 @@ describe("login / logout", () => {
     });
     vi.stubGlobal("fetch", fetchSpy);
 
-    const result = await SygenAPI.login("my-master-token");
+    const result = await SygenAPI.login({ token: "my-master-token" });
     expect(result.access_token).toBe("new-access");
     expect(localStorage.getItem("sygen_access_token")).toBe("new-access");
     expect(localStorage.getItem("sygen_refresh_token")).toBe("new-refresh");

@@ -61,7 +61,7 @@ export interface SygenWSCallbacks {
 
 const DEFAULT_API_URL =
   process.env.NEXT_PUBLIC_SYGEN_API_URL || "http://localhost:8080";
-const DEFAULT_API_TOKEN = process.env.NEXT_PUBLIC_SYGEN_API_TOKEN || "";
+const DEFAULT_API_TOKEN = "";
 
 function getStoredAccessToken(): string | null {
   if (typeof window === "undefined") return null;

@@ -16,7 +16,7 @@ function mockFetch(response: unknown, options?: { ok?: boolean; status?: number 
 beforeEach(async () => {
   vi.stubEnv("NEXT_PUBLIC_USE_MOCK", "false");
   vi.stubEnv("NEXT_PUBLIC_SYGEN_API_URL", "http://test-api:8080");
-  vi.stubEnv("NEXT_PUBLIC_SYGEN_API_TOKEN", "test-token");
+  // NEXT_PUBLIC_SYGEN_API_TOKEN removed — token login uses server-side proxy
   vi.resetModules();
   const mod = await import("@/lib/api");
   SygenAPI = mod.SygenAPI;

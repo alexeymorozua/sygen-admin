@@ -21,11 +21,6 @@ import type { SygenServer } from "./servers";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
 const API_URL = process.env.NEXT_PUBLIC_SYGEN_API_URL || "http://localhost:8080";
-// WARNING: NEXT_PUBLIC_SYGEN_API_TOKEN is embedded in the client bundle and
-// visible to anyone with browser dev tools. It should only be used for
-// development or as a legacy fallback. In production, use username/password
-// login which issues short-lived JWTs stored in localStorage.
-const API_TOKEN = process.env.NEXT_PUBLIC_SYGEN_API_TOKEN || "";
 
 // ---------------------------------------------------------------------------
 // Active server override (set by ServerContext)
@@ -42,7 +37,7 @@ function getApiUrl(): string {
 }
 
 function getApiToken(): string {
-  return _activeServer?.token || API_TOKEN;
+  return _activeServer?.token || "";
 }
 
 // ---------------------------------------------------------------------------
@@ -230,11 +225,25 @@ export class SygenAPI {
   // ---- Auth ----
 
   static async login(credentials: { username: string; password: string } | { token: string }): Promise<LoginResponse> {
-    const res = await fetch(`${getApiUrl()}/api/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(credentials),
-    });
+    let res: Response;
+
+    if ("token" in credentials) {
+      // Token login goes through the server-side proxy to avoid
+      // exposing secrets in the client bundle.
+      res = await fetch("/api/auth/token-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: credentials.token }),
+      });
+    } else {
+      // Username/password login hits Sygen Core directly — no secrets involved.
+      res = await fetch(`${getApiUrl()}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(credentials),
+      });
+    }
+
     if (!res.ok) {
       const body = await res.json().catch(() => null);
       throw new Error(body?.error || "Login failed");
@@ -286,21 +295,17 @@ export class SygenAPI {
   static isAuthenticated(): boolean {
     if (USE_MOCK) return true;
     const { accessToken } = getStoredTokens();
-    return !!(accessToken || getApiToken());
+    return !!accessToken;
   }
 
-  // ---- Auto-login with env token ----
+  // ---- Auto-login: validate existing stored JWT ----
 
   static async autoLogin(): Promise<boolean> {
-    if (!getApiToken()) return false;
     const { accessToken } = getStoredTokens();
-    if (accessToken) return true;
-    try {
-      await SygenAPI.login({ token: getApiToken() });
-      return true;
-    } catch {
-      return false;
-    }
+    if (!accessToken) return false;
+    // We already have a stored JWT — consider authenticated.
+    // Token refresh on 401 is handled by fetchAPI.
+    return true;
   }
 
   // ---- Agents ----
