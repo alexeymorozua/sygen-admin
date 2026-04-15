@@ -165,9 +165,15 @@ export default function ChatPage() {
   }, [messagesBySession, activeSessionId]);
 
   // Load sessions when agent changes
+  const prevAgentRef = useRef(selectedAgent);
   useEffect(() => {
-    if (selectedAgent && wsStatus === "connected") {
-      loadSessions(selectedAgent);
+    if (!selectedAgent || wsStatus !== "connected") return;
+    const agentChanged = prevAgentRef.current !== selectedAgent;
+    prevAgentRef.current = selectedAgent;
+
+    loadSessions(selectedAgent);
+    // Only reset state when agent actually changes, not on WS reconnect
+    if (agentChanged) {
       setActiveSessionId(null);
       setMessagesBySession({});
       historyLoadedRef.current = new Set();
