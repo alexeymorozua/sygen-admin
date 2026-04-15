@@ -141,6 +141,7 @@ const ru: Record<string, string> = {
 
   // Memory
   "memory.title": "Память",
+  "memory.agent": "Агент",
   "memory.modules": "Модули",
   "memory.save": "Сохранить изменения",
   "memory.unsavedChanges": "Несохранённые изменения",

@@ -141,6 +141,7 @@ const en: Record<string, string> = {
 
   // Memory
   "memory.title": "Memory",
+  "memory.agent": "Agent",
   "memory.modules": "Modules",
   "memory.save": "Save Changes",
   "memory.unsavedChanges": "Unsaved changes",

@@ -602,9 +602,10 @@ export class SygenAPI {
     });
   }
 
-  static async getMemoryModules(): Promise<MemoryModule[]> {
+  static async getMemoryModules(agent?: string): Promise<MemoryModule[]> {
     if (USE_MOCK) return mockMemoryModules;
-    const data = await fetchAPI<{ name: string; filename: string; size: number }[]>("/api/memory/modules");
+    const qs = agent ? `?agent=${encodeURIComponent(agent)}` : "";
+    const data = await fetchAPI<{ name: string; filename: string; size: number }[]>(`/api/memory/modules${qs}`);
     return data.map((m, i) => ({
       id: `mem-${i}`,
       name: m.name,
@@ -618,18 +619,20 @@ export class SygenAPI {
     }));
   }
 
-  static async getMemoryModuleContent(filename: string): Promise<string> {
+  static async getMemoryModuleContent(filename: string, agent?: string): Promise<string> {
     if (USE_MOCK) {
       const mod = mockMemoryModules.find((m) => m.filename === filename);
       return mod?.content || "";
     }
-    const data = await fetchAPI<{ filename: string; content: string }>(`/api/memory/modules/${encodeURIComponent(filename)}`);
+    const qs = agent ? `?agent=${encodeURIComponent(agent)}` : "";
+    const data = await fetchAPI<{ filename: string; content: string }>(`/api/memory/modules/${encodeURIComponent(filename)}${qs}`);
     return data.content;
   }
 
-  static async updateMemoryModule(filename: string, content: string): Promise<void> {
+  static async updateMemoryModule(filename: string, content: string, agent?: string): Promise<void> {
     if (USE_MOCK) return;
-    await fetchAPI(`/api/memory/modules/${encodeURIComponent(filename)}`, {
+    const qs = agent ? `?agent=${encodeURIComponent(agent)}` : "";
+    await fetchAPI(`/api/memory/modules/${encodeURIComponent(filename)}${qs}`, {
       method: "PUT",
       body: JSON.stringify({ content }),
     });

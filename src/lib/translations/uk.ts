@@ -141,6 +141,7 @@ const uk: Record<string, string> = {
 
   // Memory
   "memory.title": "Пам'ять",
+  "memory.agent": "Агент",
   "memory.modules": "Модулі",
   "memory.save": "Зберегти зміни",
   "memory.unsavedChanges": "Незбережені зміни",
