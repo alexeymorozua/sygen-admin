@@ -17,6 +17,7 @@ Web-based administration interface for the [Sygen](https://github.com/alexeymoro
 - **User Avatar** — upload a custom avatar via `/upload`, save the path with `PUT /api/profile`, displayed in chat and profile page
 - **Agent Avatar** — agent avatars displayed in chat, fetched via `GET /api/agents/{name}/avatar`
 - **Persistent WebSocket Chat** — `ChatContext.tsx` in root layout keeps the WebSocket connection alive across page navigation
+- **Notifications** — real-time notifications from cron, webhook, and task events via WebSocket push, with bell indicator and read/unread tracking
 - **Dark/Light Theme** — toggle in sidebar with localStorage persistence
 - **Global Search (Ctrl+K)** — command palette with fuzzy matching across agents, cron jobs, webhooks, tasks, and pages
 - **Keyboard Shortcuts** — `G+D/A/C/R/W/T/M` for navigation, `?` shows help modal
@@ -263,6 +264,7 @@ src/
 │   └── Toast.tsx           # Notification system
 ├── context/                # React contexts
 │   ├── AuthContext.tsx      # Authentication, roles, agent access
+│   ├── NotificationContext.tsx # Server-backed notifications with real-time WS push
 │   ├── ServerContext.tsx    # Multi-server state
 │   └── ThemeContext.tsx     # Dark/light theme
 └── lib/                    # Utilities
@@ -398,6 +400,15 @@ All endpoints require `Authorization: Bearer <token>` header unless noted.
 | `PUT` | `/api/users/{username}` | Update user (role, agents, password, active) |
 | `DELETE` | `/api/users/{username}` | Delete user |
 
+### Notifications
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/notifications?limit=50&unread_only=false` | List notifications (optional filters) |
+| `GET` | `/api/notifications/unread-count` | Get unread notification count |
+| `PUT` | `/api/notifications/{id}/read` | Mark a notification as read |
+| `POST` | `/api/notifications/read-all` | Mark all notifications as read |
+
 ### Audit Log (Admin only)
 
 | Method | Endpoint | Description |
@@ -419,6 +430,7 @@ All endpoints require `Authorization: Bearer <token>` header unless noted.
 { "type": "text_delta", "content": "partial response..." }
 { "type": "tool_activity", "tool": "Bash", "status": "running" }
 { "type": "result", "content": "final answer", "files": [] }
+{ "type": "notification", "notification": { "id": "...", "title": "...", "body": "...", "read": false } }
 { "type": "error", "message": "description" }
 ```
 
