@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { Mic, Square } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n";
+import { useToast } from "@/components/Toast";
 
 interface VoiceRecorderProps {
   onRecordingComplete: (blob: Blob, filename: string) => void;
@@ -21,6 +22,7 @@ export default function VoiceRecorder({
   disabled = false,
 }: VoiceRecorderProps) {
   const { t } = useTranslation();
+  const toast = useToast();
   const [isRecording, setIsRecording] = useState(false);
   const [duration, setDuration] = useState(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -159,15 +161,19 @@ export default function VoiceRecorder({
     );
   }
 
-  if (!isSupported) return null;
+  const handleUnsupported = useCallback(() => {
+    const isInsecure = typeof window !== "undefined" && window.location.protocol === "http:" && window.location.hostname !== "localhost";
+    toast.warning(isInsecure ? t("chat.voiceRequiresHttps") : t("chat.voiceNotSupported"));
+  }, [toast, t]);
 
   return (
     <button
       type="button"
-      onClick={handleClick}
+      onClick={isSupported ? handleClick : handleUnsupported}
       disabled={disabled}
       className={cn(
-        "p-2.5 hover:bg-white/5 rounded-xl transition-colors text-text-secondary hover:text-text-primary disabled:opacity-30 shrink-0"
+        "p-2.5 hover:bg-white/5 rounded-xl transition-colors text-text-secondary hover:text-text-primary disabled:opacity-30 shrink-0",
+        !isSupported && "opacity-50"
       )}
       title={t("chat.recordVoice")}
       aria-label={t("chat.recordVoice")}

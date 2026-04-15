@@ -87,6 +87,8 @@ const ru: Record<string, string> = {
   "chat.recording": "Запись",
   "chat.recordVoice": "Записать голосовое сообщение",
   "chat.stopRecording": "Остановить запись",
+  "chat.voiceRequiresHttps": "Запись голоса требует HTTPS-соединение",
+  "chat.voiceNotSupported": "Запись голоса не поддерживается в этом браузере",
   "chat.voiceMessage": "Голосовое сообщение",
   "chat.playAudio": "Воспроизвести",
   "chat.pauseAudio": "Пауза",

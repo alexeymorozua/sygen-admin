@@ -7,6 +7,7 @@ import TableSearch from "@/components/TableSearch";
 import StatusBadge from "@/components/StatusBadge";
 import { LoadingSpinner, ErrorState } from "@/components/LoadingState";
 import { useToast } from "@/components/Toast";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { SygenAPI } from "@/lib/api";
 import { formatDateTime } from "@/lib/utils";
 import { isValidCron, describeCron, CRON_PRESETS } from "@/lib/cron";
@@ -224,6 +225,7 @@ export default function CronPage() {
   const [showForm, setShowForm] = useState<false | "create" | "edit">(false);
   const [searchQuery, setSearchQuery] = useState("");
   const { success, error: toastError } = useToast();
+  const { confirm } = useConfirm();
   const { t } = useTranslation();
 
   const loadData = useCallback(async () => {
@@ -262,7 +264,7 @@ export default function CronPage() {
   };
 
   const handleDelete = async (job: CronJob) => {
-    if (!confirm(`${t('common.delete')} "${job.name}"?`)) return;
+    if (!(await confirm({ message: `${t('common.delete')} "${job.name}"?`, variant: "danger" }))) return;
     try {
       await SygenAPI.deleteCronJob(job.id);
       setJobs((prev) => prev.filter((j) => j.id !== job.id));

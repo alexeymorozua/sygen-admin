@@ -5,6 +5,7 @@ import { Brain, Save, FileText, Loader2, Users, FolderOpen } from "lucide-react"
 import StatusBadge from "@/components/StatusBadge";
 import { LoadingSpinner, ErrorState } from "@/components/LoadingState";
 import { useToast } from "@/components/Toast";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { useTranslation } from "@/lib/i18n";
 import { SygenAPI } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -24,6 +25,7 @@ export default function MemoryPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const { success, error: toastError } = useToast();
+  const { confirm } = useConfirm();
   const { t } = useTranslation();
 
   // Load agents list
@@ -70,7 +72,7 @@ export default function MemoryPage() {
   const agentParam = selectedAgent === "" || selectedAgent === "main" ? undefined : selectedAgent;
 
   const selectModule = async (mod: MemoryModule) => {
-    if (dirty && !confirm(t('memory.discardConfirm'))) return;
+    if (dirty && !(await confirm({ message: t('memory.discardConfirm') }))) return;
     setSelected(mod);
     setDirty(false);
     setLoadingContent(true);
@@ -147,9 +149,10 @@ export default function MemoryPage() {
             </div>
             <select
               value={selectedAgent}
-              onChange={(e) => {
-                if (dirty && !confirm(t('memory.discardConfirm'))) return;
-                setSelectedAgent(e.target.value);
+              onChange={async (e) => {
+                const val = e.target.value;
+                if (dirty && !(await confirm({ message: t('memory.discardConfirm') }))) return;
+                setSelectedAgent(val);
               }}
               className="w-full bg-bg-primary border border-border rounded-lg px-2 py-1.5 text-sm"
             >

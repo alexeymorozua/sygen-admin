@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { useServer } from "@/context/ServerContext";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { useTranslation } from "@/lib/i18n";
 import { checkServerHealth, testServerConnection } from "@/lib/servers";
 import type { SygenServer } from "@/lib/servers";
@@ -36,6 +37,7 @@ interface TestResult {
 
 export default function ServersPage() {
   const { servers, activeServer, switchServer, addServer, updateServer, removeServer } = useServer();
+  const { confirm } = useConfirm();
   const { t } = useTranslation();
   const [statusMap, setStatusMap] = useState<Record<string, ServerStatus>>({});
   const [editing, setEditing] = useState<string | null>(null);
@@ -57,9 +59,9 @@ export default function ServersPage() {
     return () => { cancelled = true; clearInterval(interval); };
   }, [servers]);
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (servers.length <= 1) return;
-    if (!confirm(t('servers.deleteConfirm'))) return;
+    if (!(await confirm({ message: t('servers.deleteConfirm'), variant: "danger" }))) return;
     removeServer(id);
   };
 

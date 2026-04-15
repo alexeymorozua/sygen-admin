@@ -5,6 +5,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import { ServerProvider } from "@/context/ServerContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { ToastProvider } from "@/components/Toast";
+import { ConfirmProvider } from "@/components/ConfirmDialog";
 import { I18nProvider } from "@/lib/i18n";
 import AppShell from "@/components/AppShell";
 
@@ -43,7 +44,9 @@ export default function RootLayout({
             <AuthProvider>
               <ServerProvider>
                 <ToastProvider>
-                  <AppShell>{children}</AppShell>
+                  <ConfirmProvider>
+                    <AppShell>{children}</AppShell>
+                  </ConfirmProvider>
                 </ToastProvider>
               </ServerProvider>
             </AuthProvider>

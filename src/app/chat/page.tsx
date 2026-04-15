@@ -35,6 +35,7 @@ import type { StreamingMessageProps, FileAttachment } from "@/components/Streami
 import CommandMenu, { type CommandMenuHandle } from "@/components/CommandMenu";
 import StatusBadge from "@/components/StatusBadge";
 import VoiceRecorder from "@/components/VoiceRecorder";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { SygenWebSocket, type WSStatus } from "@/lib/websocket";
 import { SygenAPI, type ChatSession, type ChatSessionMessage } from "@/lib/api";
 import { useServer } from "@/context/ServerContext";
@@ -77,6 +78,7 @@ function formatSessionTime(ts: number): string {
 export default function ChatPage() {
   const { activeServer } = useServer();
   const { t } = useTranslation();
+  const { confirm } = useConfirm();
   const [agents, setAgents] = useState<string[]>([]);
   const [selectedAgent, setSelectedAgent] = useState<string>("main");
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -532,7 +534,7 @@ export default function ChatPage() {
 
   const handleDeleteSession = useCallback(
     async (sessionId: string) => {
-      if (!confirm(t('chat.deleteSessionConfirm'))) return;
+      if (!(await confirm({ message: t('chat.deleteSessionConfirm'), variant: "danger" }))) return;
       try {
         await SygenAPI.deleteChatSession(sessionId);
         setSessions((prev) => prev.filter((s) => s.id !== sessionId));

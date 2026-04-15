@@ -87,6 +87,8 @@ const uk: Record<string, string> = {
   "chat.recording": "Запис",
   "chat.recordVoice": "Записати голосове повідомлення",
   "chat.stopRecording": "Зупинити запис",
+  "chat.voiceRequiresHttps": "Запис голосу потребує HTTPS-з'єднання",
+  "chat.voiceNotSupported": "Запис голосу не підтримується у цьому браузері",
   "chat.voiceMessage": "Голосове повідомлення",
   "chat.playAudio": "Відтворити",
   "chat.pauseAudio": "Пауза",

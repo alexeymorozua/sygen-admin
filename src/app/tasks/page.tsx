@@ -8,6 +8,7 @@ import TableSearch from "@/components/TableSearch";
 import StatusBadge from "@/components/StatusBadge";
 import { LoadingSpinner, ErrorState } from "@/components/LoadingState";
 import { useToast } from "@/components/Toast";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { SygenAPI } from "@/lib/api";
 import { formatDateTime } from "@/lib/utils";
 import type { Task, Agent } from "@/lib/mock-data";
@@ -126,6 +127,7 @@ export default function TasksPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const refreshTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const { success: toastSuccess, error: toastError } = useToast();
+  const { confirm } = useConfirm();
   const { t } = useTranslation();
 
   const loadData = useCallback(async () => {
@@ -168,7 +170,7 @@ export default function TasksPage() {
   }, [tasks, loadData]);
 
   const handleCancel = async (task: Task) => {
-    if (!confirm(`${t('tasks.cancelConfirm')} "${task.name}"?`)) return;
+    if (!(await confirm({ message: `${t('tasks.cancelConfirm')} "${task.name}"?`, variant: "danger" }))) return;
     try {
       await SygenAPI.cancelTask(task.id);
       setTasks((prev) =>

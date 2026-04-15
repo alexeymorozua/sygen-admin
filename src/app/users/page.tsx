@@ -10,6 +10,7 @@ import { useAuth } from "@/context/AuthContext";
 import { SygenAPI } from "@/lib/api";
 import type { UserInfo, AuditEntry } from "@/lib/api";
 import { useToast } from "@/components/Toast";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { LoadingSpinner, ErrorState } from "@/components/LoadingState";
 import { useTranslation } from "@/lib/i18n";
 import { cn, formatDate } from "@/lib/utils";
@@ -32,6 +33,7 @@ export default function UsersPage() {
   const { hasRole } = useAuth();
   const { t } = useTranslation();
   const toast = useToast();
+  const { confirm } = useConfirm();
   const [tab, setTab] = useState<Tab>("users");
   const [users, setUsers] = useState<UserInfo[]>([]);
   const [audit, setAudit] = useState<AuditEntry[]>([]);
@@ -77,7 +79,7 @@ export default function UsersPage() {
   }, [tab, loadUsers, loadAudit]);
 
   const handleDelete = async (username: string) => {
-    if (!confirm(`Delete user "${username}"?`)) return;
+    if (!(await confirm({ message: `Delete user "${username}"?`, variant: "danger" }))) return;
     try {
       await SygenAPI.deleteUser(username);
       toast.success(t("toast.deleted"));

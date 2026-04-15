@@ -7,6 +7,7 @@ import TableSearch from "@/components/TableSearch";
 import StatusBadge from "@/components/StatusBadge";
 import { LoadingSpinner, ErrorState } from "@/components/LoadingState";
 import { useToast } from "@/components/Toast";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { useTranslation } from "@/lib/i18n";
 import { SygenAPI } from "@/lib/api";
 import { formatDateTime } from "@/lib/utils";
@@ -185,6 +186,7 @@ export default function WebhooksPage() {
   const [showForm, setShowForm] = useState<false | "create" | "edit">(false);
   const [searchQuery, setSearchQuery] = useState("");
   const { success, error: toastError } = useToast();
+  const { confirm } = useConfirm();
   const { t } = useTranslation();
 
   const loadData = useCallback(async () => {
@@ -211,7 +213,7 @@ export default function WebhooksPage() {
   };
 
   const handleDelete = async (wh: Webhook) => {
-    if (!confirm(`${t('common.delete')} "${wh.name}"?`)) return;
+    if (!(await confirm({ message: `${t('common.delete')} "${wh.name}"?`, variant: "danger" }))) return;
     try {
       await SygenAPI.deleteWebhook(wh.id);
       setWebhooks((prev) => prev.filter((w) => w.id !== wh.id));
