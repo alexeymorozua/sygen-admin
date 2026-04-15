@@ -96,10 +96,19 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   // Mark single notification as read
   const markRead = useCallback(async (id: string) => {
+    let wasUnread = false;
     setNotifications((prev) =>
-      prev.map((n) => (n.id === id && !n.read ? { ...n, read: true } : n))
+      prev.map((n) => {
+        if (n.id === id && !n.read) {
+          wasUnread = true;
+          return { ...n, read: true };
+        }
+        return n;
+      })
     );
-    setUnreadCount((prev) => Math.max(0, prev - 1));
+    if (wasUnread) {
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    }
     try {
       await SygenAPI.markNotificationRead(id);
     } catch {
