@@ -376,6 +376,8 @@ function UserFormDialog({
   const [allowedAgents, setAllowedAgents] = useState<string[]>(user?.allowed_agents || []);
   const [saving, setSaving] = useState(false);
 
+  const MIN_PASSWORD_LENGTH = 8;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -386,12 +388,24 @@ function UserFormDialog({
           display_name: displayName,
           allowed_agents: allowedAgents,
         };
-        if (password) updates.password = password;
+        if (password) {
+          if (password.length < MIN_PASSWORD_LENGTH) {
+            toast.error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
+            setSaving(false);
+            return;
+          }
+          updates.password = password;
+        }
         await SygenAPI.updateUser(user!.username, updates);
         toast.success(t("toast.updated"));
       } else {
         if (!username.trim() || !password) {
           toast.error("Username and password are required");
+          setSaving(false);
+          return;
+        }
+        if (password.length < MIN_PASSWORD_LENGTH) {
+          toast.error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
           setSaving(false);
           return;
         }
@@ -455,7 +469,7 @@ function UserFormDialog({
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm"
-              placeholder={isEdit ? "Leave empty to keep current" : "Min 4 characters"}
+              placeholder={isEdit ? "Leave empty to keep current" : "Min 8 characters"}
             />
           </div>
 

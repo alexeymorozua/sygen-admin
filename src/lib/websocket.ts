@@ -154,41 +154,59 @@ export class SygenWebSocket {
   }
 
   private handleMessage(data: Record<string, unknown>): void {
-    const type = data.type as string;
+    if (typeof data !== "object" || data === null) return;
+    const type = typeof data.type === "string" ? data.type : "";
 
     switch (type) {
       case "auth_ok":
         this.setStatus("connected");
         this.reconnectAttempts = 0;
-        this.callbacks.onConnected?.(data.agents as string[]);
+        this.callbacks.onConnected?.(
+          Array.isArray(data.agents) ? (data.agents as string[]) : []
+        );
         break;
       case "text_delta":
-        this.callbacks.onTextDelta?.(data.text as string);
+        if (typeof data.text === "string") {
+          this.callbacks.onTextDelta?.(data.text);
+        }
         break;
       case "tool_activity":
-        this.callbacks.onToolActivity?.(data.tool as string);
+        if (typeof data.tool === "string") {
+          this.callbacks.onToolActivity?.(data.tool);
+        }
         break;
       case "result":
         this.callbacks.onResult?.(
-          data.text as string,
-          data.files as WSResult["files"]
+          typeof data.text === "string" ? data.text : "",
+          Array.isArray(data.files) ? (data.files as WSResult["files"]) : undefined
         );
         break;
       case "auth_error":
         this.authFailed = true;
-        this.callbacks.onAuthFailed?.(data.message as string || "Authentication failed");
-        this.callbacks.onError?.(data.message as string || "Authentication failed");
+        this.callbacks.onAuthFailed?.(
+          typeof data.message === "string" ? data.message : "Authentication failed"
+        );
+        this.callbacks.onError?.(
+          typeof data.message === "string" ? data.message : "Authentication failed"
+        );
         this.disconnect();
         break;
       case "error":
-        this.callbacks.onError?.(data.message as string);
+        this.callbacks.onError?.(
+          typeof data.message === "string" ? data.message : "Unknown error"
+        );
         break;
       case "abort_ok":
-        this.callbacks.onAbortOk?.(data.killed as number);
+        this.callbacks.onAbortOk?.(
+          typeof data.killed === "number" ? data.killed : 0
+        );
         break;
       case "system_status":
-        this.callbacks.onSystemStatus?.(data.data as string | null);
+        this.callbacks.onSystemStatus?.(
+          typeof data.data === "string" ? data.data : null
+        );
         break;
+      // Unknown message types are silently ignored
     }
   }
 

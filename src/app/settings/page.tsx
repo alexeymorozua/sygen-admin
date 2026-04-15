@@ -278,13 +278,29 @@ export default function SettingsPage() {
     }
   };
 
+  const MAX_IMPORT_SIZE = 5 * 1024 * 1024; // 5 MB
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > MAX_IMPORT_SIZE) {
+      toastError(`File too large (max ${MAX_IMPORT_SIZE / 1024 / 1024} MB)`);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+    if (!file.name.endsWith(".json") && file.type !== "application/json") {
+      toastError("Only .json files are accepted");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
     const reader = new FileReader();
     reader.onload = (ev) => {
       try {
         const data = JSON.parse(ev.target?.result as string);
+        if (typeof data !== "object" || data === null || Array.isArray(data)) {
+          toastError("Invalid config format: expected a JSON object");
+          return;
+        }
         if (data.version !== 1) {
           toastError("Unsupported export version");
           return;

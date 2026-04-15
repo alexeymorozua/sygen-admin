@@ -21,6 +21,10 @@ import type { SygenServer } from "./servers";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
 const API_URL = process.env.NEXT_PUBLIC_SYGEN_API_URL || "http://localhost:8080";
+// WARNING: NEXT_PUBLIC_SYGEN_API_TOKEN is embedded in the client bundle and
+// visible to anyone with browser dev tools. It should only be used for
+// development or as a legacy fallback. In production, use username/password
+// login which issues short-lived JWTs stored in localStorage.
 const API_TOKEN = process.env.NEXT_PUBLIC_SYGEN_API_TOKEN || "";
 
 // ---------------------------------------------------------------------------
@@ -521,12 +525,40 @@ export class SygenAPI {
     if (USE_MOCK) {
       return { status: 200, body: '{"ok": true}' };
     }
+    // Validate the URL to prevent SSRF via client-side fetch to internal networks
+    try {
+      const parsed = new URL(url);
+      if (!["http:", "https:"].includes(parsed.protocol)) {
+        throw new Error("Only HTTP(S) URLs are allowed");
+      }
+      // Block requests to common internal/private addresses
+      const hostname = parsed.hostname.toLowerCase();
+      if (
+        hostname === "localhost" ||
+        hostname === "127.0.0.1" ||
+        hostname === "0.0.0.0" ||
+        hostname.startsWith("10.") ||
+        hostname.startsWith("192.168.") ||
+        hostname.startsWith("172.") ||
+        hostname === "[::1]" ||
+        hostname.endsWith(".internal") ||
+        hostname.endsWith(".local")
+      ) {
+        throw new Error("Cannot test webhooks against internal/private addresses");
+      }
+    } catch (err) {
+      if (err instanceof TypeError) {
+        throw new Error("Invalid URL");
+      }
+      throw err;
+    }
     try {
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ test: true, timestamp: new Date().toISOString() }),
         signal: AbortSignal.timeout(10000),
+        credentials: "omit",
       });
       const text = await res.text();
       return { status: res.status, body: text.slice(0, 500) };

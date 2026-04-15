@@ -36,6 +36,8 @@ export default function ProfilePage() {
   const RoleIcon = ROLE_ICONS[user.role] || Eye;
   const roleColor = ROLE_COLORS[user.role] || ROLE_COLORS.viewer;
 
+  const MIN_PASSWORD_LENGTH = 8;
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -46,6 +48,11 @@ export default function ProfilePage() {
 
     if (newPassword && !oldPassword) {
       toast.error(t("profile.currentPassword"));
+      return;
+    }
+
+    if (newPassword && newPassword.length < MIN_PASSWORD_LENGTH) {
+      toast.error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
       return;
     }
 
