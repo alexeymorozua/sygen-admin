@@ -90,6 +90,7 @@ const uk: Record<string, string> = {
   "chat.voiceRequiresHttps": "Запис голосу потребує HTTPS-з'єднання",
   "chat.voiceNotSupported": "Запис голосу не підтримується у цьому браузері",
   "chat.voiceMessage": "Голосове повідомлення",
+  "chat.uploadFailed": "Не вдалося завантажити файл",
   "chat.playAudio": "Відтворити",
   "chat.pauseAudio": "Пауза",
 

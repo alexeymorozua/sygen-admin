@@ -19,8 +19,11 @@ const options = {
 
 // Routes that go to the Sygen API backend instead of Next.js
 const API_PREFIXES = ["/api/", "/upload", "/health", "/ws/"];
+// Next.js own API routes — must NOT be forwarded to the Sygen backend
+const NEXTJS_API_PREFIXES = ["/api/auth/token-login"];
 
 function isApiRoute(url) {
+  if (NEXTJS_API_PREFIXES.some((p) => url.startsWith(p))) return false;
   return API_PREFIXES.some((p) => url.startsWith(p));
 }
 

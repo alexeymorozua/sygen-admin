@@ -90,6 +90,7 @@ const en: Record<string, string> = {
   "chat.voiceRequiresHttps": "Voice recording requires HTTPS connection",
   "chat.voiceNotSupported": "Voice recording is not supported in this browser",
   "chat.voiceMessage": "Voice message",
+  "chat.uploadFailed": "File upload failed",
   "chat.playAudio": "Play",
   "chat.pauseAudio": "Pause",
 

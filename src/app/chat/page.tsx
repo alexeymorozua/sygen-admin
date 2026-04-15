@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 
 function uuid(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return uuid();
+    return crypto.randomUUID();
   }
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;
@@ -36,6 +36,7 @@ import CommandMenu, { type CommandMenuHandle } from "@/components/CommandMenu";
 import StatusBadge from "@/components/StatusBadge";
 import VoiceRecorder from "@/components/VoiceRecorder";
 import { useConfirm } from "@/components/ConfirmDialog";
+import { useToast } from "@/components/Toast";
 import { SygenWebSocket, type WSStatus } from "@/lib/websocket";
 import { SygenAPI, type ChatSession, type ChatSessionMessage } from "@/lib/api";
 import { useServer } from "@/context/ServerContext";
@@ -79,6 +80,7 @@ export default function ChatPage() {
   const { activeServer } = useServer();
   const { t } = useTranslation();
   const { confirm } = useConfirm();
+  const toast = useToast();
   const [agents, setAgents] = useState<string[]>([]);
   const [selectedAgent, setSelectedAgent] = useState<string>("main");
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -337,16 +339,22 @@ export default function ChatPage() {
       const formData = new FormData();
       formData.append("file", file);
 
+      const url = `${activeServer.url}/upload`;
       try {
-        const res = await fetch(`${activeServer.url}/upload`, {
+        const res = await fetch(url, {
           method: "POST",
           headers: { Authorization: `Bearer ${token}` },
           body: formData,
         });
-        if (!res.ok) return null;
+        if (!res.ok) {
+          const errBody = await res.text().catch(() => "");
+          console.error(`Upload failed: ${res.status} ${res.statusText}`, errBody, { url, hasToken: !!token });
+          return null;
+        }
         const data = await res.json();
         return { path: data.path, name: data.name, prompt: data.prompt };
-      } catch {
+      } catch (err) {
+        console.error("Upload fetch error:", err, { url, hasToken: !!token });
         return null;
       }
     },
@@ -382,49 +390,56 @@ export default function ChatPage() {
       setPendingFiles((prev) => [...prev, ...entries]);
 
       for (let i = 0; i < files.length; i++) {
-        const result = await uploadFile(files[i]);
+        try {
+          const result = await uploadFile(files[i]);
 
-        if (result) {
-          const fileMsg: ChatMsg = {
-            id: `msg-${uuid()}`,
-            sender: "user",
-            content: `\u{1F4CE} ${result.name}`,
-            timestamp: new Date().toISOString(),
-            files: [
-              {
-                path: result.path,
-                name: result.name,
-                size: files[i].size,
-                mime: files[i].type,
-              },
-            ],
-          };
-          addMessage(sessionId, fileMsg);
+          if (result) {
+            const fileMsg: ChatMsg = {
+              id: `msg-${uuid()}`,
+              sender: "user",
+              content: `\u{1F4CE} ${result.name}`,
+              timestamp: new Date().toISOString(),
+              files: [
+                {
+                  path: result.path,
+                  name: result.name,
+                  size: files[i].size,
+                  mime: files[i].type,
+                },
+              ],
+            };
+            addMessage(sessionId, fileMsg);
 
-          const agentMsgId = `msg-${uuid()}`;
-          const agentMsg: ChatMsg = {
-            id: agentMsgId,
-            sender: "agent",
-            agentName: selectedAgent,
-            content: "",
-            timestamp: new Date().toISOString(),
-            isStreaming: true,
-            toolActivity: null,
-          };
-          addMessage(sessionId, agentMsg);
+            const agentMsgId = `msg-${uuid()}`;
+            const agentMsg: ChatMsg = {
+              id: agentMsgId,
+              sender: "agent",
+              agentName: selectedAgent,
+              content: "",
+              timestamp: new Date().toISOString(),
+              isStreaming: true,
+              toolActivity: null,
+            };
+            addMessage(sessionId, agentMsg);
 
-          streamingIdRef.current = agentMsgId;
-          streamingSessionRef.current = sessionId;
-          setIsStreaming(true);
-          wsRef.current?.sendMessage(selectedAgent, result.prompt);
+            streamingIdRef.current = agentMsgId;
+            streamingSessionRef.current = sessionId;
+            setIsStreaming(true);
+            wsRef.current?.sendMessage(selectedAgent, result.prompt);
+          } else {
+            toast.error(t("chat.uploadFailed"));
+          }
+        } catch (err) {
+          console.error("File upload error:", err);
+          toast.error(t("chat.uploadFailed"));
+        } finally {
+          setPendingFiles((prev) =>
+            prev.filter((p) => p.file !== files[i])
+          );
         }
-
-        setPendingFiles((prev) =>
-          prev.filter((p) => p.file !== files[i])
-        );
       }
     },
-    [uploadFile, addMessage, selectedAgent, ensureSession]
+    [uploadFile, addMessage, selectedAgent, ensureSession, toast, t]
   );
 
   // Drag and drop

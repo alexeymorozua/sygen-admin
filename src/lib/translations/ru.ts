@@ -90,6 +90,7 @@ const ru: Record<string, string> = {
   "chat.voiceRequiresHttps": "Запись голоса требует HTTPS-соединение",
   "chat.voiceNotSupported": "Запись голоса не поддерживается в этом браузере",
   "chat.voiceMessage": "Голосовое сообщение",
+  "chat.uploadFailed": "Не удалось загрузить файл",
   "chat.playAudio": "Воспроизвести",
   "chat.pauseAudio": "Пауза",
 
