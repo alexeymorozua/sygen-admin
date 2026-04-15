@@ -29,7 +29,18 @@ Web-based administration interface for the [Sygen](https://github.com/alexeymoro
 - **Node.js 20+** (for manual build)
 - **Sygen Core** with API server enabled (port 8799)
 
-### Option 1: Docker (Recommended)
+### Option 1: Sygen CLI (Recommended)
+
+If you have [Sygen](https://github.com/alexeymorozua/sygen) installed, use the built-in CLI:
+
+```bash
+sygen admin setup      # Clone repo, install deps, build
+sygen admin start      # Start (auto-detects API URL and token from config)
+```
+
+Other commands: `sygen admin stop`, `sygen admin status`, `sygen admin update`, `sygen admin open`.
+
+### Option 2: Docker
 
 ```bash
 docker run -d \
@@ -44,7 +55,7 @@ docker run -d \
 
 Open `http://localhost:3000` in your browser.
 
-### Option 2: Docker Compose
+### Option 3: Docker Compose
 
 ```bash
 cp .env.example .env
@@ -52,7 +63,7 @@ cp .env.example .env
 docker compose up -d
 ```
 
-### Option 3: Manual Build
+### Option 4: Manual Build
 
 ```bash
 git clone https://github.com/alexeymorozua/sygen-admin.git
