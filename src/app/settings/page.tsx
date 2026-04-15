@@ -270,7 +270,7 @@ export default function SettingsPage() {
       a.download = `sygen-config-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
-      success(t("settings.exportConfig"));
+      success(t("settings.export"));
     } catch (err) {
       toastError(err instanceof Error ? err.message : "Export failed");
     } finally {

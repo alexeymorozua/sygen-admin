@@ -88,16 +88,16 @@ export default function DashboardPage() {
       }
       setCronCount({
         total: crons.length,
-        active: crons.filter((c) => c.status === "active").length,
-        paused: crons.filter((c) => c.status === "paused").length,
+        active: crons.filter((cj) => cj.status === "active").length,
+        paused: crons.filter((cj) => cj.status === "paused").length,
       });
       setWebhookCount({
         total: webhooks.length,
-        active: webhooks.filter((w) => w.status === "active").length,
+        active: webhooks.filter((wh) => wh.status === "active").length,
       });
       setTaskCount({
         total: tasks.length,
-        running: tasks.filter((t) => t.status === "running").length,
+        running: tasks.filter((tk) => tk.status === "running").length,
       });
     } catch (err) {
       if (!silent) setError(err instanceof Error ? err.message : "Failed to load dashboard");

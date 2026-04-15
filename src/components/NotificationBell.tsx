@@ -100,15 +100,14 @@ export default function NotificationBell({ notifications }: NotificationBellProp
   }, [open]);
 
   // Browser notification for new events
+  const prevNotifCountRef = useRef(notifications.length);
   useEffect(() => {
     if (typeof window === "undefined" || !("Notification" in window)) return;
 
-    if (Notification.permission === "default") {
-      Notification.requestPermission();
-    }
-
+    // Only fire browser notification when new notifications arrive (count increased)
     if (
       Notification.permission === "granted" &&
+      notifications.length > prevNotifCountRef.current &&
       notifications.length > 0 &&
       !document.hasFocus()
     ) {
@@ -121,6 +120,7 @@ export default function NotificationBell({ notifications }: NotificationBellProp
         });
       }
     }
+    prevNotifCountRef.current = notifications.length;
   }, [notifications, lastRead]);
 
   return (

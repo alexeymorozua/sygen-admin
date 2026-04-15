@@ -44,6 +44,11 @@ export default function ProfilePage() {
       return;
     }
 
+    if (newPassword && !oldPassword) {
+      toast.error(t("profile.currentPassword"));
+      return;
+    }
+
     const payload: Record<string, string> = {};
     if (displayName !== user.display_name) payload.display_name = displayName;
     if (oldPassword && newPassword) {
