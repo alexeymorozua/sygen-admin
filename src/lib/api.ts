@@ -762,7 +762,8 @@ export class SygenAPI {
 
   static async getConfig(): Promise<typeof mockConfig> {
     if (USE_MOCK) return mockConfig;
-    return fetchAPI<typeof mockConfig>("/api/config");
+    const raw = await fetchAPI<Record<string, unknown>>("/api/config");
+    return mapConfig(raw) as typeof mockConfig;
   }
 
   // ---- Users (RBAC) ----
@@ -952,6 +953,42 @@ export class SygenAPI {
 // Mapping helpers: API response → frontend types
 // ---------------------------------------------------------------------------
 
+/** Group flat config into sections for the settings page. */
+function mapConfig(raw: Record<string, unknown>): Record<string, Record<string, unknown>> {
+  // Keys that are already nested objects → become their own sections
+  const sectionKeys = new Set([
+    "streaming", "docker", "heartbeat", "cleanup", "memory", "webhooks",
+    "api", "mcp", "image", "scene", "timeouts", "tasks", "transcription",
+    "matrix", "rag", "workflow", "interagent", "fileshare",
+    "skill_marketplace", "cli_parameters", "topic_defaults",
+  ]);
+  // Keys to hide (secrets, internal, redundant)
+  const hideKeys = new Set([
+    "_comment", "telegram_token", "gemini_api_key",
+  ]);
+  const core: Record<string, unknown> = {};
+  const telegram: Record<string, unknown> = {};
+  const sections: Record<string, Record<string, unknown>> = {};
+
+  const telegramKeys = new Set([
+    "transport", "transports", "allowed_user_ids", "allowed_group_ids",
+    "group_mention_only",
+  ]);
+
+  for (const [key, value] of Object.entries(raw)) {
+    if (hideKeys.has(key)) continue;
+    if (sectionKeys.has(key) && typeof value === "object" && value !== null && !Array.isArray(value)) {
+      sections[key] = value as Record<string, unknown>;
+    } else if (telegramKeys.has(key)) {
+      telegram[key] = value;
+    } else {
+      core[key] = value;
+    }
+  }
+
+  return { core, telegram, ...sections };
+}
+
 function mapAgent(raw: Record<string, unknown>): Agent {
   return {
     id: String(raw.name || raw.id || ""),
@@ -959,7 +996,7 @@ function mapAgent(raw: Record<string, unknown>): Agent {
     displayName: String(raw.display_name || raw.displayName || raw.name || ""),
     model: String(raw.model || "unknown"),
     provider: String(raw.provider || "unknown"),
-    status: (raw.status as Agent["status"]) || "offline",
+    status: raw.online === true ? "online" : (raw.status as Agent["status"]) || "offline",
     sessions: Number(raw.active_sessions || raw.sessions || 0),
     lastActive: String(raw.last_active || raw.lastActive || ""),
     description: String(raw.description || ""),

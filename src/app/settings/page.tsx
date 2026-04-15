@@ -487,8 +487,12 @@ export default function SettingsPage() {
                         <span className={value ? "text-green-400" : "text-red-400"}>
                           {String(value)}
                         </span>
+                      ) : value === null ? (
+                        <span className="text-text-secondary italic">null</span>
                       ) : Array.isArray(value) ? (
-                        value.join(", ")
+                        value.length === 0 ? <span className="text-text-secondary italic">[]</span> : value.map(v => typeof v === "object" ? JSON.stringify(v) : String(v)).join(", ")
+                      ) : typeof value === "object" ? (
+                        <span className="text-text-secondary">{JSON.stringify(value)}</span>
                       ) : (
                         String(value)
                       )}
