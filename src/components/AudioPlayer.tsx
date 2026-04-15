@@ -7,6 +7,7 @@ import { useTranslation } from "@/lib/i18n";
 
 interface AudioPlayerProps {
   src: string;
+  token?: string;
   className?: string;
 }
 
@@ -17,9 +18,10 @@ function formatTime(seconds: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-export default function AudioPlayer({ src, className }: AudioPlayerProps) {
+export default function AudioPlayer({ src, token, className }: AudioPlayerProps) {
   const { t } = useTranslation();
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const blobUrlRef = useRef<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -27,7 +29,7 @@ export default function AudioPlayer({ src, className }: AudioPlayerProps) {
   const progressRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const audio = new Audio(src);
+    const audio = new Audio();
     audioRef.current = audio;
     setHasError(false);
     setIsPlaying(false);
@@ -52,6 +54,26 @@ export default function AudioPlayer({ src, className }: AudioPlayerProps) {
     audio.addEventListener("durationchange", onDurationChange);
     audio.addEventListener("error", onError);
 
+    // Fetch with auth headers if token provided, then create blob URL
+    const authToken = token || (typeof window !== "undefined" ? localStorage.getItem("sygen_access_token") : null);
+    if (authToken) {
+      fetch(src, { headers: { Authorization: `Bearer ${authToken}` } })
+        .then((res) => {
+          if (!res.ok) throw new Error(`${res.status}`);
+          return res.blob();
+        })
+        .then((blob) => {
+          const url = URL.createObjectURL(blob);
+          blobUrlRef.current = url;
+          audio.src = url;
+        })
+        .catch(() => {
+          setHasError(true);
+        });
+    } else {
+      audio.src = src;
+    }
+
     return () => {
       audio.removeEventListener("loadedmetadata", onLoadedMetadata);
       audio.removeEventListener("timeupdate", onTimeUpdate);
@@ -60,8 +82,12 @@ export default function AudioPlayer({ src, className }: AudioPlayerProps) {
       audio.removeEventListener("error", onError);
       audio.pause();
       audio.src = "";
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
     };
-  }, [src]);
+  }, [src, token]);
 
   const togglePlay = useCallback(() => {
     const audio = audioRef.current;

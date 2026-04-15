@@ -68,14 +68,17 @@ export default function VoiceRecorder({
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
-      // Prefer webm/opus, fall back to whatever the browser supports
-      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-        ? "audio/webm;codecs=opus"
-        : MediaRecorder.isTypeSupported("audio/webm")
-          ? "audio/webm"
-          : MediaRecorder.isTypeSupported("audio/ogg")
-            ? "audio/ogg"
-            : "";
+      // Prefer ogg/opus (same as Telegram — best whisper compatibility),
+      // fall back to webm/opus, then whatever the browser supports
+      const mimeType = MediaRecorder.isTypeSupported("audio/ogg;codecs=opus")
+        ? "audio/ogg;codecs=opus"
+        : MediaRecorder.isTypeSupported("audio/ogg")
+          ? "audio/ogg"
+          : MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+            ? "audio/webm;codecs=opus"
+            : MediaRecorder.isTypeSupported("audio/webm")
+              ? "audio/webm"
+              : "";
 
       setIsActivating(false);
 
@@ -100,11 +103,13 @@ export default function VoiceRecorder({
         const chunks = chunksRef.current;
         const recordedDuration = durationRef.current;
         if (chunks.length > 0 && recordedDuration >= 1) {
-          const actualMime = recorder.mimeType || mimeType || "audio/webm";
-          const ext = actualMime.includes("webm") ? "webm" : "ogg";
+          const actualMime = recorder.mimeType || mimeType || "audio/ogg";
+          const ext = actualMime.includes("ogg") ? "ogg" : "webm";
           const blob = new Blob(chunks, { type: actualMime });
-          const filename = `voice_${Date.now()}.${ext}`;
-          onRecordingComplete(blob, filename);
+          if (blob.size > 1024) {
+            const filename = `voice_${Date.now()}.${ext}`;
+            onRecordingComplete(blob, filename);
+          }
         }
         cleanup();
       };
@@ -148,7 +153,6 @@ export default function VoiceRecorder({
   if (isRecording) {
     return (
       <div className="flex items-center gap-2" data-testid="voice-recorder-active">
-        {/* Recording indicator */}
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-danger/10 border border-danger/30">
           <span className="w-2 h-2 rounded-full bg-danger animate-pulse" />
           <span className="text-xs text-danger font-medium tabular-nums">
@@ -156,7 +160,6 @@ export default function VoiceRecorder({
           </span>
         </div>
 
-        {/* Stop button */}
         <button
           type="button"
           onClick={stopRecording}
@@ -178,8 +181,7 @@ export default function VoiceRecorder({
       disabled={disabled || isActivating}
       className={cn(
         "p-2.5 hover:bg-white/5 rounded-xl transition-colors text-text-secondary hover:text-text-primary disabled:opacity-30 shrink-0",
-        !isSupported && "opacity-50",
-        isActivating && "animate-pulse text-danger"
+        !isSupported && "opacity-50"
       )}
       title={t("chat.recordVoice")}
       aria-label={t("chat.recordVoice")}

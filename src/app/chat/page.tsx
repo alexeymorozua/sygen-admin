@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 
 function uuid(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -81,8 +82,18 @@ export default function ChatPage() {
   const { t } = useTranslation();
   const { confirm } = useConfirm();
   const toast = useToast();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialAgent = useMemo(() => {
+    const agent = searchParams.get("agent");
+    if (agent) {
+      // Clear ?agent= from URL after reading it
+      window.history.replaceState({}, "", "/chat");
+    }
+    return agent || "main";
+  }, [searchParams]);
   const [agents, setAgents] = useState<string[]>([]);
-  const [selectedAgent, setSelectedAgent] = useState<string>("main");
+  const [selectedAgent, setSelectedAgent] = useState<string>(initialAgent);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [messagesBySession, setMessagesBySession] = useState<
@@ -391,13 +402,25 @@ export default function ChatPage() {
 
       for (let i = 0; i < files.length; i++) {
         try {
+          // Wait for any in-progress streaming to finish before sending next file
+          if (streamingIdRef.current) {
+            await new Promise<void>((resolve) => {
+              const check = () => {
+                if (!streamingIdRef.current) { resolve(); return; }
+                setTimeout(check, 200);
+              };
+              check();
+            });
+          }
+
           const result = await uploadFile(files[i]);
 
           if (result) {
+            const isVoice = /^voice_\d+\.(webm|ogg)$/i.test(result.name);
             const fileMsg: ChatMsg = {
               id: `msg-${uuid()}`,
               sender: "user",
-              content: `\u{1F4CE} ${result.name}`,
+              content: isVoice ? "" : `\u{1F4CE} ${result.name}`,
               timestamp: new Date().toISOString(),
               files: [
                 {

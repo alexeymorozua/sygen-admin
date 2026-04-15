@@ -85,6 +85,7 @@ const uk: Record<string, string> = {
   "chat.sessionTitle": "Сесія",
   "chat.allChats": "Всі чати",
   "chat.recording": "Запис",
+  "chat.micActivating": "Мікрофон...",
   "chat.recordVoice": "Записати голосове повідомлення",
   "chat.stopRecording": "Зупинити запис",
   "chat.voiceRequiresHttps": "Запис голосу потребує HTTPS-з'єднання",

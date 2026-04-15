@@ -85,6 +85,7 @@ const en: Record<string, string> = {
   "chat.sessionTitle": "Session",
   "chat.allChats": "All Chats",
   "chat.recording": "Recording",
+  "chat.micActivating": "Mic...",
   "chat.recordVoice": "Record voice message",
   "chat.stopRecording": "Stop recording",
   "chat.voiceRequiresHttps": "Voice recording requires HTTPS connection",

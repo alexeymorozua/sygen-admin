@@ -405,7 +405,7 @@ export default function AgentsPage() {
                   </div>
                 )}
                 <div className="pt-2 border-t border-border">
-                  <a href="/chat" className="block w-full py-2 text-center text-xs font-medium rounded-lg bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 transition-colors">
+                  <a href={`/chat?agent=${selected.name}`} className="block w-full py-2 text-center text-xs font-medium rounded-lg bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 transition-colors">
                     {t('agents.openChat')}
                   </a>
                 </div>
