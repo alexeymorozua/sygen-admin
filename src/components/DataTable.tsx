@@ -18,6 +18,7 @@ interface DataTableProps<T> {
   pageSize?: number;
   onRowClick?: (item: T) => void;
   keyField: string;
+  emptyMessage?: string;
 }
 
 export default function DataTable<T>({
@@ -26,6 +27,7 @@ export default function DataTable<T>({
   pageSize = 10,
   onRowClick,
   keyField,
+  emptyMessage,
 }: DataTableProps<T>) {
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
@@ -83,6 +85,13 @@ export default function DataTable<T>({
             </tr>
           </thead>
           <tbody>
+            {pageData.length === 0 && emptyMessage && (
+              <tr>
+                <td colSpan={columns.length} className="px-4 py-12 text-center text-sm text-text-secondary">
+                  {emptyMessage}
+                </td>
+              </tr>
+            )}
             {pageData.map((item) => (
               <tr
                 key={String((item as Record<string, unknown>)[keyField])}

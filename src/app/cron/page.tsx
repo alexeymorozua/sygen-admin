@@ -409,7 +409,7 @@ export default function CronPage() {
         </div>
 
         <div className="bg-bg-card border border-border rounded-xl overflow-hidden">
-          <DataTable data={filtered} columns={columns} keyField="id" onRowClick={(item) => setSelected(item)} />
+          <DataTable data={filtered} columns={columns} keyField="id" onRowClick={(item) => setSelected(item)} emptyMessage={t('common.noData')} />
         </div>
       </div>
 

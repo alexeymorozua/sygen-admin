@@ -389,6 +389,7 @@ export default function WebhooksPage() {
             columns={columns}
             keyField="id"
             onRowClick={(item) => setSelected(item)}
+            emptyMessage={t('common.noData')}
           />
         </div>
       </div>

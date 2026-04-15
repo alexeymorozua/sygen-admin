@@ -318,6 +318,7 @@ export default function TasksPage() {
             columns={columns}
             keyField="id"
             onRowClick={(item) => { setSelected(item); setShowFullOutput(false); }}
+            emptyMessage={t('common.noData')}
           />
         </div>
       </div>
