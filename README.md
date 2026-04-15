@@ -14,6 +14,9 @@ Web-based administration interface for the [Sygen](https://github.com/alexeymoro
 - **Settings** — configuration viewer with sanitized secrets (masked as `***`)
 - **Users & RBAC** — user management (create/edit/delete), three roles (admin/operator/viewer), per-agent access control (`allowed_agents`), audit log with action history
 - **i18n** — full internationalization with English, Ukrainian, and Russian translations, language switcher in sidebar
+- **User Avatar** — upload a custom avatar via `/upload`, save the path with `PUT /api/profile`, displayed in chat and profile page
+- **Agent Avatar** — agent avatars displayed in chat, fetched via `GET /api/agents/{name}/avatar`
+- **Persistent WebSocket Chat** — `ChatContext.tsx` in root layout keeps the WebSocket connection alive across page navigation
 - **Dark/Light Theme** — toggle in sidebar with localStorage persistence
 - **Global Search (Ctrl+K)** — command palette with fuzzy matching across agents, cron jobs, webhooks, tasks, and pages
 - **Keyboard Shortcuts** — `G+D/A/C/R/W/T/M` for navigation, `?` shows help modal
@@ -308,6 +311,7 @@ All endpoints require `Authorization: Bearer <token>` header unless noted.
 |--------|----------|-------------|
 | `GET` | `/api/agents` | List agents (filtered by user's `allowed_agents`) |
 | `GET` | `/api/agents/{name}` | Get agent details |
+| `GET` | `/api/agents/{name}/avatar` | Get agent avatar image |
 
 ### Chat
 
@@ -323,9 +327,22 @@ All endpoints require `Authorization: Bearer <token>` header unless noted.
 |--------|----------|-------------|
 | `GET` | `/api/chat/sessions?agent={id}` | List chat sessions (optional agent filter) |
 | `POST` | `/api/chat/sessions` | Create chat session (`{agent, title?}`) |
+| `PUT` | `/api/chat/sessions/{id}` | Rename chat session (`{title: string}`) |
 | `DELETE` | `/api/chat/sessions/{id}` | Delete chat session and its history |
 | `GET` | `/api/chat/sessions/{id}/messages` | Get session message history |
 | `PUT` | `/api/chat/sessions/{id}/messages` | Save session messages (`{messages: [...]}`) |
+
+### Audio
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/transcribe` | Transcribe audio file (`{file_path: string}`), uses whisper pipeline |
+
+### User Profile
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `PUT` | `/api/profile` | Update user profile (supports `avatar` field with uploaded file path) |
 
 ### Cron Jobs
 
