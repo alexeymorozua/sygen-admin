@@ -1010,7 +1010,7 @@ function mapAgent(raw: Record<string, unknown>): Agent {
     provider: String(raw.provider || ""),
     status: raw.online === true ? "online" : (raw.status as Agent["status"]) || "offline",
     sessions: Number(raw.active_sessions || raw.sessions || 0),
-    lastActive: String(raw.last_active || raw.lastActive || ""),
+    lastActive: raw.last_active || raw.lastActive ? String(raw.last_active || raw.lastActive) : "-",
     description: String(raw.description || ""),
     allowedUsers: (raw.allowed_users || raw.allowedUsers || []) as string[],
   };
