@@ -698,6 +698,16 @@ export class SygenAPI {
     });
   }
 
+  static async updateChatSession(sessionId: string, data: { title?: string }): Promise<ChatSession> {
+    if (USE_MOCK) {
+      return { id: sessionId, agent: "main", title: data.title || "", created_at: 0, updated_at: Date.now() / 1000 };
+    }
+    return fetchAPI<ChatSession>(`/api/chat/sessions/${encodeURIComponent(sessionId)}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
   static async deleteChatSession(sessionId: string): Promise<void> {
     if (USE_MOCK) return;
     await fetchAPI(`/api/chat/sessions/${encodeURIComponent(sessionId)}`, { method: "DELETE" });
@@ -714,6 +724,15 @@ export class SygenAPI {
       method: "PUT",
       body: JSON.stringify({ messages }),
     });
+  }
+
+  static async transcribeAudio(filePath: string): Promise<string> {
+    if (USE_MOCK) return "(mock transcript)";
+    const data = await fetchAPI<{ transcript: string }>("/api/transcribe", {
+      method: "POST",
+      body: JSON.stringify({ path: filePath }),
+    });
+    return data.transcript;
   }
 
   // ---- Chat (kept for compatibility) ----

@@ -79,6 +79,7 @@ const uk: Record<string, string> = {
   "chat.clearAllConfirm": "Очистити ВСЮ історію чатів для всіх агентів на цьому сервері?",
   "chat.message": "Повідомлення",
   "chat.sessions": "Сесії",
+  "chat.renameSession": "Перейменувати",
   "chat.deleteSession": "Видалити сесію",
   "chat.deleteSessionConfirm": "Видалити цю чат-сесію?",
   "chat.noSessions": "Ще немає сесій",
@@ -94,6 +95,7 @@ const uk: Record<string, string> = {
   "chat.uploadFailed": "Не вдалося завантажити файл",
   "chat.playAudio": "Відтворити",
   "chat.pauseAudio": "Пауза",
+  "chat.transcribe": "Розшифрувати",
 
   // Cron
   "cron.title": "Cron задачі",

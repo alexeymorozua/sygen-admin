@@ -79,6 +79,7 @@ const en: Record<string, string> = {
   "chat.clearAllConfirm": "Clear ALL chat history for all agents on this server?",
   "chat.message": "Message",
   "chat.sessions": "Sessions",
+  "chat.renameSession": "Rename session",
   "chat.deleteSession": "Delete session",
   "chat.deleteSessionConfirm": "Delete this chat session?",
   "chat.noSessions": "No sessions yet",
@@ -94,6 +95,7 @@ const en: Record<string, string> = {
   "chat.uploadFailed": "File upload failed",
   "chat.playAudio": "Play",
   "chat.pauseAudio": "Pause",
+  "chat.transcribe": "Transcribe",
 
   // Cron
   "cron.title": "Cron Jobs",

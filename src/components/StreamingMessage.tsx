@@ -135,7 +135,7 @@ function FilePreview({
   if (isAudioFile(file.name) || isVoiceMessage(file.name)) {
     return (
       <div className="mt-2 rounded-2xl border border-border bg-bg-card/50 px-3 py-2 max-w-sm">
-        <AudioPlayer src={fileUrl} token={token} />
+        <AudioPlayer src={fileUrl} token={token} filePath={file.path} />
         {!isVoiceMessage(file.name) && (
           <div className="flex items-center justify-between mt-1 text-[10px] text-text-secondary">
             <span className="truncate">{file.name}</span>
@@ -246,11 +246,15 @@ export default function StreamingMessage({
             <p className="whitespace-pre-wrap break-words">{content}</p>
           ) : (
             <div className="prose prose-invert prose-sm max-w-none break-words [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_pre]:bg-black/30 [&_pre]:rounded-lg [&_pre]:p-3 [&_code]:text-brand-300 [&_a]:text-brand-400">
-              <ReactMarkdown rehypePlugins={[rehypeSanitize]}>
-                {cleanText}
-              </ReactMarkdown>
+              {cleanText ? (
+                <ReactMarkdown rehypePlugins={[rehypeSanitize]}>
+                  {cleanText}
+                </ReactMarkdown>
+              ) : isStreaming ? (
+                <span className="invisible">&#8203;</span>
+              ) : null}
               {isStreaming && (
-                <span className="inline-block w-1.5 h-4 ml-0.5 bg-brand-400 animate-pulse rounded-sm align-middle" />
+                <span className="inline w-1.5 h-3.5 ml-0.5 bg-brand-400 animate-pulse rounded-sm align-middle" style={{ display: "inline-block" }} />
               )}
             </div>
           )}

@@ -1,13 +1,15 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Play, Pause, AlertCircle } from "lucide-react";
+import { Play, Pause, AlertCircle, Languages, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n";
+import { SygenAPI } from "@/lib/api";
 
 interface AudioPlayerProps {
   src: string;
   token?: string;
+  filePath?: string;
   className?: string;
 }
 
@@ -18,7 +20,7 @@ function formatTime(seconds: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-export default function AudioPlayer({ src, token, className }: AudioPlayerProps) {
+export default function AudioPlayer({ src, token, filePath, className }: AudioPlayerProps) {
   const { t } = useTranslation();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const blobUrlRef = useRef<string | null>(null);
@@ -26,6 +28,8 @@ export default function AudioPlayer({ src, token, className }: AudioPlayerProps)
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [hasError, setHasError] = useState(false);
+  const [transcript, setTranscript] = useState<string | null>(null);
+  const [transcribing, setTranscribing] = useState(false);
   const progressRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -116,6 +120,18 @@ export default function AudioPlayer({ src, token, className }: AudioPlayerProps)
     [duration]
   );
 
+  const handleTranscribe = useCallback(async () => {
+    if (!filePath || transcribing) return;
+    setTranscribing(true);
+    try {
+      const text = await SygenAPI.transcribeAudio(filePath);
+      setTranscript(text);
+    } catch {
+      setTranscript(t("common.error"));
+    }
+    setTranscribing(false);
+  }, [filePath, transcribing, t]);
+
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   if (hasError) {
@@ -136,6 +152,7 @@ export default function AudioPlayer({ src, token, className }: AudioPlayerProps)
   }
 
   return (
+    <>
     <div
       className={cn(
         "flex items-center gap-2.5 min-w-[200px] max-w-[280px]",
@@ -185,6 +202,30 @@ export default function AudioPlayer({ src, token, className }: AudioPlayerProps)
           </span>
         </div>
       </div>
+
+      {/* Transcribe button */}
+      {filePath && !transcript && (
+        <button
+          type="button"
+          onClick={handleTranscribe}
+          disabled={transcribing}
+          className="w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center shrink-0 transition-colors disabled:opacity-40"
+          aria-label={t("chat.transcribe")}
+          title={t("chat.transcribe")}
+        >
+          {transcribing ? (
+            <Loader2 size={13} className="text-text-secondary animate-spin" />
+          ) : (
+            <Languages size={13} className="text-text-secondary" />
+          )}
+        </button>
+      )}
     </div>
+
+    {/* Transcript text */}
+    {transcript && (
+      <p className="mt-1 text-xs text-text-secondary leading-relaxed italic">{transcript}</p>
+    )}
+    </>
   );
 }

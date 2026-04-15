@@ -30,6 +30,8 @@ import {
   FileAudio,
   File as FileIcon,
   MessageSquare,
+  Pencil,
+  Check,
 } from "lucide-react";
 import StreamingMessage from "@/components/StreamingMessage";
 import type { StreamingMessageProps, FileAttachment } from "@/components/StreamingMessage";
@@ -119,7 +121,10 @@ export default function ChatPage() {
   const chatAreaRef = useRef<HTMLDivElement>(null);
   const commandMenuRef = useRef<CommandMenuHandle>(null);
   const historyLoadedRef = useRef<Set<string>>(new Set());
+  const isInitialScrollRef = useRef(true);
   const [showCommandMenu, setShowCommandMenu] = useState(false);
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
 
   const messages = activeSessionId ? (messagesBySession[activeSessionId] || []) : [];
 
@@ -208,6 +213,7 @@ export default function ChatPage() {
   // Load history when session is selected
   useEffect(() => {
     if (activeSessionId) {
+      isInitialScrollRef.current = true;
       loadSessionHistory(activeSessionId);
     }
   }, [activeSessionId, loadSessionHistory]);
@@ -326,9 +332,12 @@ export default function ChatPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [updateStreamingMessage, activeServer.id, activeServer.url]);
 
-  // Auto-scroll
+  // Auto-scroll: instant on initial load / session switch, smooth for new messages
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messages.length === 0) return;
+    const behavior = isInitialScrollRef.current ? "instant" : "smooth";
+    messagesEndRef.current?.scrollIntoView({ behavior });
+    if (isInitialScrollRef.current) isInitialScrollRef.current = false;
   }, [messages]);
 
   // Auto-resize textarea
@@ -570,6 +579,26 @@ export default function ChatPage() {
     setInput("");
   }, []);
 
+  const handleRenameSession = useCallback(
+    async (sessionId: string) => {
+      const trimmed = editingTitle.trim();
+      if (!trimmed) {
+        setEditingSessionId(null);
+        return;
+      }
+      try {
+        await SygenAPI.updateChatSession(sessionId, { title: trimmed });
+        setSessions((prev) =>
+          prev.map((s) => (s.id === sessionId ? { ...s, title: trimmed } : s))
+        );
+      } catch {
+        // Ignore
+      }
+      setEditingSessionId(null);
+    },
+    [editingTitle]
+  );
+
   const handleDeleteSession = useCallback(
     async (sessionId: string) => {
       if (!(await confirm({ message: t('chat.deleteSessionConfirm'), variant: "danger" }))) return;
@@ -703,11 +732,43 @@ export default function ChatPage() {
             >
               <MessageSquare size={14} className="text-text-secondary shrink-0" />
               <div className="min-w-0 flex-1">
-                <p className="text-sm truncate">{session.title}</p>
+                {editingSessionId === session.id ? (
+                  <form
+                    onSubmit={(e) => { e.preventDefault(); handleRenameSession(session.id); }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex items-center gap-1"
+                  >
+                    <input
+                      autoFocus
+                      value={editingTitle}
+                      onChange={(e) => setEditingTitle(e.target.value)}
+                      onBlur={() => handleRenameSession(session.id)}
+                      onKeyDown={(e) => { if (e.key === "Escape") setEditingSessionId(null); }}
+                      className="text-sm bg-transparent border-b border-brand-400 outline-none w-full py-0"
+                    />
+                    <button type="submit" className="p-0.5 text-brand-400 shrink-0">
+                      <Check size={12} />
+                    </button>
+                  </form>
+                ) : (
+                  <p className="text-sm truncate">{session.title}</p>
+                )}
                 <p className="text-[10px] text-text-secondary">
                   {formatSessionTime(session.updated_at)}
                 </p>
               </div>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditingSessionId(session.id);
+                  setEditingTitle(session.title);
+                }}
+                className="p-1 opacity-0 group-hover:opacity-100 hover:text-brand-400 hover:bg-white/5 rounded transition-all"
+                title={t('chat.renameSession')}
+              >
+                <Pencil size={12} />
+              </button>
               <button
                 type="button"
                 onClick={(e) => {
