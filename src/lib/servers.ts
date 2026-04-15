@@ -14,11 +14,21 @@ function generateId(): string {
   return "srv-" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 }
 
+function resolveApiUrl(): string {
+  const envUrl = process.env.NEXT_PUBLIC_SYGEN_API_URL || "http://localhost:8741";
+  // When served over HTTPS, use same-origin to avoid mixed content.
+  // The HTTPS proxy routes /api/*, /upload, /ws/* to the API backend.
+  if (typeof window !== "undefined" && window.location.protocol === "https:") {
+    return window.location.origin;
+  }
+  return envUrl;
+}
+
 function getDefaultServerFromEnv(): SygenServer {
   return {
     id: "default",
     name: "Default Server",
-    url: process.env.NEXT_PUBLIC_SYGEN_API_URL || "http://localhost:8741",
+    url: resolveApiUrl(),
     token: "",
     color: "#e94560",
     isDefault: true,
@@ -41,7 +51,15 @@ export function getServers(): SygenServer[] {
     localStorage.removeItem(STORAGE_KEY);
     return [getDefaultServerFromEnv()];
   }
-  return servers.length > 0 ? servers : [getDefaultServerFromEnv()];
+  if (servers.length === 0) return [getDefaultServerFromEnv()];
+  // Keep the default server URL in sync with the current protocol
+  const fresh = getDefaultServerFromEnv();
+  const idx = servers.findIndex((s) => s.id === "default");
+  if (idx !== -1 && servers[idx].url !== fresh.url) {
+    servers[idx] = { ...servers[idx], url: fresh.url };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(servers));
+  }
+  return servers;
 }
 
 export function getActiveServer(): SygenServer {
