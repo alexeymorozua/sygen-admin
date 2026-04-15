@@ -6,6 +6,7 @@
   --color-bg-sidebar: var(--theme-bg-sidebar);
   --color-accent: var(--theme-accent);
   --color-accent-hover: var(--theme-accent-hover);
+  --color-accent-foreground: var(--theme-accent-foreground);
   --color-danger: var(--theme-danger);
   --color-text-primary: var(--theme-text-primary);
   --color-text-secondary: var(--theme-text-secondary);
@@ -38,6 +39,7 @@
   --theme-success: #00c853;
   --theme-warning: #ffa726;
   --theme-accent-secondary: #6200EA;
+  --theme-accent-foreground: #ffffff;
 }
 
 /* Light theme */
@@ -54,6 +56,15 @@
   --theme-success: #00a844;
   --theme-warning: #e58f1a;
   --theme-accent-secondary: #6200EA;
+  --theme-accent-foreground: #ffffff;
+}
+
+/* Hide scrollbar on chat textarea */
+.chat-textarea::-webkit-scrollbar {
+  display: none;
+}
+.chat-textarea {
+  scrollbar-width: none;
 }
 
 body {

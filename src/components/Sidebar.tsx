@@ -131,7 +131,7 @@ export default function Sidebar() {
             className={cn(
               "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
               isActive(item.href)
-                ? "bg-accent text-text-primary"
+                ? "bg-accent text-accent-foreground"
                 : "text-text-secondary hover:text-text-primary hover:bg-white/5"
             )}
           >

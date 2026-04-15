@@ -242,7 +242,7 @@ export default function CommandPalette() {
                   className={cn(
                     "flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-left transition-colors",
                     idx === activeIndex
-                      ? "bg-accent/40 text-text-primary"
+                      ? "bg-accent/40 text-accent-foreground"
                       : "text-text-secondary hover:bg-white/5",
                   )}
                 >

@@ -56,6 +56,7 @@ export interface UserInfo {
   active?: boolean;
   created_at?: number;
   totp_enabled?: boolean;
+  avatar?: string;
 }
 
 export interface LoginResponse {
@@ -851,6 +852,7 @@ export class SygenAPI {
     display_name?: string;
     old_password?: string;
     new_password?: string;
+    avatar?: string;
   }): Promise<UserInfo> {
     const result = await fetchAPI<UserInfo>("/api/auth/profile", {
       method: "PUT",
@@ -884,6 +886,34 @@ export class SygenAPI {
       method: "POST",
       body: JSON.stringify({ code }),
     });
+  }
+
+  // ---- Avatar ----
+
+  static async uploadAvatar(file: File): Promise<{ path: string }> {
+    const { accessToken } = getStoredTokens();
+    const token = accessToken || getApiToken();
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const res = await fetch(`${getApiUrl()}/upload`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      throw new Error(body?.error || "Avatar upload failed");
+    }
+    const data = await res.json();
+    const path = data.path as string;
+
+    const updated = await SygenAPI.updateProfile({ avatar: path });
+    return { path: updated.avatar || path };
+  }
+
+  static getAvatarUrl(path: string): string {
+    return `${getApiUrl()}/files?path=${encodeURIComponent(path)}`;
   }
 
   // ---- Webhook signature verify ----
@@ -977,6 +1007,10 @@ export class SygenAPI {
       }
     };
     return () => ws.close();
+  }
+
+  static getAgentAvatarUrl(agentName: string): string {
+    return `${getApiUrl()}/api/agents/${encodeURIComponent(agentName)}/avatar`;
   }
 }
 

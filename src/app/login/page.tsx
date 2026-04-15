@@ -160,7 +160,7 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={loading || !canSubmit}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-accent hover:bg-accent-hover text-text-primary text-sm font-medium rounded-lg transition-colors disabled:opacity-40"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-accent hover:bg-accent-hover text-accent-foreground text-sm font-medium rounded-lg transition-colors disabled:opacity-40"
                 >
                   {loading ? <Loader2 size={16} className="animate-spin" /> : null}
                   {loading ? t("login.authenticating") : t("login.submit")}
@@ -215,7 +215,7 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={loading || totpCode.length !== 6}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-accent hover:bg-accent-hover text-text-primary text-sm font-medium rounded-lg transition-colors disabled:opacity-40"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-accent hover:bg-accent-hover text-accent-foreground text-sm font-medium rounded-lg transition-colors disabled:opacity-40"
                 >
                   {loading ? <Loader2 size={16} className="animate-spin" /> : null}
                   {loading ? t("login.authenticating") : t("login.submit")}

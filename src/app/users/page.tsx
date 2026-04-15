@@ -144,7 +144,7 @@ export default function UsersPage() {
           onClick={() => setTab("users")}
           className={cn(
             "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors",
-            tab === "users" ? "bg-accent text-text-primary" : "text-text-secondary hover:text-text-primary",
+            tab === "users" ? "bg-accent text-accent-foreground" : "text-text-secondary hover:text-text-primary",
           )}
         >
           <Users size={14} /> {t("users.users") || "Users"}
@@ -154,7 +154,7 @@ export default function UsersPage() {
           onClick={() => setTab("audit")}
           className={cn(
             "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors",
-            tab === "audit" ? "bg-accent text-text-primary" : "text-text-secondary hover:text-text-primary",
+            tab === "audit" ? "bg-accent text-accent-foreground" : "text-text-secondary hover:text-text-primary",
           )}
         >
           <ClipboardList size={14} /> {t("users.auditLog") || "Audit Log"}

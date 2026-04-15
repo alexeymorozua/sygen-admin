@@ -187,7 +187,7 @@ function TwoFactorSection() {
               <button
                 type="submit"
                 disabled={loading || verifyCode.length !== 6}
-                className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-text-primary text-sm font-medium rounded-lg transition-colors disabled:opacity-40"
+                className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-accent-foreground text-sm font-medium rounded-lg transition-colors disabled:opacity-40"
               >
                 {loading && <Loader2 size={14} className="animate-spin" />}
                 {t("common.confirm") || "Confirm"}
@@ -211,7 +211,7 @@ function TwoFactorSection() {
             type="button"
             onClick={handleSetup}
             disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-text-primary text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-accent-foreground text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
           >
             {loading && <Loader2 size={14} className="animate-spin" />}
             <Shield size={14} />
@@ -386,7 +386,7 @@ export default function SettingsPage() {
             type="button"
             onClick={handleTestConnection}
             disabled={checking}
-            className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-text-primary text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-accent-foreground text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
           >
             <RefreshCw size={14} className={checking ? "animate-spin" : ""} />
             {t('settings.testConnection')}
@@ -419,7 +419,7 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-text-primary text-sm font-medium rounded-lg transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-accent-foreground text-sm font-medium rounded-lg transition-colors"
             >
               <Upload size={14} />
               {t('settings.importConfig')}

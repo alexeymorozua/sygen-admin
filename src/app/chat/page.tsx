@@ -1,17 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-
-function uuid(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
-  });
-}
+import { useSearchParams } from "next/navigation";
 import {
   Send,
   Bot,
@@ -34,29 +24,21 @@ import {
   Check,
 } from "lucide-react";
 import StreamingMessage from "@/components/StreamingMessage";
-import type { StreamingMessageProps, FileAttachment } from "@/components/StreamingMessage";
 import CommandMenu, { type CommandMenuHandle } from "@/components/CommandMenu";
 import StatusBadge from "@/components/StatusBadge";
 import VoiceRecorder from "@/components/VoiceRecorder";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { useToast } from "@/components/Toast";
-import { SygenWebSocket, type WSStatus } from "@/lib/websocket";
-import { SygenAPI, type ChatSession, type ChatSessionMessage } from "@/lib/api";
+import { SygenAPI, type ChatSession } from "@/lib/api";
 import { useServer } from "@/context/ServerContext";
+import { useChat } from "@/context/ChatContext";
+import { useAuth } from "@/context/AuthContext";
 import { useTranslation } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-
-type ChatMsg = StreamingMessageProps;
 
 function getStoredAccessToken(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("sygen_access_token");
-}
-
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function getFileTypeIcon(name: string) {
@@ -84,253 +66,67 @@ export default function ChatPage() {
   const { t } = useTranslation();
   const { confirm } = useConfirm();
   const toast = useToast();
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const initialAgent = useMemo(() => {
+  const { user } = useAuth();
+
+  const userAvatarUrl = useMemo(
+    () => (user?.avatar ? SygenAPI.getAvatarUrl(user.avatar) : undefined),
+    [user?.avatar]
+  );
+
+  // Global chat state from context (persists across navigation)
+  const chat = useChat();
+  const {
+    wsStatus,
+    agents,
+    agentStatus,
+    isStreaming,
+    selectedAgent,
+    setSelectedAgent,
+    sessions,
+    setSessions,
+    activeSessionId,
+    setActiveSessionId,
+    loadingSessions,
+    messages,
+    sendMessage: chatSendMessage,
+    sendFileMessage,
+    abortStreaming,
+    removeSessionData,
+    streamingIdRef,
+  } = chat;
+
+  // Handle ?agent= URL param
+  useEffect(() => {
     const agent = searchParams.get("agent");
     if (agent) {
-      // Clear ?agent= from URL after reading it
+      setSelectedAgent(agent);
       window.history.replaceState({}, "", "/chat");
     }
-    return agent || "main";
-  }, [searchParams]);
-  const [agents, setAgents] = useState<string[]>([]);
-  const [selectedAgent, setSelectedAgent] = useState<string>(initialAgent);
-  const [sessions, setSessions] = useState<ChatSession[]>([]);
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
-  const [messagesBySession, setMessagesBySession] = useState<
-    Record<string, ChatMsg[]>
-  >({});
+  }, [searchParams, setSelectedAgent]);
+
+  // Local UI state (page-specific, doesn't need to persist)
   const [input, setInput] = useState("");
   const [showInfo, setShowInfo] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
-  const [wsStatus, setWsStatus] = useState<WSStatus>("disconnected");
-  const [isStreaming, setIsStreaming] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<
     { file: File; uploading: boolean; name: string }[]
   >([]);
-  const [agentStatus, setAgentStatus] = useState<string | null>(null);
-  const [loadingSessions, setLoadingSessions] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const wsRef = useRef<SygenWebSocket | null>(null);
-  const streamingIdRef = useRef<string | null>(null);
-  const streamingSessionRef = useRef<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatAreaRef = useRef<HTMLDivElement>(null);
   const commandMenuRef = useRef<CommandMenuHandle>(null);
-  const historyLoadedRef = useRef<Set<string>>(new Set());
   const isInitialScrollRef = useRef(true);
   const [showCommandMenu, setShowCommandMenu] = useState(false);
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
 
-  const messages = activeSessionId ? (messagesBySession[activeSessionId] || []) : [];
-
-  // Load sessions for the selected agent
-  const loadSessions = useCallback(
-    async (agent: string) => {
-      setLoadingSessions(true);
-      try {
-        const data = await SygenAPI.getChatSessions(agent);
-        setSessions(data);
-      } catch {
-        setSessions([]);
-      } finally {
-        setLoadingSessions(false);
-      }
-    },
-    []
-  );
-
-  // Load session history from server
-  const loadSessionHistory = useCallback(
-    async (sessionId: string) => {
-      if (historyLoadedRef.current.has(sessionId)) return;
-      historyLoadedRef.current.add(sessionId);
-      try {
-        const data = await SygenAPI.getChatHistory(sessionId);
-        if (data.length > 0) {
-          setMessagesBySession((prev) => ({
-            ...prev,
-            [sessionId]: data.map((m) => ({
-              id: m.id,
-              sender: m.sender,
-              agentName: m.agentName,
-              content: m.content,
-              timestamp: m.timestamp,
-              files: m.files as FileAttachment[] | undefined,
-            })),
-          }));
-        }
-      } catch {
-        // Ignore — no history yet
-      }
-    },
-    []
-  );
-
-  // Save messages to server (debounced)
+  // Reset initial scroll flag when session changes
   useEffect(() => {
-    if (!activeSessionId || !messagesBySession[activeSessionId]) return;
-    const msgs = messagesBySession[activeSessionId];
-    if (msgs.some((m) => m.isStreaming)) return;
-    if (msgs.length === 0) return;
-
-    const timer = setTimeout(() => {
-      const saveMsgs: ChatSessionMessage[] = msgs.map((m) => ({
-        id: m.id,
-        sender: m.sender as "user" | "agent",
-        agentName: m.agentName,
-        content: m.content,
-        timestamp: m.timestamp,
-        files: m.files,
-      }));
-
-      SygenAPI.saveChatHistory(activeSessionId, saveMsgs).catch(() => {});
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, [messagesBySession, activeSessionId]);
-
-  // Load sessions when agent changes
-  const prevAgentRef = useRef(selectedAgent);
-  useEffect(() => {
-    if (!selectedAgent || wsStatus !== "connected") return;
-    const agentChanged = prevAgentRef.current !== selectedAgent;
-    prevAgentRef.current = selectedAgent;
-
-    loadSessions(selectedAgent);
-    // Only reset state when agent actually changes, not on WS reconnect
-    if (agentChanged) {
-      setActiveSessionId(null);
-      setMessagesBySession({});
-      historyLoadedRef.current = new Set();
-    }
-  }, [selectedAgent, loadSessions, wsStatus]);
-
-  // Load history when session is selected
-  useEffect(() => {
-    if (activeSessionId) {
-      isInitialScrollRef.current = true;
-      loadSessionHistory(activeSessionId);
-    }
-  }, [activeSessionId, loadSessionHistory]);
-
-  // Reset when server changes
-  useEffect(() => {
-    historyLoadedRef.current = new Set();
-    setMessagesBySession({});
-    setSessions([]);
-    setActiveSessionId(null);
-  }, [activeServer.id]);
-
-  const addMessage = useCallback((sessionId: string, msg: ChatMsg) => {
-    setMessagesBySession((prev) => ({
-      ...prev,
-      [sessionId]: [...(prev[sessionId] || []), msg],
-    }));
-  }, []);
-
-  const updateStreamingMessage = useCallback(
-    (sessionId: string, msgId: string, updater: (msg: ChatMsg) => ChatMsg) => {
-      setMessagesBySession((prev) => {
-        const sessionMsgs = prev[sessionId] || [];
-        return {
-          ...prev,
-          [sessionId]: sessionMsgs.map((m) => (m.id === msgId ? updater(m) : m)),
-        };
-      });
-    },
-    []
-  );
-
-  // WS connection
-  useEffect(() => {
-    const ws = new SygenWebSocket(
-      {
-        onConnected: (agentList: string[]) => {
-          setAgents(agentList);
-          if (agentList.length > 0) {
-            setSelectedAgent((prev) =>
-              agentList.includes(prev) ? prev : agentList[0]
-            );
-          }
-        },
-        onDisconnected: () => {
-          setIsStreaming(false);
-          setAgentStatus(null);
-          streamingIdRef.current = null;
-          streamingSessionRef.current = null;
-        },
-        onTextDelta: (text) => {
-          const id = streamingIdRef.current;
-          const session = streamingSessionRef.current;
-          if (!id || !session) return;
-          setAgentStatus(null);
-          updateStreamingMessage(session, id, (msg) => ({
-            ...msg,
-            content: msg.content + text,
-          }));
-        },
-        onToolActivity: (tool) => {
-          const id = streamingIdRef.current;
-          const session = streamingSessionRef.current;
-          if (!id || !session) return;
-          setAgentStatus(`Using tool: ${tool}`);
-          updateStreamingMessage(session, id, (msg) => ({
-            ...msg,
-            toolActivity: tool,
-          }));
-        },
-        onResult: (text) => {
-          const id = streamingIdRef.current;
-          const session = streamingSessionRef.current;
-          if (!id || !session) return;
-          updateStreamingMessage(session, id, (msg) => ({
-            ...msg,
-            content: text,
-            isStreaming: false,
-            toolActivity: null,
-          }));
-          setIsStreaming(false);
-          setAgentStatus(null);
-          streamingIdRef.current = null;
-          streamingSessionRef.current = null;
-        },
-        onError: (message) => {
-          const id = streamingIdRef.current;
-          const session = streamingSessionRef.current;
-          if (id && session) {
-            updateStreamingMessage(session, id, (msg) => ({
-              ...msg,
-              content: msg.content || `Error: ${message}`,
-              isStreaming: false,
-              toolActivity: null,
-            }));
-          }
-          setIsStreaming(false);
-          setAgentStatus(null);
-          streamingIdRef.current = null;
-          streamingSessionRef.current = null;
-        },
-        onSystemStatus: (data) => {
-          if (data) {
-            setAgentStatus(data);
-          }
-        },
-        onStatusChange: setWsStatus,
-      },
-      { url: activeServer.url, token: activeServer.token }
-    );
-
-    wsRef.current = ws;
-    ws.connect();
-
-    return () => ws.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [updateStreamingMessage, activeServer.id, activeServer.url]);
+    if (activeSessionId) isInitialScrollRef.current = true;
+  }, [activeSessionId]);
 
   // Auto-scroll: instant on initial load / session switch, smooth for new messages
   useEffect(() => {
@@ -381,18 +177,17 @@ export default function ChatPage() {
     [activeServer.url, activeServer.token]
   );
 
-  // Create new session and send message
   const ensureSession = useCallback(async (): Promise<string | null> => {
     if (activeSessionId) return activeSessionId;
     try {
       const session = await SygenAPI.createChatSession(selectedAgent);
-      setSessions((prev) => [session, ...prev]);
+      setSessions((prev: ChatSession[]) => [session, ...prev]);
       setActiveSessionId(session.id);
       return session.id;
     } catch {
       return null;
     }
-  }, [activeSessionId, selectedAgent]);
+  }, [activeSessionId, selectedAgent, setSessions, setActiveSessionId]);
 
   const handleFiles = useCallback(
     async (fileList: FileList | File[]) => {
@@ -426,38 +221,12 @@ export default function ChatPage() {
 
           if (result) {
             const isVoice = /^voice_\d+\.(webm|ogg)$/i.test(result.name);
-            const fileMsg: ChatMsg = {
-              id: `msg-${uuid()}`,
-              sender: "user",
-              content: isVoice ? "" : `\u{1F4CE} ${result.name}`,
-              timestamp: new Date().toISOString(),
-              files: [
-                {
-                  path: result.path,
-                  name: result.name,
-                  size: files[i].size,
-                  mime: files[i].type,
-                },
-              ],
-            };
-            addMessage(sessionId, fileMsg);
-
-            const agentMsgId = `msg-${uuid()}`;
-            const agentMsg: ChatMsg = {
-              id: agentMsgId,
-              sender: "agent",
-              agentName: selectedAgent,
-              content: "",
-              timestamp: new Date().toISOString(),
-              isStreaming: true,
-              toolActivity: null,
-            };
-            addMessage(sessionId, agentMsg);
-
-            streamingIdRef.current = agentMsgId;
-            streamingSessionRef.current = sessionId;
-            setIsStreaming(true);
-            wsRef.current?.sendMessage(selectedAgent, result.prompt);
+            sendFileMessage(
+              sessionId,
+              { path: result.path, name: result.name, size: files[i].size, mime: files[i].type },
+              result.prompt,
+              isVoice
+            );
           } else {
             toast.error(t("chat.uploadFailed"));
           }
@@ -471,7 +240,7 @@ export default function ChatPage() {
         }
       }
     },
-    [uploadFile, addMessage, selectedAgent, ensureSession, toast, t]
+    [uploadFile, sendFileMessage, ensureSession, streamingIdRef, toast, t]
   );
 
   // Drag and drop
@@ -511,55 +280,15 @@ export default function ChatPage() {
   );
 
   const handleSend = useCallback(async () => {
-    if (!input.trim() || !selectedAgent || isStreaming) return;
-
-    const sessionId = await ensureSession();
-    if (!sessionId) return;
-
-    const userMsg: ChatMsg = {
-      id: `msg-${uuid()}`,
-      sender: "user",
-      content: input.trim(),
-      timestamp: new Date().toISOString(),
-    };
-    addMessage(sessionId, userMsg);
-
-    const agentMsgId = `msg-${uuid()}`;
-    const agentMsg: ChatMsg = {
-      id: agentMsgId,
-      sender: "agent",
-      agentName: selectedAgent,
-      content: "",
-      timestamp: new Date().toISOString(),
-      isStreaming: true,
-      toolActivity: null,
-    };
-    addMessage(sessionId, agentMsg);
-
-    streamingIdRef.current = agentMsgId;
-    streamingSessionRef.current = sessionId;
-    setIsStreaming(true);
-    setAgentStatus(t('chat.thinking'));
-    wsRef.current?.sendMessage(selectedAgent, input.trim());
+    if (!input.trim() || isStreaming) return;
+    const text = input.trim();
     setInput("");
-  }, [input, selectedAgent, isStreaming, addMessage, ensureSession, t]);
+    await chatSendMessage(text);
+  }, [input, isStreaming, chatSendMessage]);
 
   const handleAbort = useCallback(() => {
-    wsRef.current?.abort(selectedAgent);
-    const id = streamingIdRef.current;
-    const session = streamingSessionRef.current || activeSessionId;
-    if (id && session) {
-      updateStreamingMessage(session, id, (msg) => ({
-        ...msg,
-        isStreaming: false,
-        toolActivity: null,
-      }));
-    }
-    setIsStreaming(false);
-    setAgentStatus(null);
-    streamingIdRef.current = null;
-    streamingSessionRef.current = null;
-  }, [selectedAgent, updateStreamingMessage, activeSessionId]);
+    abortStreaming();
+  }, [abortStreaming]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -608,17 +337,12 @@ export default function ChatPage() {
         if (activeSessionId === sessionId) {
           setActiveSessionId(null);
         }
-        setMessagesBySession((prev) => {
-          const next = { ...prev };
-          delete next[sessionId];
-          return next;
-        });
-        historyLoadedRef.current.delete(sessionId);
+        removeSessionData(sessionId);
       } catch {
         // Ignore
       }
     },
-    [activeSessionId, t]
+    [activeSessionId, t, setSessions, setActiveSessionId, removeSessionData, confirm]
   );
 
   const statusVariant =
@@ -867,6 +591,12 @@ export default function ChatPage() {
               {...msg}
               serverUrl={activeServer.url}
               token={getStoredAccessToken() || activeServer.token}
+              agentAvatarUrl={
+                msg.sender === "agent" && msg.agentName
+                  ? `${activeServer.url}/api/agents/${encodeURIComponent(msg.agentName)}/avatar`
+                  : undefined
+              }
+              userAvatarUrl={msg.sender === "user" ? userAvatarUrl : undefined}
             />
           ))}
           <div ref={messagesEndRef} />
@@ -962,7 +692,7 @@ export default function ChatPage() {
               placeholder={`${t('chat.message')} ${selectedAgent}...`}
               disabled={wsStatus !== "connected"}
               rows={1}
-              className="flex-1 bg-bg-card border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:border-accent disabled:opacity-50 resize-none overflow-y-auto max-h-[150px] leading-relaxed"
+              className="chat-textarea flex-1 bg-bg-card border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:border-accent disabled:opacity-50 resize-none overflow-y-auto max-h-[150px] leading-relaxed"
             />
 
             {/* Voice / Send / Stop buttons */}
@@ -981,7 +711,7 @@ export default function ChatPage() {
                 type="button"
                 onClick={handleSend}
                 disabled={wsStatus !== "connected"}
-                className="p-2.5 bg-accent hover:bg-accent-hover rounded-xl transition-colors disabled:opacity-30 shrink-0"
+                className="p-2.5 bg-accent hover:bg-accent-hover text-accent-foreground rounded-xl transition-colors disabled:opacity-30 shrink-0"
                 aria-label={t('chat.sendMessage')}
               >
                 <Send size={18} />

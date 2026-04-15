@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { ServerProvider } from "@/context/ServerContext";
+import { ChatProvider } from "@/context/ChatContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { ToastProvider } from "@/components/Toast";
 import { ConfirmProvider } from "@/components/ConfirmDialog";
@@ -43,11 +44,13 @@ export default function RootLayout({
           <I18nProvider>
             <AuthProvider>
               <ServerProvider>
+                <ChatProvider>
                 <ToastProvider>
                   <ConfirmProvider>
                     <AppShell>{children}</AppShell>
                   </ConfirmProvider>
                 </ToastProvider>
+                </ChatProvider>
               </ServerProvider>
             </AuthProvider>
           </I18nProvider>

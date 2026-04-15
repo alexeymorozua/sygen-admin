@@ -103,7 +103,7 @@ function TaskFormDialog({
             <button
               type="submit"
               disabled={saving}
-              className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-text-primary text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-accent-foreground text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
             >
               <Save size={14} />
               {saving ? "Creating..." : "Create Task"}
@@ -268,7 +268,7 @@ export default function TasksPage() {
             <button
               type="button"
               onClick={() => setShowForm(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-text-primary text-sm font-medium rounded-lg transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-accent-foreground text-sm font-medium rounded-lg transition-colors"
             >
               <Plus size={16} />
               New Task
@@ -290,7 +290,7 @@ export default function TasksPage() {
                 onClick={() => setFilter(f.value)}
                 className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
                   filter === f.value
-                    ? "bg-accent text-text-primary"
+                    ? "bg-accent text-accent-foreground"
                     : "bg-bg-card text-text-secondary hover:text-text-primary"
                 }`}
               >

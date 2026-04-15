@@ -144,7 +144,7 @@ const CommandMenu = forwardRef<CommandMenuHandle, CommandMenuProps>(
               className={cn(
                 "flex items-center gap-3 w-full px-3 py-2 text-left text-sm transition-colors",
                 idx === activeIndex
-                  ? "bg-accent/40 text-text-primary"
+                  ? "bg-accent/40 text-accent-foreground"
                   : "text-text-secondary hover:bg-white/5"
               )}
             >

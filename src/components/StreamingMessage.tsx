@@ -172,6 +172,8 @@ function FilePreview({
 interface MessageProps extends StreamingMessageProps {
   serverUrl?: string;
   token?: string;
+  agentAvatarUrl?: string;
+  userAvatarUrl?: string;
 }
 
 export default function StreamingMessage({
@@ -184,8 +186,12 @@ export default function StreamingMessage({
   files: attachedFiles,
   serverUrl = "",
   token = "",
+  agentAvatarUrl,
+  userAvatarUrl,
 }: MessageProps) {
   const [copied, setCopied] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
+  const [userAvatarError, setUserAvatarError] = useState(false);
   const isUser = sender === "user";
 
   // Parse <file:...> from agent content
@@ -215,12 +221,30 @@ export default function StreamingMessage({
     <div className={cn("flex gap-3 mb-4 group", isUser && "flex-row-reverse")}>
       <div
         className={cn(
-          "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
-          isUser ? "bg-accent" : "bg-bg-card border border-border"
+          "w-8 h-8 rounded-full flex items-center justify-center shrink-0 overflow-hidden",
+          isUser ? "bg-accent text-accent-foreground" : "bg-bg-card border border-border"
         )}
       >
         {isUser ? (
-          <User size={16} />
+          userAvatarUrl && !userAvatarError ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={userAvatarUrl}
+              alt="User"
+              className="w-8 h-8 rounded-full object-cover"
+              onError={() => setUserAvatarError(true)}
+            />
+          ) : (
+            <User size={16} />
+          )
+        ) : agentAvatarUrl && !avatarError ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={agentAvatarUrl}
+            alt={agentName || "agent"}
+            className="w-8 h-8 rounded-full object-cover"
+            onError={() => setAvatarError(true)}
+          />
         ) : (
           <Bot size={16} className="text-brand-400" />
         )}
@@ -234,11 +258,13 @@ export default function StreamingMessage({
           </div>
         )}
 
+        {/* Hide text bubble for voice-only messages (empty content + files) */}
+        {!(isUser && !content && allFiles.length > 0) && (
         <div
           className={cn(
             "rounded-2xl px-4 py-2.5 text-sm leading-relaxed relative",
             isUser
-              ? "bg-accent text-text-primary rounded-br-md"
+              ? "bg-accent text-accent-foreground rounded-br-md"
               : "bg-bg-card border border-border text-text-primary rounded-bl-md"
           )}
         >
@@ -250,11 +276,13 @@ export default function StreamingMessage({
                 <ReactMarkdown rehypePlugins={[rehypeSanitize]}>
                   {cleanText}
                 </ReactMarkdown>
-              ) : isStreaming ? (
-                <span className="invisible">&#8203;</span>
               ) : null}
-              {isStreaming && (
-                <span className="inline w-1.5 h-3.5 ml-0.5 bg-brand-400 animate-pulse rounded-sm align-middle" style={{ display: "inline-block" }} />
+              {isStreaming && !cleanText && (
+                <span className="inline-flex items-center gap-1 h-5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-bounce" style={{ animationDelay: "0ms" }} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-bounce" style={{ animationDelay: "150ms" }} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-bounce" style={{ animationDelay: "300ms" }} />
+                </span>
               )}
             </div>
           )}
@@ -275,6 +303,7 @@ export default function StreamingMessage({
             </button>
           )}
         </div>
+        )}
 
         {/* File attachments */}
         {allFiles.length > 0 && serverUrl && (

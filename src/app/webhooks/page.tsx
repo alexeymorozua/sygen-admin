@@ -165,7 +165,7 @@ function WebhookFormDialog({
             <button
               type="submit"
               disabled={saving}
-              className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-text-primary text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-accent-foreground text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
             >
               <Save size={14} />
               {saving ? t('common.saving') : isEdit ? t('common.update') : t('common.create')}
@@ -340,7 +340,7 @@ export default function WebhooksPage() {
           <button
             type="button"
             onClick={() => setShowForm("create")}
-            className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-text-primary text-sm font-medium rounded-lg transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-accent-foreground text-sm font-medium rounded-lg transition-colors"
           >
             <Plus size={16} />
             {t('webhooks.newWebhook')}
@@ -361,7 +361,7 @@ export default function WebhooksPage() {
                 onClick={() => setFilter(f.value)}
                 className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
                   filter === f.value
-                    ? "bg-accent text-text-primary"
+                    ? "bg-accent text-accent-foreground"
                     : "bg-bg-card text-text-secondary hover:text-text-primary"
                 }`}
               >
