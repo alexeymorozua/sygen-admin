@@ -41,6 +41,20 @@ const uk: Record<string, string> = {
   "agents.lastLines": "Останні 200 рядків",
   "agents.noLogs": "Логи відсутні",
   "agents.sessions": "сесій",
+  "agents.metrics": "Метрики",
+  "agents.executions": "Виконання",
+  "agents.avgDuration": "Сер. тривалість",
+  "agents.successRate": "Успішність",
+  "agents.errors": "Помилки",
+  "agents.period24h": "24г",
+  "agents.period7d": "7д",
+  "agents.noMetrics": "Метрики відсутні",
+
+  // Logs
+  "logs.live": "Live",
+  "logs.pause": "Пауза",
+  "logs.resume": "Продовжити",
+  "logs.lines": "рядків",
 
   // Chat
   "chat.sendMessage": "Надіслати повідомлення",
@@ -140,6 +154,24 @@ const uk: Record<string, string> = {
   "settings.testConnection": "Перевірити з'єднання",
   "settings.logout": "Вийти",
   "settings.apiConnection": "API з'єднання",
+  "settings.export": "Експорт",
+  "settings.import": "Імпорт",
+  "settings.exportConfig": "Експорт конфігурації",
+  "settings.importConfig": "Імпорт конфігурації",
+  "settings.importPreview": "Попередній перегляд імпорту",
+  "settings.importConfirm": "Підтвердити імпорт",
+  "settings.exportImport": "Експорт / Імпорт",
+  "settings.exportDescription": "Завантажити cron задачі, webhooks та користувачів як JSON",
+  "settings.importDescription": "Завантажити раніше експортований JSON для злиття",
+  "settings.selectFile": "Обрати JSON файл",
+  "settings.importing": "Імпорт...",
+  "settings.exporting": "Експорт...",
+  "settings.importSuccess": "Імпорт завершено",
+  "settings.cronJobs": "Cron задачі",
+  "settings.webhooks": "Webhooks",
+  "settings.users": "Користувачі",
+  "settings.added": "додано",
+  "settings.skipped": "пропущено",
 
   // Servers
   "servers.title": "Сервери",
@@ -240,8 +272,51 @@ const uk: Record<string, string> = {
   "status.connected": "Підключено",
   "status.disconnected": "Відключено",
 
+  // Profile
+  "nav.profile": "Профіль",
+  "profile.title": "Профіль",
+  "profile.changePassword": "Змінити пароль",
+  "profile.currentPassword": "Поточний пароль",
+  "profile.newPassword": "Новий пароль",
+  "profile.confirmPassword": "Підтвердити пароль",
+  "profile.passwordMismatch": "Паролі не збігаються",
+  "profile.saved": "Профіль оновлено",
+
+  // Search / Filter
+  "common.filter": "Фільтр",
+  "common.searchPlaceholder": "Пошук...",
+
+  // Notifications
+  "notifications.title": "Сповіщення",
+  "notifications.empty": "Немає сповіщень",
+  "notifications.markAllRead": "Позначити все прочитаним",
+  "notifications.taskCompleted": "Задачу завершено",
+  "notifications.taskFailed": "Задачу не виконано",
+  "notifications.cronFailed": "Cron задача не виконана",
+
   // Connection
   "connection.manageServers": "Керувати серверами",
+
+  // Auth / 2FA
+  "auth.twoFactor": "Двофакторна автентифікація",
+  "auth.twoFactorEnabled": "2FA увімкнено",
+  "auth.twoFactorDescription": "Додайте додатковий рівень безпеки за допомогою TOTP автентифікатора.",
+  "auth.enable2FA": "Увімкнути 2FA",
+  "auth.disable2FA": "Вимкнути 2FA",
+  "auth.disableHint": "Введіть поточний 2FA код для вимкнення",
+  "auth.enterCode": "Введіть 6-значний код з вашого автентифікатора",
+  "auth.scanQR": "Додайте цей секрет у ваш автентифікатор:",
+  "auth.secretKey": "Секретний ключ",
+  "auth.verified": "2FA успішно увімкнено",
+
+  // Webhooks (extended)
+  "webhooks.secret": "Секрет",
+  "webhooks.signature": "Підпис",
+  "webhooks.signatureHeader": "Заголовок підпису",
+
+  // Common (extended)
+  "common.back": "Назад",
+  "common.optional": "необов'язково",
 };
 
 export default uk;

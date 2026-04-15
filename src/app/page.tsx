@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { Bot, ListTodo, Clock, Webhook as WebhookIcon, Activity, Cpu, HardDrive, MemoryStick, Server, Circle, RefreshCw } from "lucide-react";
+import { Bot, ListTodo, Clock, Webhook as WebhookIcon, Activity, Cpu, HardDrive, MemoryStick, Server, Circle, RefreshCw, LogIn, Terminal } from "lucide-react";
 import StatusCard from "@/components/StatusCard";
 import StatusBadge from "@/components/StatusBadge";
 import { LoadingSpinner, ErrorState } from "@/components/LoadingState";
@@ -219,20 +219,26 @@ export default function DashboardPage() {
             {events.length === 0 && (
               <p className="text-sm text-text-secondary py-4 text-center">{t('dashboard.noRecentActivity')}</p>
             )}
-            {events.slice(0, 8).map((event) => (
-              <div key={event.id} className="flex items-start gap-3 py-2 border-b border-border/50 last:border-0">
-                <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
-                  event.type === "agent" ? "bg-brand-400" :
-                  event.type === "cron" ? "bg-green-400" :
-                  event.type === "webhook" ? "bg-purple-400" :
-                  event.type === "task" ? "bg-yellow-400" : "bg-gray-400"
-                }`} />
-                <div className="min-w-0">
-                  <p className="text-sm text-text-primary truncate">{event.message}</p>
-                  <p className="text-xs text-text-secondary">{formatDate(event.timestamp)}</p>
+            {events.slice(0, 8).map((event, idx) => {
+              const iconProps = { size: 14, className: "shrink-0 mt-0.5" };
+              const icon =
+                event.type === "login" ? <LogIn {...iconProps} className={`${iconProps.className} text-brand-400`} /> :
+                event.type === "task" ? <ListTodo {...iconProps} className={`${iconProps.className} text-yellow-400`} /> :
+                event.type === "cron" ? <Clock {...iconProps} className={`${iconProps.className} text-green-400`} /> :
+                event.type === "agent" ? <Bot {...iconProps} className={`${iconProps.className} text-brand-400`} /> :
+                event.type === "webhook" ? <WebhookIcon {...iconProps} className={`${iconProps.className} text-purple-400`} /> :
+                <Terminal {...iconProps} className={`${iconProps.className} text-gray-400`} />;
+
+              return (
+                <div key={event.id || `activity-${idx}`} className="flex items-start gap-3 py-2 border-b border-border/50 last:border-0">
+                  {icon}
+                  <div className="min-w-0">
+                    <p className="text-sm text-text-primary truncate">{event.message}</p>
+                    <p className="text-xs text-text-secondary">{formatDate(event.timestamp)}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 

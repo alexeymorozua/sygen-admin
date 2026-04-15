@@ -41,6 +41,20 @@ const ru: Record<string, string> = {
   "agents.lastLines": "Последние 200 строк",
   "agents.noLogs": "Логи отсутствуют",
   "agents.sessions": "сессий",
+  "agents.metrics": "Метрики",
+  "agents.executions": "Выполнения",
+  "agents.avgDuration": "Сред. длительность",
+  "agents.successRate": "Успешность",
+  "agents.errors": "Ошибки",
+  "agents.period24h": "24ч",
+  "agents.period7d": "7д",
+  "agents.noMetrics": "Метрики отсутствуют",
+
+  // Logs
+  "logs.live": "Live",
+  "logs.pause": "Пауза",
+  "logs.resume": "Продолжить",
+  "logs.lines": "строк",
 
   // Chat
   "chat.sendMessage": "Отправить сообщение",
@@ -140,6 +154,24 @@ const ru: Record<string, string> = {
   "settings.testConnection": "Проверить соединение",
   "settings.logout": "Выйти",
   "settings.apiConnection": "API соединение",
+  "settings.export": "Экспорт",
+  "settings.import": "Импорт",
+  "settings.exportConfig": "Экспорт конфигурации",
+  "settings.importConfig": "Импорт конфигурации",
+  "settings.importPreview": "Предпросмотр импорта",
+  "settings.importConfirm": "Подтвердить импорт",
+  "settings.exportImport": "Экспорт / Импорт",
+  "settings.exportDescription": "Скачать cron задачи, webhooks и пользователей как JSON",
+  "settings.importDescription": "Загрузить ранее экспортирован��ый JSON для слияния",
+  "settings.selectFile": "Выбрать JSON файл",
+  "settings.importing": "Импорт...",
+  "settings.exporting": "Экспорт...",
+  "settings.importSuccess": "Импорт завершён",
+  "settings.cronJobs": "Cron задачи",
+  "settings.webhooks": "Webhooks",
+  "settings.users": "Пользователи",
+  "settings.added": "добавлено",
+  "settings.skipped": "пропущено",
 
   // Servers
   "servers.title": "Серверы",
@@ -240,8 +272,51 @@ const ru: Record<string, string> = {
   "status.connected": "Подключено",
   "status.disconnected": "Отключено",
 
+  // Profile
+  "nav.profile": "Профиль",
+  "profile.title": "Профиль",
+  "profile.changePassword": "Сменить пароль",
+  "profile.currentPassword": "Текущий пароль",
+  "profile.newPassword": "Новый пароль",
+  "profile.confirmPassword": "Подтвердить пароль",
+  "profile.passwordMismatch": "Пароли не совпадают",
+  "profile.saved": "Профиль обновлён",
+
+  // Search / Filter
+  "common.filter": "Фильтр",
+  "common.searchPlaceholder": "Поиск...",
+
+  // Notifications
+  "notifications.title": "Уведомления",
+  "notifications.empty": "Нет уведомлений",
+  "notifications.markAllRead": "Отметить все прочитанным",
+  "notifications.taskCompleted": "Задача завершена",
+  "notifications.taskFailed": "Задача не выполнена",
+  "notifications.cronFailed": "Cron задача не выполнена",
+
   // Connection
   "connection.manageServers": "Управление серверами",
+
+  // Auth / 2FA
+  "auth.twoFactor": "Двухфакторная аутентификация",
+  "auth.twoFactorEnabled": "2FA включена",
+  "auth.twoFactorDescription": "Добавьте дополнительный уровень безопасности с помощью TOTP аутентификатора.",
+  "auth.enable2FA": "Включить 2FA",
+  "auth.disable2FA": "Отключить 2FA",
+  "auth.disableHint": "Введите текущий 2FA код для отключения",
+  "auth.enterCode": "Введите 6-значный код из вашего аутентификатора",
+  "auth.scanQR": "Добавьте этот секрет в ваш аутентификатор:",
+  "auth.secretKey": "Секретный ключ",
+  "auth.verified": "2FA успешно включена",
+
+  // Webhooks (extended)
+  "webhooks.secret": "Секрет",
+  "webhooks.signature": "Подпись",
+  "webhooks.signatureHeader": "Заголовок подписи",
+
+  // Common (extended)
+  "common.back": "Назад",
+  "common.optional": "необязательно",
 };
 
 export default ru;

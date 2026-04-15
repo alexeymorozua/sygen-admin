@@ -41,6 +41,20 @@ const en: Record<string, string> = {
   "agents.lastLines": "Last 200 lines",
   "agents.noLogs": "No logs available",
   "agents.sessions": "sessions",
+  "agents.metrics": "Metrics",
+  "agents.executions": "Executions",
+  "agents.avgDuration": "Avg Duration",
+  "agents.successRate": "Success Rate",
+  "agents.errors": "Errors",
+  "agents.period24h": "24h",
+  "agents.period7d": "7d",
+  "agents.noMetrics": "No metrics available",
+
+  // Logs
+  "logs.live": "Live",
+  "logs.pause": "Pause",
+  "logs.resume": "Resume",
+  "logs.lines": "lines",
 
   // Chat
   "chat.sendMessage": "Send message",
@@ -140,6 +154,24 @@ const en: Record<string, string> = {
   "settings.testConnection": "Test Connection",
   "settings.logout": "Logout",
   "settings.apiConnection": "API Connection",
+  "settings.export": "Export",
+  "settings.import": "Import",
+  "settings.exportConfig": "Export Configuration",
+  "settings.importConfig": "Import Configuration",
+  "settings.importPreview": "Import Preview",
+  "settings.importConfirm": "Confirm Import",
+  "settings.exportImport": "Export / Import",
+  "settings.exportDescription": "Download all cron jobs, webhooks, and users as JSON",
+  "settings.importDescription": "Upload a previously exported JSON file to merge",
+  "settings.selectFile": "Select JSON file",
+  "settings.importing": "Importing...",
+  "settings.exporting": "Exporting...",
+  "settings.importSuccess": "Import completed",
+  "settings.cronJobs": "Cron Jobs",
+  "settings.webhooks": "Webhooks",
+  "settings.users": "Users",
+  "settings.added": "added",
+  "settings.skipped": "skipped",
 
   // Servers
   "servers.title": "Servers",
@@ -240,8 +272,51 @@ const en: Record<string, string> = {
   "status.connected": "Connected",
   "status.disconnected": "Disconnected",
 
+  // Profile
+  "nav.profile": "Profile",
+  "profile.title": "Profile",
+  "profile.changePassword": "Change Password",
+  "profile.currentPassword": "Current Password",
+  "profile.newPassword": "New Password",
+  "profile.confirmPassword": "Confirm Password",
+  "profile.passwordMismatch": "Passwords do not match",
+  "profile.saved": "Profile updated",
+
+  // Search / Filter
+  "common.filter": "Filter",
+  "common.searchPlaceholder": "Search...",
+
+  // Notifications
+  "notifications.title": "Notifications",
+  "notifications.empty": "No notifications",
+  "notifications.markAllRead": "Mark all read",
+  "notifications.taskCompleted": "Task completed",
+  "notifications.taskFailed": "Task failed",
+  "notifications.cronFailed": "Cron job failed",
+
   // Connection
   "connection.manageServers": "Manage Servers",
+
+  // Auth / 2FA
+  "auth.twoFactor": "Two-Factor Authentication",
+  "auth.twoFactorEnabled": "2FA Enabled",
+  "auth.twoFactorDescription": "Add an extra layer of security to your account with a TOTP authenticator app.",
+  "auth.enable2FA": "Enable 2FA",
+  "auth.disable2FA": "Disable 2FA",
+  "auth.disableHint": "Enter your current 2FA code to disable",
+  "auth.enterCode": "Enter the 6-digit code from your authenticator app",
+  "auth.scanQR": "Add this secret to your authenticator app:",
+  "auth.secretKey": "Secret Key",
+  "auth.verified": "2FA enabled successfully",
+
+  // Webhooks (extended)
+  "webhooks.secret": "Secret",
+  "webhooks.signature": "Signature",
+  "webhooks.signatureHeader": "Signature header",
+
+  // Common (extended)
+  "common.back": "Back",
+  "common.optional": "optional",
 };
 
 export default en;

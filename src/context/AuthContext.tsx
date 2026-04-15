@@ -3,16 +3,18 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { SygenAPI, getStoredUser } from "@/lib/api";
-import type { UserInfo } from "@/lib/api";
+import type { UserInfo, LoginResponse } from "@/lib/api";
 
 interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   user: UserInfo | null;
-  login: (credentials: { username: string; password: string } | { token: string }) => Promise<void>;
+  login: (credentials: { username: string; password: string } | { token: string }) => Promise<LoginResponse>;
+  login2FA: (tempToken: string, code: string) => Promise<void>;
   logout: () => Promise<void>;
   hasRole: (minRole: "viewer" | "operator" | "admin") => boolean;
   canAccessAgent: (agentName: string) => boolean;
+  refreshUser: (updated: UserInfo) => void;
 }
 
 const ROLE_LEVELS: Record<string, number> = { viewer: 0, operator: 1, admin: 2 };
@@ -21,10 +23,12 @@ const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
   isLoading: true,
   user: null,
-  login: async () => {},
+  login: async () => ({ access_token: "", refresh_token: "", user: {} as UserInfo }),
+  login2FA: async () => {},
   logout: async () => {},
   hasRole: () => false,
   canAccessAgent: () => false,
+  refreshUser: () => {},
 });
 
 export function useAuth() {
@@ -78,6 +82,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(async (credentials: { username: string; password: string } | { token: string }) => {
     const response = await SygenAPI.login(credentials);
+    if (response.requires_2fa) {
+      // Don't authenticate yet — caller handles 2FA step
+      return response;
+    }
+    setIsAuthenticated(true);
+    setUser(response.user || null);
+    router.replace("/");
+    return response;
+  }, [router]);
+
+  const login2FA = useCallback(async (tempToken: string, code: string) => {
+    const response = await SygenAPI.login2FA(tempToken, code);
     setIsAuthenticated(true);
     setUser(response.user || null);
     router.replace("/");
@@ -103,8 +119,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return user.allowed_agents.includes(agentName);
   }, [user]);
 
+  const refreshUser = useCallback((updated: UserInfo) => {
+    setUser(updated);
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading, user, login, logout, hasRole, canAccessAgent }}>
+    <AuthContext.Provider value={{ isAuthenticated, isLoading, user, login, login2FA, logout, hasRole, canAccessAgent, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

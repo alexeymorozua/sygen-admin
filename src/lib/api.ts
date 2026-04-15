@@ -56,12 +56,21 @@ export interface UserInfo {
   allowed_agents: string[];
   active?: boolean;
   created_at?: number;
+  totp_enabled?: boolean;
 }
 
 export interface LoginResponse {
   access_token: string;
   refresh_token: string;
   user: UserInfo;
+  requires_2fa?: boolean;
+  temp_token?: string;
+}
+
+export interface TwoFactorSetupResponse {
+  secret: string;
+  otpauth_uri: string;
+  qr_data: string;
 }
 
 export interface AuditEntry {
@@ -227,6 +236,28 @@ export class SygenAPI {
       throw new Error(body?.error || "Login failed");
     }
     const data = await res.json();
+    // If 2FA is required, don't store tokens yet — return early
+    if (data.requires_2fa) {
+      return data;
+    }
+    storeTokens(data.access_token, data.refresh_token);
+    if (data.user) {
+      storeUser(data.user);
+    }
+    return data;
+  }
+
+  static async login2FA(tempToken: string, code: string): Promise<LoginResponse> {
+    const res = await fetch(`${getApiUrl()}/api/auth/2fa/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ temp_token: tempToken, code }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      throw new Error(body?.error || "2FA verification failed");
+    }
+    const data = await res.json();
     storeTokens(data.access_token, data.refresh_token);
     if (data.user) {
       storeUser(data.user);
@@ -284,6 +315,44 @@ export class SygenAPI {
     } catch {
       return undefined;
     }
+  }
+
+  // ---- Agent Metrics ----
+
+  static async getAgentMetrics(
+    name: string,
+    period: "24h" | "7d" = "24h",
+  ): Promise<{
+    total_executions: number;
+    avg_duration_seconds: number;
+    error_count: number;
+    success_rate: number;
+    last_active: string | null;
+    tokens_used: number | null;
+    period: string;
+  }> {
+    if (USE_MOCK) {
+      return {
+        total_executions: 0,
+        avg_duration_seconds: 0,
+        error_count: 0,
+        success_rate: 100,
+        last_active: null,
+        tokens_used: null,
+        period,
+      };
+    }
+    return fetchAPI(`/api/agents/${name}/metrics?period=${period}`);
+  }
+
+  static async getAgentMetricsHistory(
+    name: string,
+    period: "24h" | "7d" = "24h",
+  ): Promise<
+    { timestamp: string; executions: number; errors: number; avg_duration: number }[]
+  > {
+    if (USE_MOCK) return [];
+    return fetchAPI(`/api/agents/${name}/metrics/history?period=${period}`);
   }
 
   // ---- Cron Jobs ----
@@ -641,7 +710,15 @@ export class SygenAPI {
 
   static async getActivity(): Promise<ActivityEvent[]> {
     if (USE_MOCK) return mockActivityEvents;
-    return fetchAPI<ActivityEvent[]>("/api/activity");
+    const data = await fetchAPI<Record<string, unknown>[]>("/api/activity");
+    return data.map((item, i) => ({
+      id: String(item.id || `activity-${i}`),
+      type: (item.type as ActivityEvent["type"]) || "system",
+      message: String(item.message || ""),
+      timestamp: String(item.timestamp || ""),
+      agent: item.agent ? String(item.agent) : undefined,
+      details: item.details ? String(item.details) : undefined,
+    }));
   }
 
   // ---- Config (settings page) ----
@@ -699,10 +776,104 @@ export class SygenAPI {
     return fetchAPI<AuditEntry[]>(`/api/audit${qs}`);
   }
 
+  // ---- Profile ----
+
+  static async updateProfile(data: {
+    display_name?: string;
+    old_password?: string;
+    new_password?: string;
+  }): Promise<UserInfo> {
+    const result = await fetchAPI<UserInfo>("/api/auth/profile", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+    if (result.username) storeUser(result);
+    return result;
+  }
+
   // ---- Current user ----
 
   static async getMe(): Promise<UserInfo> {
     return fetchAPI<UserInfo>("/api/auth/me");
+  }
+
+  // ---- 2FA ----
+
+  static async setup2FA(): Promise<TwoFactorSetupResponse> {
+    return fetchAPI<TwoFactorSetupResponse>("/api/auth/2fa/setup", { method: "POST" });
+  }
+
+  static async verify2FA(code: string): Promise<{ status: string; totp_enabled: boolean }> {
+    return fetchAPI<{ status: string; totp_enabled: boolean }>("/api/auth/2fa/verify", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    });
+  }
+
+  static async disable2FA(code: string): Promise<{ status: string; totp_enabled: boolean }> {
+    return fetchAPI<{ status: string; totp_enabled: boolean }>("/api/auth/2fa/disable", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    });
+  }
+
+  // ---- Webhook signature verify ----
+
+  static async verifyWebhookSignature(
+    id: string,
+    payload: string,
+    signature: string,
+  ): Promise<{ valid: boolean }> {
+    return fetchAPI<{ valid: boolean }>(`/api/webhooks/${encodeURIComponent(id)}/verify`, {
+      method: "POST",
+      body: JSON.stringify({ payload, signature }),
+    });
+  }
+
+  // ---- Export / Import ----
+
+  static async exportConfig(): Promise<{
+    version: number;
+    exported_at: string;
+    cron_jobs: Record<string, unknown>[];
+    webhooks: Record<string, unknown>[];
+    users: Record<string, unknown>[];
+  }> {
+    if (USE_MOCK) {
+      return { version: 1, exported_at: new Date().toISOString(), cron_jobs: [], webhooks: [], users: [] };
+    }
+    return fetchAPI("/api/export");
+  }
+
+  static async importConfig(data: Record<string, unknown>): Promise<{
+    cron_jobs_added: number;
+    webhooks_added: number;
+    users_added: number;
+    skipped: number;
+  }> {
+    if (USE_MOCK) {
+      return { cron_jobs_added: 0, webhooks_added: 0, users_added: 0, skipped: 0 };
+    }
+    return fetchAPI("/api/import", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  // ---- Live log polling ----
+
+  static async getLogsPoll(
+    agent?: string,
+    after?: number,
+    lines?: number,
+  ): Promise<{ agent: string; lines: string[]; timestamp: number }> {
+    if (USE_MOCK) return { agent: agent || "main", lines: [], timestamp: Date.now() / 1000 };
+    const params = new URLSearchParams();
+    if (agent) params.set("agent", agent);
+    if (after) params.set("after", String(after));
+    if (lines) params.set("lines", String(lines));
+    const qs = params.toString();
+    return fetchAPI(`/api/logs/poll${qs ? `?${qs}` : ""}`);
   }
 
   // ---- WebSocket for chat ----
@@ -785,6 +956,7 @@ function mapWebhook(raw: Record<string, unknown>): Webhook {
     lastTriggered: String(raw.last_triggered || raw.lastTriggered || "-"),
     triggerCount: Number(raw.trigger_count || raw.triggerCount || 0),
     description: String(raw.description || ""),
+    secret: raw.secret ? String(raw.secret) : undefined,
   };
 }
 

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { X, Square, RefreshCw, FileText, ChevronDown, ChevronUp, Plus, Save } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
 import DataTable, { type Column } from "@/components/DataTable";
+import TableSearch from "@/components/TableSearch";
 import StatusBadge from "@/components/StatusBadge";
 import { LoadingSpinner, ErrorState } from "@/components/LoadingState";
 import { useToast } from "@/components/Toast";
@@ -122,6 +123,7 @@ export default function TasksPage() {
   const [showFullOutput, setShowFullOutput] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [agents, setAgents] = useState<Agent[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const refreshTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const { success: toastSuccess, error: toastError } = useToast();
   const { t } = useTranslation();
@@ -189,7 +191,11 @@ export default function TasksPage() {
     toastSuccess(`Task "${data.name}" created`);
   };
 
-  const filtered = filter === "all" ? tasks : tasks.filter((t) => t.status === filter);
+  const filtered = (filter === "all" ? tasks : tasks.filter((t) => t.status === filter)).filter((t) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return t.name.toLowerCase().includes(q) || t.agent.toLowerCase().includes(q) || t.status.toLowerCase().includes(q);
+  });
 
   const columns: Column<Task>[] = [
     { key: "name", label: t('common.name'), sortable: true, render: (task) => <span className="font-medium">{task.name}</span> },
@@ -272,27 +278,35 @@ export default function TasksPage() {
           <div className="mb-4 text-sm text-danger bg-danger/10 rounded-lg px-3 py-2">{error}</div>
         )}
 
-        {/* Filters */}
-        <div className="flex items-center gap-2 mb-4">
-          {filters.map((f) => (
-            <button
-              type="button"
-              key={f.value}
-              onClick={() => setFilter(f.value)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                filter === f.value
-                  ? "bg-accent text-text-primary"
-                  : "bg-bg-card text-text-secondary hover:text-text-primary"
-              }`}
-            >
-              {f.label}
-              {f.value !== "all" && (
-                <span className="ml-1.5 opacity-60">
-                  {tasks.filter((t) => t.status === f.value).length}
-                </span>
-              )}
-            </button>
-          ))}
+        {/* Filters + Search */}
+        <div className="flex items-center gap-2 mb-4 flex-wrap">
+          <div className="flex items-center gap-2">
+            {filters.map((f) => (
+              <button
+                type="button"
+                key={f.value}
+                onClick={() => setFilter(f.value)}
+                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                  filter === f.value
+                    ? "bg-accent text-text-primary"
+                    : "bg-bg-card text-text-secondary hover:text-text-primary"
+                }`}
+              >
+                {f.label}
+                {f.value !== "all" && (
+                  <span className="ml-1.5 opacity-60">
+                    {tasks.filter((t) => t.status === f.value).length}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+          <div className="ml-auto w-64">
+            <TableSearch
+              placeholder={`${t("common.search")} (${t("common.name")}, ${t("common.agent")})`}
+              onSearch={setSearchQuery}
+            />
+          </div>
         </div>
 
         {/* Table */}

@@ -34,6 +34,7 @@ export interface Webhook {
   lastTriggered: string;
   triggerCount: number;
   description: string;
+  secret?: string;
 }
 
 export interface Task {
@@ -68,10 +69,11 @@ export interface MemoryModule {
 
 export interface ActivityEvent {
   id: string;
-  type: "agent" | "cron" | "webhook" | "task" | "system";
+  type: "agent" | "cron" | "webhook" | "task" | "system" | "login";
   message: string;
   timestamp: string;
   agent?: string;
+  details?: string;
 }
 
 export interface SystemHealth {

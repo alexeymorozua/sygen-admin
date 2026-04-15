@@ -5,6 +5,7 @@ import {
   Users, Plus, Pencil, Trash2, Shield, ShieldCheck, Eye,
   X, RefreshCw, ClipboardList, ToggleLeft, ToggleRight, KeyRound,
 } from "lucide-react";
+import TableSearch from "@/components/TableSearch";
 import { useAuth } from "@/context/AuthContext";
 import { SygenAPI } from "@/lib/api";
 import type { UserInfo, AuditEntry } from "@/lib/api";
@@ -39,6 +40,7 @@ export default function UsersPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingUser, setEditingUser] = useState<UserInfo | null>(null);
   const [agents, setAgents] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const loadUsers = useCallback(async () => {
     setLoading(true);
@@ -157,9 +159,22 @@ export default function UsersPage() {
         </button>
       </div>
 
+      {tab === "users" && (
+        <div className="mb-4 w-64">
+          <TableSearch
+            placeholder={`${t("common.search")} (${t("users.username")}, ${t("users.role")})`}
+            onSearch={setSearchQuery}
+          />
+        </div>
+      )}
+
       {tab === "users" ? (
         <UsersTable
-          users={users}
+          users={users.filter((u) => {
+            if (!searchQuery) return true;
+            const q = searchQuery.toLowerCase();
+            return u.username.toLowerCase().includes(q) || u.role.toLowerCase().includes(q) || (u.display_name || "").toLowerCase().includes(q);
+          })}
           onEdit={(u) => { setEditingUser(u); setShowForm(true); }}
           onDelete={handleDelete}
           onToggleActive={handleToggleActive}

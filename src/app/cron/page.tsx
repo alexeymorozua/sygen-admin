@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Plus, X, Play, Pause, RotateCcw, Trash2, Edit2, Save, Clock, ChevronDown } from "lucide-react";
 import DataTable, { type Column } from "@/components/DataTable";
+import TableSearch from "@/components/TableSearch";
 import StatusBadge from "@/components/StatusBadge";
 import { LoadingSpinner, ErrorState } from "@/components/LoadingState";
 import { useToast } from "@/components/Toast";
@@ -221,6 +222,7 @@ export default function CronPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState<false | "create" | "edit">(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const { success, error: toastError } = useToast();
   const { t } = useTranslation();
 
@@ -300,7 +302,11 @@ export default function CronPage() {
     success(`Job "${data.name}" updated`);
   };
 
-  const filtered = filter === "all" ? jobs : jobs.filter((j) => j.status === filter);
+  const filtered = (filter === "all" ? jobs : jobs.filter((j) => j.status === filter)).filter((j) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return j.name.toLowerCase().includes(q) || j.agent.toLowerCase().includes(q) || j.schedule.toLowerCase().includes(q);
+  });
 
   const columns: Column<CronJob>[] = [
     { key: "name", label: t('common.name'), sortable: true, render: (j) => (
@@ -370,26 +376,34 @@ export default function CronPage() {
           <div className="mb-4 text-sm text-danger bg-danger/10 rounded-lg px-3 py-2">{error}</div>
         )}
 
-        <div className="flex items-center gap-2 mb-4">
-          {filters.map((f) => (
-            <button
-              type="button"
-              key={f.value}
-              onClick={() => setFilter(f.value)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                filter === f.value
-                  ? "bg-accent text-text-primary"
-                  : "bg-bg-card text-text-secondary hover:text-text-primary"
-              }`}
-            >
-              {f.label}
-              {f.value !== "all" && (
-                <span className="ml-1.5 opacity-60">
-                  {jobs.filter((j) => j.status === f.value).length}
-                </span>
-              )}
-            </button>
-          ))}
+        <div className="flex items-center gap-2 mb-4 flex-wrap">
+          <div className="flex items-center gap-2">
+            {filters.map((f) => (
+              <button
+                type="button"
+                key={f.value}
+                onClick={() => setFilter(f.value)}
+                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                  filter === f.value
+                    ? "bg-accent text-text-primary"
+                    : "bg-bg-card text-text-secondary hover:text-text-primary"
+                }`}
+              >
+                {f.label}
+                {f.value !== "all" && (
+                  <span className="ml-1.5 opacity-60">
+                    {jobs.filter((j) => j.status === f.value).length}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+          <div className="ml-auto w-64">
+            <TableSearch
+              placeholder={`${t("common.search")} (${t("common.name")}, ${t("common.agent")}, ${t("cron.schedule")})`}
+              onSearch={setSearchQuery}
+            />
+          </div>
         </div>
 
         <div className="bg-bg-card border border-border rounded-xl overflow-hidden">

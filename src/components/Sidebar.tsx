@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -19,6 +19,7 @@ import {
   Sun,
   Moon,
   Users,
+  User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
@@ -27,6 +28,8 @@ import { useTranslation } from "@/lib/i18n";
 import ConnectionStatus from "./ConnectionStatus";
 import ServerSwitcher from "./ServerSwitcher";
 import LanguageSwitcher from "./LanguageSwitcher";
+import NotificationBell, { type Notification } from "./NotificationBell";
+import { SygenAPI } from "@/lib/api";
 
 interface NavItem {
   href: string;
@@ -46,6 +49,7 @@ const navItems: NavItem[] = [
   { href: "/users", labelKey: "nav.users", icon: Users, minRole: "admin" },
   { href: "/servers", labelKey: "nav.servers", icon: Server, minRole: "admin" },
   { href: "/settings", labelKey: "nav.settings", icon: Settings },
+  { href: "/profile", labelKey: "nav.profile", icon: User },
 ];
 
 export default function Sidebar() {
@@ -54,8 +58,42 @@ export default function Sidebar() {
   const { theme, toggleTheme } = useTheme();
   const { t } = useTranslation();
   const { hasRole, user } = useAuth();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const visibleNav = navItems.filter((item) => !item.minRole || hasRole(item.minRole));
+
+  // Poll activity feed for notification-worthy events
+  const loadNotifications = useCallback(async () => {
+    try {
+      const events = await SygenAPI.getActivity();
+      const notifs: Notification[] = events
+        .filter((e) =>
+          (e.type === "task" && e.message.includes("completed")) ||
+          (e.type === "task" && e.message.includes("failed")) ||
+          (e.type === "cron" && e.message.includes("failed"))
+        )
+        .map((e, i) => ({
+          id: e.id || `notif-${i}`,
+          type: e.message.includes("completed")
+            ? "task_completed" as const
+            : e.type === "cron"
+              ? "cron_failed" as const
+              : "task_failed" as const,
+          message: e.message,
+          timestamp: e.timestamp,
+        }));
+      setNotifications(notifs);
+    } catch {
+      // Silently ignore — notifications are non-critical
+    }
+  }, []);
+
+  useEffect(() => {
+    loadNotifications();
+    pollRef.current = setInterval(loadNotifications, 30_000);
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [loadNotifications]);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -114,6 +152,7 @@ export default function Sidebar() {
           {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
           {theme === "dark" ? "Light Mode" : "Dark Mode"}
         </button>
+        <NotificationBell notifications={notifications} />
         <LanguageSwitcher />
         <ConnectionStatus />
       </div>

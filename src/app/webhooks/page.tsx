@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Plus, X, Trash2, Edit2, Save, Play } from "lucide-react";
 import DataTable, { type Column } from "@/components/DataTable";
+import TableSearch from "@/components/TableSearch";
 import StatusBadge from "@/components/StatusBadge";
 import { LoadingSpinner, ErrorState } from "@/components/LoadingState";
 import { useToast } from "@/components/Toast";
@@ -20,9 +21,10 @@ interface WebhookFormData {
   method: string;
   agent: string;
   description: string;
+  secret: string;
 }
 
-const EMPTY_FORM: WebhookFormData = { id: "", name: "", url: "", method: "POST", agent: "main", description: "" };
+const EMPTY_FORM: WebhookFormData = { id: "", name: "", url: "", method: "POST", agent: "main", description: "", secret: "" };
 
 function WebhookFormDialog({
   initial,
@@ -138,6 +140,23 @@ function WebhookFormDialog({
             />
           </div>
 
+          <div>
+            <label className="block text-xs text-text-secondary mb-1.5">
+              {t('webhooks.secret') || "Secret"} <span className="text-text-secondary/50">({t('common.optional') || "optional"})</span>
+            </label>
+            <input
+              type="password"
+              value={form.secret}
+              onChange={(e) => setForm({ ...form, secret: e.target.value })}
+              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-accent"
+              placeholder="HMAC signing secret"
+              autoComplete="off"
+            />
+            <p className="text-xs text-text-secondary/60 mt-1">
+              {t('webhooks.signatureHeader') || "Signature header"}: <code className="text-brand-400">X-Sygen-Signature</code>
+            </p>
+          </div>
+
           <div className="flex items-center justify-end gap-2 pt-2">
             <button type="button" onClick={onCancel} className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary transition-colors">
               {t('common.cancel')}
@@ -164,6 +183,7 @@ export default function WebhooksPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState<false | "create" | "edit">(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const { success, error: toastError } = useToast();
   const { t } = useTranslation();
 
@@ -204,14 +224,16 @@ export default function WebhooksPage() {
 
   const handleCreate = async (data: WebhookFormData) => {
     const id = data.id || data.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-    const created = await SygenAPI.createWebhook({
+    const payload: Partial<Webhook> & { id: string } = {
       id,
       name: data.name,
       url: data.url,
       method: data.method,
       agent: data.agent || "main",
       description: data.description,
-    });
+    };
+    if (data.secret) payload.secret = data.secret;
+    const created = await SygenAPI.createWebhook(payload);
     setWebhooks((prev) => [...prev, created]);
     setShowForm(false);
     success(`Webhook "${data.name}" created`);
@@ -219,20 +241,26 @@ export default function WebhooksPage() {
 
   const handleEdit = async (data: WebhookFormData) => {
     if (!selected) return;
-    const updated = await SygenAPI.updateWebhook(selected.id, {
+    const payload: Partial<Webhook> = {
       name: data.name,
       url: data.url,
       method: data.method,
       agent: data.agent,
       description: data.description,
-    } as Partial<Webhook>);
+    };
+    if (data.secret) payload.secret = data.secret;
+    const updated = await SygenAPI.updateWebhook(selected.id, payload);
     setWebhooks((prev) => prev.map((w) => (w.id === selected.id ? updated : w)));
     setSelected(updated);
     setShowForm(false);
     success(`Webhook "${data.name}" updated`);
   };
 
-  const filtered = filter === "all" ? webhooks : webhooks.filter((w) => w.status === filter);
+  const filtered = (filter === "all" ? webhooks : webhooks.filter((w) => w.status === filter)).filter((w) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return w.name.toLowerCase().includes(q) || w.url.toLowerCase().includes(q) || w.agent.toLowerCase().includes(q);
+  });
 
   const columns: Column<Webhook>[] = [
     { key: "name", label: t('common.name'), sortable: true, render: (w) => <span className="font-medium">{w.name}</span> },
@@ -321,27 +349,35 @@ export default function WebhooksPage() {
           <div className="mb-4 text-sm text-danger bg-danger/10 rounded-lg px-3 py-2">{error}</div>
         )}
 
-        {/* Filters */}
-        <div className="flex items-center gap-2 mb-4">
-          {filters.map((f) => (
-            <button
-              type="button"
-              key={f.value}
-              onClick={() => setFilter(f.value)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                filter === f.value
-                  ? "bg-accent text-text-primary"
-                  : "bg-bg-card text-text-secondary hover:text-text-primary"
-              }`}
-            >
-              {f.label}
-              {f.value !== "all" && (
-                <span className="ml-1.5 opacity-60">
-                  {webhooks.filter((w) => w.status === f.value).length}
-                </span>
-              )}
-            </button>
-          ))}
+        {/* Filters + Search */}
+        <div className="flex items-center gap-2 mb-4 flex-wrap">
+          <div className="flex items-center gap-2">
+            {filters.map((f) => (
+              <button
+                type="button"
+                key={f.value}
+                onClick={() => setFilter(f.value)}
+                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                  filter === f.value
+                    ? "bg-accent text-text-primary"
+                    : "bg-bg-card text-text-secondary hover:text-text-primary"
+                }`}
+              >
+                {f.label}
+                {f.value !== "all" && (
+                  <span className="ml-1.5 opacity-60">
+                    {webhooks.filter((w) => w.status === f.value).length}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+          <div className="ml-auto w-64">
+            <TableSearch
+              placeholder={`${t("common.search")} (${t("common.name")}, URL, ${t("common.agent")})`}
+              onSearch={setSearchQuery}
+            />
+          </div>
         </div>
 
         {/* Table */}
@@ -402,6 +438,13 @@ export default function WebhooksPage() {
               <p className="text-xs text-text-secondary mb-1">{t('common.description')}</p>
               <p className="text-sm text-text-secondary">{selected.description || "—"}</p>
             </div>
+            {selected.secret && (
+              <div>
+                <p className="text-xs text-text-secondary mb-1">{t('webhooks.signature') || "Signature"}</p>
+                <p className="text-xs font-mono text-brand-400">X-Sygen-Signature</p>
+                <p className="text-xs text-text-secondary mt-0.5">HMAC-SHA256</p>
+              </div>
+            )}
             <div>
               <p className="text-xs text-text-secondary mb-1">{t('webhooks.totalTriggers')}</p>
               <p className="text-sm">{selected.triggerCount.toLocaleString()}</p>
@@ -456,6 +499,7 @@ export default function WebhooksPage() {
             method: selected.method,
             agent: selected.agent,
             description: selected.description,
+            secret: "",
           }}
           isEdit={true}
           onSave={handleEdit}
