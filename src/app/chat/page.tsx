@@ -1,6 +1,16 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
+
+function uuid(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return uuid();
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
 import {
   Send,
   Bot,
@@ -374,7 +384,7 @@ export default function ChatPage() {
 
         if (result) {
           const fileMsg: ChatMsg = {
-            id: `msg-${crypto.randomUUID()}`,
+            id: `msg-${uuid()}`,
             sender: "user",
             content: `\u{1F4CE} ${result.name}`,
             timestamp: new Date().toISOString(),
@@ -389,7 +399,7 @@ export default function ChatPage() {
           };
           addMessage(sessionId, fileMsg);
 
-          const agentMsgId = `msg-${crypto.randomUUID()}`;
+          const agentMsgId = `msg-${uuid()}`;
           const agentMsg: ChatMsg = {
             id: agentMsgId,
             sender: "agent",
@@ -458,14 +468,14 @@ export default function ChatPage() {
     if (!sessionId) return;
 
     const userMsg: ChatMsg = {
-      id: `msg-${crypto.randomUUID()}`,
+      id: `msg-${uuid()}`,
       sender: "user",
       content: input.trim(),
       timestamp: new Date().toISOString(),
     };
     addMessage(sessionId, userMsg);
 
-    const agentMsgId = `msg-${crypto.randomUUID()}`;
+    const agentMsgId = `msg-${uuid()}`;
     const agentMsg: ChatMsg = {
       id: agentMsgId,
       sender: "agent",
