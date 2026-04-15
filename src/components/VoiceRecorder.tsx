@@ -24,6 +24,7 @@ export default function VoiceRecorder({
   const { t } = useTranslation();
   const toast = useToast();
   const [isRecording, setIsRecording] = useState(false);
+  const [isActivating, setIsActivating] = useState(false);
   const [duration, setDuration] = useState(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -62,6 +63,7 @@ export default function VoiceRecorder({
   const startRecording = useCallback(async () => {
     if (!isSupported) return;
 
+    setIsActivating(true);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
@@ -74,6 +76,8 @@ export default function VoiceRecorder({
           : MediaRecorder.isTypeSupported("audio/ogg")
             ? "audio/ogg"
             : "";
+
+      setIsActivating(false);
 
       const recorder = mimeType
         ? new MediaRecorder(stream, { mimeType })
@@ -115,6 +119,7 @@ export default function VoiceRecorder({
         setDuration((prev) => prev + 1);
       }, 1000);
     } catch {
+      setIsActivating(false);
       setIsRecording(false);
       cleanup();
     }
@@ -170,10 +175,11 @@ export default function VoiceRecorder({
     <button
       type="button"
       onClick={isSupported ? handleClick : handleUnsupported}
-      disabled={disabled}
+      disabled={disabled || isActivating}
       className={cn(
         "p-2.5 hover:bg-white/5 rounded-xl transition-colors text-text-secondary hover:text-text-primary disabled:opacity-30 shrink-0",
-        !isSupported && "opacity-50"
+        !isSupported && "opacity-50",
+        isActivating && "animate-pulse text-danger"
       )}
       title={t("chat.recordVoice")}
       aria-label={t("chat.recordVoice")}
