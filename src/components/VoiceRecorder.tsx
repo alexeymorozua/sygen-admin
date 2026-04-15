@@ -135,6 +135,11 @@ export default function VoiceRecorder({
     }
   }, [isRecording, startRecording, stopRecording]);
 
+  const handleUnsupported = useCallback(() => {
+    const isInsecure = typeof window !== "undefined" && window.location.protocol === "http:" && window.location.hostname !== "localhost";
+    toast.warning(isInsecure ? t("chat.voiceRequiresHttps") : t("chat.voiceNotSupported"));
+  }, [toast, t]);
+
   if (isRecording) {
     return (
       <div className="flex items-center gap-2" data-testid="voice-recorder-active">
@@ -160,11 +165,6 @@ export default function VoiceRecorder({
       </div>
     );
   }
-
-  const handleUnsupported = useCallback(() => {
-    const isInsecure = typeof window !== "undefined" && window.location.protocol === "http:" && window.location.hostname !== "localhost";
-    toast.warning(isInsecure ? t("chat.voiceRequiresHttps") : t("chat.voiceNotSupported"));
-  }, [toast, t]);
 
   return (
     <button
