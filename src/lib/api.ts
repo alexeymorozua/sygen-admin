@@ -1051,14 +1051,31 @@ function mapWebhook(raw: Record<string, unknown>): Webhook {
 }
 
 function mapTask(raw: Record<string, unknown>): Task {
+  const startTs = raw.started_at || raw.startedAt || raw.created_at;
+  let startedAt = "";
+  if (startTs) {
+    const n = Number(startTs);
+    startedAt = !isNaN(n) && n > 1e9 ? new Date(n * 1000).toISOString() : String(startTs);
+  }
+
+  let duration = "0s";
+  const elapsed = Number(raw.elapsed_seconds);
+  if (!isNaN(elapsed) && elapsed > 0) {
+    if (elapsed >= 3600) duration = `${Math.floor(elapsed / 3600)}h ${Math.floor((elapsed % 3600) / 60)}m`;
+    else if (elapsed >= 60) duration = `${Math.floor(elapsed / 60)}m ${Math.floor(elapsed % 60)}s`;
+    else duration = `${Math.floor(elapsed)}s`;
+  } else if (raw.duration) {
+    duration = String(raw.duration);
+  }
+
   return {
     id: String(raw.task_id || raw.id || ""),
     name: String(raw.name || raw.title || ""),
     status: mapTaskStatus(String(raw.status || "running")),
-    agent: String(raw.agent || "main"),
+    agent: String(raw.parent_agent || raw.agent || "main"),
     provider: String(raw.provider || "unknown"),
-    startedAt: String(raw.started_at || raw.startedAt || raw.created_at || ""),
-    duration: String(raw.duration || "0s"),
+    startedAt,
+    duration,
     description: String(raw.description || raw.prompt || ""),
     result: raw.result ? String(raw.result) : undefined,
   };
