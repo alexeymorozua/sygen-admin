@@ -332,10 +332,26 @@ export default function ChatPage() {
     [activeServer.url, activeServer.token]
   );
 
+  // Create new session and send message
+  const ensureSession = useCallback(async (): Promise<string | null> => {
+    if (activeSessionId) return activeSessionId;
+    try {
+      const session = await SygenAPI.createChatSession(selectedAgent);
+      setSessions((prev) => [session, ...prev]);
+      setActiveSessionId(session.id);
+      return session.id;
+    } catch {
+      return null;
+    }
+  }, [activeSessionId, selectedAgent]);
+
   const handleFiles = useCallback(
     async (fileList: FileList | File[]) => {
       const files = Array.from(fileList);
-      if (files.length === 0 || !activeSessionId) return;
+      if (files.length === 0) return;
+
+      const sessionId = await ensureSession();
+      if (!sessionId) return;
 
       const entries = files.map((f) => ({
         file: f,
@@ -362,7 +378,7 @@ export default function ChatPage() {
               },
             ],
           };
-          addMessage(activeSessionId, fileMsg);
+          addMessage(sessionId, fileMsg);
 
           const agentMsgId = `msg-${crypto.randomUUID()}`;
           const agentMsg: ChatMsg = {
@@ -374,10 +390,10 @@ export default function ChatPage() {
             isStreaming: true,
             toolActivity: null,
           };
-          addMessage(activeSessionId, agentMsg);
+          addMessage(sessionId, agentMsg);
 
           streamingIdRef.current = agentMsgId;
-          streamingSessionRef.current = activeSessionId;
+          streamingSessionRef.current = sessionId;
           setIsStreaming(true);
           wsRef.current?.sendMessage(selectedAgent, result.prompt);
         }
@@ -387,7 +403,7 @@ export default function ChatPage() {
         );
       }
     },
-    [uploadFile, addMessage, selectedAgent, activeSessionId]
+    [uploadFile, addMessage, selectedAgent, ensureSession]
   );
 
   // Drag and drop
@@ -425,19 +441,6 @@ export default function ChatPage() {
     },
     [handleFiles]
   );
-
-  // Create new session and send message
-  const ensureSession = useCallback(async (): Promise<string | null> => {
-    if (activeSessionId) return activeSessionId;
-    try {
-      const session = await SygenAPI.createChatSession(selectedAgent);
-      setSessions((prev) => [session, ...prev]);
-      setActiveSessionId(session.id);
-      return session.id;
-    } catch {
-      return null;
-    }
-  }, [activeSessionId, selectedAgent]);
 
   const handleSend = useCallback(async () => {
     if (!input.trim() || !selectedAgent || isStreaming) return;

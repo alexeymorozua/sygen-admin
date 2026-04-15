@@ -74,6 +74,8 @@ const uk: Record<string, string> = {
   "chat.recordVoice": "Записати голосове повідомлення",
   "chat.stopRecording": "Зупинити запис",
   "chat.voiceMessage": "Голосове повідомлення",
+  "chat.playAudio": "Відтворити",
+  "chat.pauseAudio": "Пауза",
 
   // Cron
   "cron.title": "Cron задачі",

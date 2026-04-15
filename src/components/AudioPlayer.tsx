@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Play, Pause } from "lucide-react";
+import { Play, Pause, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/lib/i18n";
 
 interface AudioPlayerProps {
   src: string;
@@ -17,15 +18,21 @@ function formatTime(seconds: number): string {
 }
 
 export default function AudioPlayer({ src, className }: AudioPlayerProps) {
+  const { t } = useTranslation();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [hasError, setHasError] = useState(false);
   const progressRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const audio = new Audio(src);
     audioRef.current = audio;
+    setHasError(false);
+    setIsPlaying(false);
+    setCurrentTime(0);
+    setDuration(0);
 
     const onLoadedMetadata = () => setDuration(audio.duration);
     const onTimeUpdate = () => setCurrentTime(audio.currentTime);
@@ -34,17 +41,23 @@ export default function AudioPlayer({ src, className }: AudioPlayerProps) {
       setCurrentTime(0);
     };
     const onDurationChange = () => setDuration(audio.duration);
+    const onError = () => {
+      setHasError(true);
+      setIsPlaying(false);
+    };
 
     audio.addEventListener("loadedmetadata", onLoadedMetadata);
     audio.addEventListener("timeupdate", onTimeUpdate);
     audio.addEventListener("ended", onEnded);
     audio.addEventListener("durationchange", onDurationChange);
+    audio.addEventListener("error", onError);
 
     return () => {
       audio.removeEventListener("loadedmetadata", onLoadedMetadata);
       audio.removeEventListener("timeupdate", onTimeUpdate);
       audio.removeEventListener("ended", onEnded);
       audio.removeEventListener("durationchange", onDurationChange);
+      audio.removeEventListener("error", onError);
       audio.pause();
       audio.src = "";
     };
@@ -79,6 +92,23 @@ export default function AudioPlayer({ src, className }: AudioPlayerProps) {
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
+  if (hasError) {
+    return (
+      <div
+        className={cn(
+          "flex items-center gap-2.5 min-w-[200px] max-w-[280px]",
+          className
+        )}
+        data-testid="audio-player"
+      >
+        <div className="w-8 h-8 rounded-full bg-danger/20 flex items-center justify-center shrink-0">
+          <AlertCircle size={14} className="text-danger" />
+        </div>
+        <span className="text-xs text-text-secondary">{t("common.error")}</span>
+      </div>
+    );
+  }
+
   return (
     <div
       className={cn(
@@ -92,7 +122,7 @@ export default function AudioPlayer({ src, className }: AudioPlayerProps) {
         type="button"
         onClick={togglePlay}
         className="w-8 h-8 rounded-full bg-brand-500 hover:bg-brand-400 flex items-center justify-center shrink-0 transition-colors"
-        aria-label={isPlaying ? "Pause" : "Play"}
+        aria-label={isPlaying ? t("chat.pauseAudio") : t("chat.playAudio")}
         data-testid="audio-play-btn"
       >
         {isPlaying ? (

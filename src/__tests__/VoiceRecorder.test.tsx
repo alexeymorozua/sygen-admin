@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import VoiceRecorder from "@/components/VoiceRecorder";
 
 // Mock i18n
@@ -96,26 +96,34 @@ describe("VoiceRecorder", () => {
   });
 
   it("stops recording and calls onRecordingComplete", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     const onComplete = vi.fn();
     render(<VoiceRecorder onRecordingComplete={onComplete} />);
 
     // Start recording
-    fireEvent.click(screen.getByTestId("voice-record-btn"));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("voice-record-btn"));
+    });
 
-    await waitFor(() => {
-      expect(screen.getByTestId("voice-stop-btn")).toBeInTheDocument();
+    expect(screen.getByTestId("voice-stop-btn")).toBeInTheDocument();
+
+    // Advance timer so duration >= 1 second (minimum guard)
+    await act(async () => {
+      vi.advanceTimersByTime(1500);
     });
 
     // Stop recording
-    fireEvent.click(screen.getByTestId("voice-stop-btn"));
-
-    await waitFor(() => {
-      expect(onComplete).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("voice-stop-btn"));
     });
+
+    expect(onComplete).toHaveBeenCalledTimes(1);
 
     const [blob, filename] = onComplete.mock.calls[0];
     expect(blob).toBeInstanceOf(Blob);
     expect(filename).toMatch(/^voice_\d+\.webm$/);
+
+    vi.useRealTimers();
   });
 
   it("handles getUserMedia failure gracefully", async () => {

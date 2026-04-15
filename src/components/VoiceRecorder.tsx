@@ -27,6 +27,13 @@ export default function VoiceRecorder({
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const durationRef = useRef(0);
+
+  const isSupported =
+    typeof window !== "undefined" &&
+    typeof navigator !== "undefined" &&
+    !!navigator.mediaDevices?.getUserMedia &&
+    typeof MediaRecorder !== "undefined";
 
   const cleanup = useCallback(() => {
     if (timerRef.current) {
@@ -39,6 +46,7 @@ export default function VoiceRecorder({
     }
     mediaRecorderRef.current = null;
     chunksRef.current = [];
+    durationRef.current = 0;
     setDuration(0);
   }, []);
 
@@ -50,6 +58,8 @@ export default function VoiceRecorder({
   }, [cleanup]);
 
   const startRecording = useCallback(async () => {
+    if (!isSupported) return;
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
@@ -59,9 +69,13 @@ export default function VoiceRecorder({
         ? "audio/webm;codecs=opus"
         : MediaRecorder.isTypeSupported("audio/webm")
           ? "audio/webm"
-          : "audio/ogg";
+          : MediaRecorder.isTypeSupported("audio/ogg")
+            ? "audio/ogg"
+            : "";
 
-      const recorder = new MediaRecorder(stream, { mimeType });
+      const recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
       mediaRecorderRef.current = recorder;
       chunksRef.current = [];
 
@@ -71,11 +85,18 @@ export default function VoiceRecorder({
         }
       };
 
+      recorder.onerror = () => {
+        setIsRecording(false);
+        cleanup();
+      };
+
       recorder.onstop = () => {
         const chunks = chunksRef.current;
-        if (chunks.length > 0) {
-          const ext = mimeType.includes("webm") ? "webm" : "ogg";
-          const blob = new Blob(chunks, { type: mimeType });
+        const recordedDuration = durationRef.current;
+        if (chunks.length > 0 && recordedDuration >= 1) {
+          const actualMime = recorder.mimeType || mimeType || "audio/webm";
+          const ext = actualMime.includes("webm") ? "webm" : "ogg";
+          const blob = new Blob(chunks, { type: actualMime });
           const filename = `voice_${Date.now()}.${ext}`;
           onRecordingComplete(blob, filename);
         }
@@ -85,14 +106,17 @@ export default function VoiceRecorder({
       recorder.start();
       setIsRecording(true);
       setDuration(0);
+      durationRef.current = 0;
 
       timerRef.current = setInterval(() => {
+        durationRef.current += 1;
         setDuration((prev) => prev + 1);
       }, 1000);
     } catch {
+      setIsRecording(false);
       cleanup();
     }
-  }, [onRecordingComplete, cleanup]);
+  }, [isSupported, onRecordingComplete, cleanup]);
 
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
@@ -134,6 +158,8 @@ export default function VoiceRecorder({
       </div>
     );
   }
+
+  if (!isSupported) return null;
 
   return (
     <button
