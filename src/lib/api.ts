@@ -758,6 +758,15 @@ export class SygenAPI {
     }));
   }
 
+  // ---- Commands (slash menu) ----
+
+  static async getCommands(): Promise<{
+    commands: { command: string; description: string }[];
+    multiagent: { command: string; description: string }[];
+  }> {
+    return fetchAPI("/api/commands");
+  }
+
   // ---- Config (settings page) ----
 
   static async getConfig(): Promise<typeof mockConfig> {

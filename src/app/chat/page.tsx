@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import StreamingMessage from "@/components/StreamingMessage";
 import type { StreamingMessageProps, FileAttachment } from "@/components/StreamingMessage";
+import CommandMenu, { type CommandMenuHandle } from "@/components/CommandMenu";
 import StatusBadge from "@/components/StatusBadge";
 import VoiceRecorder from "@/components/VoiceRecorder";
 import { SygenWebSocket, type WSStatus } from "@/lib/websocket";
@@ -91,7 +92,9 @@ export default function ChatPage() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatAreaRef = useRef<HTMLDivElement>(null);
+  const commandMenuRef = useRef<CommandMenuHandle>(null);
   const historyLoadedRef = useRef<Set<string>>(new Set());
+  const [showCommandMenu, setShowCommandMenu] = useState(false);
 
   const messages = activeSessionId ? (messagesBySession[activeSessionId] || []) : [];
 
@@ -495,6 +498,9 @@ export default function ChatPage() {
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      // Let CommandMenu handle navigation keys first
+      if (commandMenuRef.current?.handleKeyDown(e)) return;
+
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         handleSend();
@@ -790,7 +796,20 @@ export default function ChatPage() {
             </select>
           </div>
 
-          <div className="flex items-end gap-2">
+          <div className="relative flex items-end gap-2">
+            {/* Command menu popup */}
+            <CommandMenu
+              ref={commandMenuRef}
+              input={input}
+              visible={showCommandMenu}
+              onSelect={(cmd) => {
+                setInput(cmd + " ");
+                setShowCommandMenu(false);
+                textareaRef.current?.focus();
+              }}
+              onClose={() => setShowCommandMenu(false)}
+            />
+
             {/* File attach button */}
             <button
               type="button"
@@ -816,7 +835,12 @@ export default function ChatPage() {
             <textarea
               ref={textareaRef}
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setInput(val);
+                // Show command menu when input starts with / and has no spaces
+                setShowCommandMenu(val.startsWith("/") && !val.includes(" "));
+              }}
               onKeyDown={handleKeyDown}
               placeholder={`${t('chat.message')} ${selectedAgent}...`}
               disabled={wsStatus !== "connected"}
