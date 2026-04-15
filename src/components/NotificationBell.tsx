@@ -1,90 +1,59 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Bell, ListTodo, Clock, Bot, Terminal, Check } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Bell, Clock, Webhook, Cpu, Bot, Check, Reply } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
+import { useNotifications } from "@/context/NotificationContext";
 import { cn } from "@/lib/utils";
+import type { SygenNotification } from "@/lib/api";
 
-export interface Notification {
-  id: string;
-  type: "task_completed" | "task_failed" | "cron_failed";
-  message: string;
-  timestamp: string;
-}
-
-const STORAGE_KEY = "sygen_notifications_last_read";
-
-function getLastReadTime(): number {
-  if (typeof window === "undefined") return 0;
-  const stored = localStorage.getItem(STORAGE_KEY);
-  return stored ? Number(stored) : 0;
-}
-
-function setLastReadTime(time: number) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, String(time));
-}
-
-function formatRelativeTime(timestamp: string): string {
-  const date = new Date(timestamp);
-  const now = new Date();
-  const diff = now.getTime() - date.getTime();
-  const minutes = Math.floor(diff / 60000);
-  const hours = Math.floor(diff / 3600000);
-  const days = Math.floor(diff / 86400000);
+function formatRelativeTime(ts: number): string {
+  const now = Date.now() / 1000;
+  const diff = now - ts;
+  const minutes = Math.floor(diff / 60);
+  const hours = Math.floor(diff / 3600);
+  const days = Math.floor(diff / 86400);
 
   if (minutes < 1) return "just now";
   if (minutes < 60) return `${minutes}m ago`;
   if (hours < 24) return `${hours}h ago`;
   if (days < 7) return `${days}d ago`;
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return new Date(ts * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-function getNotificationIcon(type: Notification["type"]) {
+function getNotificationIcon(type: SygenNotification["type"]) {
   switch (type) {
-    case "task_completed":
-      return <ListTodo size={14} className="text-green-400 shrink-0" />;
-    case "task_failed":
-      return <Terminal size={14} className="text-danger shrink-0" />;
-    case "cron_failed":
-      return <Clock size={14} className="text-danger shrink-0" />;
+    case "cron":
+      return <Clock size={14} className="text-brand-400 shrink-0" />;
+    case "webhook":
+      return <Webhook size={14} className="text-purple-400 shrink-0" />;
+    case "task":
+      return <Cpu size={14} className="text-green-400 shrink-0" />;
+    case "system":
     default:
-      return <Bot size={14} className="text-brand-400 shrink-0" />;
+      return <Bot size={14} className="text-text-secondary shrink-0" />;
   }
 }
 
-interface NotificationBellProps {
-  notifications: Notification[];
-}
-
-export default function NotificationBell({ notifications }: NotificationBellProps) {
+export default function NotificationBell() {
   const { t } = useTranslation();
+  const router = useRouter();
+  const { notifications, unreadCount, markRead, markAllRead } = useNotifications();
   const [open, setOpen] = useState(false);
-  const [lastRead, setLastRead] = useState(getLastReadTime);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const unreadCount = notifications.filter((n) => {
-    const ts = new Date(n.timestamp).getTime();
-    return ts > lastRead;
-  }).length;
-
   const handleOpen = useCallback(() => {
-    setOpen((prev) => {
-      if (!prev) {
-        // Opening — mark all as read
-        const now = Date.now();
-        setLastRead(now);
-        setLastReadTime(now);
-      }
-      return !prev;
-    });
+    setOpen((prev) => !prev);
   }, []);
 
-  const handleMarkAllRead = useCallback(() => {
-    const now = Date.now();
-    setLastRead(now);
-    setLastReadTime(now);
-  }, []);
+  const handleReply = useCallback(
+    (agent: string) => {
+      setOpen(false);
+      router.push(`/chat?agent=${encodeURIComponent(agent)}`);
+    },
+    [router]
+  );
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -98,30 +67,6 @@ export default function NotificationBell({ notifications }: NotificationBellProp
       return () => document.removeEventListener("mousedown", handleClickOutside);
     }
   }, [open]);
-
-  // Browser notification for new events
-  const prevNotifCountRef = useRef(notifications.length);
-  useEffect(() => {
-    if (typeof window === "undefined" || !("Notification" in window)) return;
-
-    // Only fire browser notification when new notifications arrive (count increased)
-    if (
-      Notification.permission === "granted" &&
-      notifications.length > prevNotifCountRef.current &&
-      notifications.length > 0 &&
-      !document.hasFocus()
-    ) {
-      const latest = notifications[0];
-      const latestTs = new Date(latest.timestamp).getTime();
-      if (latestTs > lastRead) {
-        new Notification("Sygen Admin", {
-          body: latest.message,
-          tag: `sygen-${latest.id}`,
-        });
-      }
-    }
-    prevNotifCountRef.current = notifications.length;
-  }, [notifications, lastRead]);
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -150,7 +95,7 @@ export default function NotificationBell({ notifications }: NotificationBellProp
             {unreadCount > 0 && (
               <button
                 type="button"
-                onClick={handleMarkAllRead}
+                onClick={markAllRead}
                 className="flex items-center gap-1 text-xs text-brand-400 hover:text-brand-500 transition-colors"
               >
                 <Check size={12} />
@@ -166,29 +111,43 @@ export default function NotificationBell({ notifications }: NotificationBellProp
                 {t("notifications.empty")}
               </p>
             ) : (
-              notifications.slice(0, 20).map((n) => {
-                const isUnread = new Date(n.timestamp).getTime() > lastRead;
-                return (
-                  <div
-                    key={n.id}
-                    className={cn(
-                      "flex items-start gap-3 px-4 py-3 border-b border-border/50 last:border-0",
-                      isUnread && "bg-brand-500/5"
-                    )}
-                  >
-                    <div className="mt-0.5">{getNotificationIcon(n.type)}</div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm text-text-primary truncate">{n.message}</p>
-                      <p className="text-xs text-text-secondary mt-0.5">
-                        {formatRelativeTime(n.timestamp)}
-                      </p>
+              notifications.slice(0, 20).map((n) => (
+                <div
+                  key={n.id}
+                  className={cn(
+                    "flex items-start gap-3 px-4 py-3 border-b border-border/50 last:border-0",
+                    !n.read && "bg-brand-500/5"
+                  )}
+                  onClick={() => { if (!n.read) markRead(n.id); }}
+                >
+                  <div className="mt-0.5">{getNotificationIcon(n.type)}</div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm text-text-primary font-medium truncate">{n.title}</p>
+                    <p className="text-xs text-text-secondary mt-0.5 line-clamp-2">{n.body}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-xs text-text-secondary">
+                        {formatRelativeTime(n.created_at)}
+                      </span>
+                      {n.agent && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleReply(n.agent);
+                          }}
+                          className="flex items-center gap-1 text-xs text-brand-400 hover:text-brand-500 transition-colors"
+                        >
+                          <Reply size={10} />
+                          {t("notifications.reply")}
+                        </button>
+                      )}
                     </div>
-                    {isUnread && (
-                      <span className="w-2 h-2 rounded-full bg-brand-400 shrink-0 mt-1.5" />
-                    )}
                   </div>
-                );
-              })
+                  {!n.read && (
+                    <span className="w-2 h-2 rounded-full bg-brand-400 shrink-0 mt-1.5" />
+                  )}
+                </div>
+              ))
             )}
           </div>
         </div>

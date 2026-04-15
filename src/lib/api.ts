@@ -73,6 +73,18 @@ export interface TwoFactorSetupResponse {
   qr_data: string;
 }
 
+export interface SygenNotification {
+  id: string;
+  type: "cron" | "webhook" | "task" | "system";
+  agent: string;
+  title: string;
+  body: string;
+  status: string;
+  source_id: string;
+  created_at: number;
+  read: boolean;
+}
+
 export interface AuditEntry {
   ts: string;
   user: string;
@@ -844,6 +856,32 @@ export class SygenAPI {
   static async getAuditLog(limit?: number): Promise<AuditEntry[]> {
     const qs = limit ? `?limit=${limit}` : "";
     return fetchAPI<AuditEntry[]>(`/api/audit${qs}`);
+  }
+
+  // ---- Notifications ----
+
+  static async getNotifications(limit = 50, unreadOnly = false): Promise<SygenNotification[]> {
+    if (USE_MOCK) return [];
+    const params = new URLSearchParams();
+    params.set("limit", String(limit));
+    if (unreadOnly) params.set("unread_only", "true");
+    return fetchAPI<SygenNotification[]>(`/api/notifications?${params.toString()}`);
+  }
+
+  static async getUnreadCount(): Promise<number> {
+    if (USE_MOCK) return 0;
+    const data = await fetchAPI<{ count: number }>("/api/notifications/unread-count");
+    return data.count;
+  }
+
+  static async markNotificationRead(id: string): Promise<void> {
+    if (USE_MOCK) return;
+    await fetchAPI(`/api/notifications/${encodeURIComponent(id)}/read`, { method: "PUT" });
+  }
+
+  static async markAllNotificationsRead(): Promise<void> {
+    if (USE_MOCK) return;
+    await fetchAPI("/api/notifications/read-all", { method: "POST" });
   }
 
   // ---- Profile ----

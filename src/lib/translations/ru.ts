@@ -300,6 +300,11 @@ const ru: Record<string, string> = {
   "notifications.taskCompleted": "Задача завершена",
   "notifications.taskFailed": "Задача не выполнена",
   "notifications.cronFailed": "Cron задача не выполнена",
+  "notifications.webhookCompleted": "Webhook выполнен",
+  "notifications.webhookFailed": "Webhook не выполнен",
+  "notifications.reply": "Ответить",
+  "notifications.viewAll": "Показать все",
+  "notifications.systemEvent": "Системное событие",
 
   // Connection
   "connection.manageServers": "Управление серверами",

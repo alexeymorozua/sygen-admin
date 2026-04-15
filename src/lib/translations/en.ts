@@ -300,6 +300,11 @@ const en: Record<string, string> = {
   "notifications.taskCompleted": "Task completed",
   "notifications.taskFailed": "Task failed",
   "notifications.cronFailed": "Cron job failed",
+  "notifications.webhookCompleted": "Webhook completed",
+  "notifications.webhookFailed": "Webhook failed",
+  "notifications.reply": "Reply",
+  "notifications.viewAll": "View all",
+  "notifications.systemEvent": "System event",
 
   // Connection
   "connection.manageServers": "Manage Servers",

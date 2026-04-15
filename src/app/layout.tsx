@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { ServerProvider } from "@/context/ServerContext";
 import { ChatProvider } from "@/context/ChatContext";
+import { NotificationProvider } from "@/context/NotificationContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { ToastProvider } from "@/components/Toast";
 import { ConfirmProvider } from "@/components/ConfirmDialog";
@@ -45,11 +46,13 @@ export default function RootLayout({
             <AuthProvider>
               <ServerProvider>
                 <ChatProvider>
+                <NotificationProvider>
                 <ToastProvider>
                   <ConfirmProvider>
                     <AppShell>{children}</AppShell>
                   </ConfirmProvider>
                 </ToastProvider>
+                </NotificationProvider>
                 </ChatProvider>
               </ServerProvider>
             </AuthProvider>

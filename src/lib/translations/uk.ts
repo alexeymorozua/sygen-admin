@@ -300,6 +300,11 @@ const uk: Record<string, string> = {
   "notifications.taskCompleted": "Задачу завершено",
   "notifications.taskFailed": "Задачу не виконано",
   "notifications.cronFailed": "Cron задача не виконана",
+  "notifications.webhookCompleted": "Webhook виконано",
+  "notifications.webhookFailed": "Webhook не виконано",
+  "notifications.reply": "Відповісти",
+  "notifications.viewAll": "Показати все",
+  "notifications.systemEvent": "Системна подія",
 
   // Connection
   "connection.manageServers": "Керувати серверами",

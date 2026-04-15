@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -28,8 +28,7 @@ import { useTranslation } from "@/lib/i18n";
 import ConnectionStatus from "./ConnectionStatus";
 import ServerSwitcher from "./ServerSwitcher";
 import LanguageSwitcher from "./LanguageSwitcher";
-import NotificationBell, { type Notification } from "./NotificationBell";
-import { SygenAPI } from "@/lib/api";
+import NotificationBell from "./NotificationBell";
 
 interface NavItem {
   href: string;
@@ -58,42 +57,8 @@ export default function Sidebar() {
   const { theme, toggleTheme } = useTheme();
   const { t } = useTranslation();
   const { hasRole, user } = useAuth();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const visibleNav = navItems.filter((item) => !item.minRole || hasRole(item.minRole));
-
-  // Poll activity feed for notification-worthy events
-  const loadNotifications = useCallback(async () => {
-    try {
-      const events = await SygenAPI.getActivity();
-      const notifs: Notification[] = events
-        .filter((e) =>
-          (e.type === "task" && e.message.includes("completed")) ||
-          (e.type === "task" && e.message.includes("failed")) ||
-          (e.type === "cron" && e.message.includes("failed"))
-        )
-        .map((e, i) => ({
-          id: e.id || `notif-${i}`,
-          type: e.message.includes("completed")
-            ? "task_completed" as const
-            : e.type === "cron"
-              ? "cron_failed" as const
-              : "task_failed" as const,
-          message: e.message,
-          timestamp: e.timestamp,
-        }));
-      setNotifications(notifs);
-    } catch {
-      // Silently ignore — notifications are non-critical
-    }
-  }, []);
-
-  useEffect(() => {
-    loadNotifications();
-    pollRef.current = setInterval(loadNotifications, 30_000);
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [loadNotifications]);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -152,7 +117,7 @@ export default function Sidebar() {
           {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
           {theme === "dark" ? "Light Mode" : "Dark Mode"}
         </button>
-        <NotificationBell notifications={notifications} />
+        <NotificationBell />
         <LanguageSwitcher />
         <ConnectionStatus />
       </div>

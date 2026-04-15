@@ -10,7 +10,7 @@ import {
   useState,
 } from "react";
 import { SygenWebSocket, type WSStatus } from "@/lib/websocket";
-import { SygenAPI, type ChatSession, type ChatSessionMessage } from "@/lib/api";
+import { SygenAPI, type ChatSession, type ChatSessionMessage, type SygenNotification } from "@/lib/api";
 import type { StreamingMessageProps, FileAttachment } from "@/components/StreamingMessage";
 import { useServer } from "@/context/ServerContext";
 
@@ -69,6 +69,9 @@ interface ChatContextValue {
   loadSessionHistory: (sessionId: string) => Promise<void>;
   removeSessionData: (sessionId: string) => void;
 
+  // Notification bridge
+  setNotificationCallback: (cb: ((n: SygenNotification) => void) | null) => void;
+
   // Refs for external use
   wsRef: React.MutableRefObject<SygenWebSocket | null>;
   streamingIdRef: React.MutableRefObject<string | null>;
@@ -104,6 +107,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const streamingSessionRef = useRef<string | null>(null);
   const historyLoadedRef = useRef<Set<string>>(new Set());
   const prevAgentRef = useRef(selectedAgent);
+  const notificationCallbackRef = useRef<((n: SygenNotification) => void) | null>(null);
 
   // Derived
   const messages = activeSessionId ? (messagesBySession[activeSessionId] || []) : [];
@@ -208,6 +212,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           if (data) setAgentStatus(data);
         },
         onStatusChange: setWsStatus,
+        onNotification: (notification) => {
+          notificationCallbackRef.current?.(notification);
+        },
       },
       { url: activeServer.url, token: activeServer.token }
     );
@@ -433,6 +440,13 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     setActiveSessionIdRaw(id);
   }, []);
 
+  const setNotificationCallback = useCallback(
+    (cb: ((n: SygenNotification) => void) | null) => {
+      notificationCallbackRef.current = cb;
+    },
+    []
+  );
+
   // ---------------------------------------------------------------------------
   // Context value
   // ---------------------------------------------------------------------------
@@ -460,6 +474,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       loadSessions,
       loadSessionHistory,
       removeSessionData,
+      setNotificationCallback,
       wsRef,
       streamingIdRef,
       streamingSessionRef,
@@ -485,6 +500,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       loadSessionHistory,
       removeSessionData,
       setActiveSessionId,
+      setNotificationCallback,
     ]
   );
 

@@ -1,3 +1,5 @@
+import type { SygenNotification } from "./api";
+
 /**
  * WebSocket client for the Sygen admin dashboard.
  *
@@ -57,6 +59,7 @@ export interface SygenWSCallbacks {
   onSystemStatus?: (data: string | null) => void;
   onStatusChange?: (status: WSStatus) => void;
   onAuthFailed?: (message: string) => void;
+  onNotification?: (notification: SygenNotification) => void;
 }
 
 const DEFAULT_API_URL =
@@ -205,6 +208,11 @@ export class SygenWebSocket {
         this.callbacks.onSystemStatus?.(
           typeof data.data === "string" ? data.data : null
         );
+        break;
+      case "notification":
+        if (data.data && typeof data.data === "object") {
+          this.callbacks.onNotification?.(data.data as SygenNotification);
+        }
         break;
       // Unknown message types are silently ignored
     }
