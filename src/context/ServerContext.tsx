@@ -97,7 +97,7 @@ export function ServerProvider({ children }: { children: React.ReactNode }) {
       activeServer: activeServer || servers[0] || {
         id: "default",
         name: "Default",
-        url: "http://localhost:8080",
+        url: "http://localhost:8741",
         token: "",
         color: "#e94560",
         isDefault: true,

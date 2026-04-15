@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Token is required" }, { status: 400 });
     }
 
-    const apiUrl = process.env.SYGEN_API_URL || process.env.NEXT_PUBLIC_SYGEN_API_URL || "http://localhost:8080";
+    const apiUrl = process.env.SYGEN_API_URL || process.env.NEXT_PUBLIC_SYGEN_API_URL || "http://localhost:8741";
 
     const upstream = await fetch(`${apiUrl}/api/auth/login`, {
       method: "POST",

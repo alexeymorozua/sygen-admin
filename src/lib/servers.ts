@@ -18,7 +18,7 @@ function getDefaultServerFromEnv(): SygenServer {
   return {
     id: "default",
     name: "Default Server",
-    url: process.env.NEXT_PUBLIC_SYGEN_API_URL || "http://localhost:8080",
+    url: process.env.NEXT_PUBLIC_SYGEN_API_URL || "http://localhost:8741",
     token: "",
     color: "#e94560",
     isDefault: true,

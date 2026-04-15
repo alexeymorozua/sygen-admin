@@ -20,7 +20,7 @@ import {
 import type { SygenServer } from "./servers";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
-const API_URL = process.env.NEXT_PUBLIC_SYGEN_API_URL || "http://localhost:8080";
+const API_URL = process.env.NEXT_PUBLIC_SYGEN_API_URL || "http://localhost:8741";
 
 // ---------------------------------------------------------------------------
 // Active server override (set by ServerContext)
@@ -1005,13 +1005,17 @@ function mapAgent(raw: Record<string, unknown>): Agent {
 }
 
 function mapCronJob(raw: Record<string, unknown>): CronJob {
+  // API returns "enabled" boolean, frontend expects "active"/"paused" status
+  const status: CronJob["status"] = raw.status
+    ? (raw.status as CronJob["status"])
+    : raw.enabled === false ? "paused" : "active";
   return {
     id: String(raw.id || ""),
     name: String(raw.title || raw.name || ""),
     schedule: String(raw.schedule || ""),
     agent: String(raw.agent || "main"),
-    status: (raw.status as CronJob["status"]) || "active",
-    lastRun: String(raw.last_run || raw.lastRun || "-"),
+    status,
+    lastRun: String(raw.last_run_at || raw.last_run || raw.lastRun || "-"),
     nextRun: String(raw.next_run || raw.nextRun || "-"),
     description: String(raw.description || ""),
     executionCount: Number(raw.execution_count || raw.executionCount || 0),
@@ -1052,8 +1056,10 @@ function mapTaskStatus(status: string): Task["status"] {
   const map: Record<string, Task["status"]> = {
     running: "running",
     pending: "running",
+    waiting: "running",
     done: "completed",
     completed: "completed",
+    success: "completed",
     failed: "failed",
     cancelled: "cancelled",
     error: "failed",
