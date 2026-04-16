@@ -39,9 +39,12 @@ import { useAuth } from "@/context/AuthContext";
 import { useTranslation } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
-function getStoredAccessToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem("sygen_access_token");
+function readCookie(name: string): string | null {
+  if (typeof document === "undefined") return null;
+  const m = document.cookie.match(
+    new RegExp(`(?:^|; )${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}=([^;]*)`),
+  );
+  return m ? decodeURIComponent(m[1]) : null;
 }
 
 function HeaderAgentAvatar({
@@ -176,26 +179,32 @@ export default function ChatPage() {
   // File upload
   const uploadFile = useCallback(
     async (file: File): Promise<{ path: string; name: string; prompt: string } | null> => {
-      const token = getStoredAccessToken() || activeServer.token;
+      const remoteToken = activeServer.token;
       const formData = new FormData();
       formData.append("file", file);
+
+      const headers: Record<string, string> = {};
+      if (remoteToken) headers["Authorization"] = `Bearer ${remoteToken}`;
+      const csrf = readCookie("sygen_csrf");
+      if (csrf) headers["X-CSRF-Token"] = csrf;
 
       const url = `${activeServer.url}/upload`;
       try {
         const res = await fetch(url, {
           method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
+          credentials: "include",
+          headers,
           body: formData,
         });
         if (!res.ok) {
           const errBody = await res.text().catch(() => "");
-          console.error(`Upload failed: ${res.status} ${res.statusText}`, errBody, { url, hasToken: !!token });
+          console.error(`Upload failed: ${res.status} ${res.statusText}`, errBody, { url });
           return null;
         }
         const data = await res.json();
         return { path: data.path, name: data.name, prompt: data.prompt };
       } catch (err) {
-        console.error("Upload fetch error:", err, { url, hasToken: !!token });
+        console.error("Upload fetch error:", err, { url });
         return null;
       }
     },
@@ -645,7 +654,7 @@ export default function ChatPage() {
               key={msg.id}
               {...msg}
               serverUrl={activeServer.url}
-              token={getStoredAccessToken() || activeServer.token}
+              token={activeServer.token}
               agentAvatarUrl={
                 msg.sender === "agent" && msg.agentName && agentAvatars.has(msg.agentName)
                   ? `${activeServer.url}/api/agents/${encodeURIComponent(msg.agentName)}/avatar`

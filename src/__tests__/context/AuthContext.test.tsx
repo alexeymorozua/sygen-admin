@@ -30,6 +30,8 @@ const mockGetMe = vi.fn().mockResolvedValue({
   username: "test", role: "admin", allowed_agents: [],
 });
 
+let mockStoredUser: { username: string; role: string; allowed_agents: string[] } | null = null;
+
 vi.mock("@/lib/api", () => ({
   SygenAPI: {
     isAuthenticated: (...args: unknown[]) => mockIsAuthenticated(...args),
@@ -38,7 +40,8 @@ vi.mock("@/lib/api", () => ({
     logout: (...args: unknown[]) => mockLogout(...args),
     getMe: (...args: unknown[]) => mockGetMe(...args),
   },
-  getStoredUser: () => null,
+  getStoredUser: () => mockStoredUser,
+  migrateLegacyLocalStorage: () => {},
 }));
 
 function TestConsumer() {

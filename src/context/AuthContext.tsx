@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { SygenAPI, getStoredUser } from "@/lib/api";
+import { SygenAPI, getStoredUser, migrateLegacyLocalStorage } from "@/lib/api";
 import type { UserInfo, LoginResponse } from "@/lib/api";
 
 interface AuthContextType {
@@ -46,21 +46,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     async function init() {
-      if (SygenAPI.isAuthenticated()) {
-        const success = await SygenAPI.autoLogin();
-        if (success) {
-          setIsAuthenticated(true);
-          const stored = getStoredUser();
-          if (stored) setUser(stored);
-          try {
-            const me = await SygenAPI.getMe();
-            setUser(me);
-          } catch { /* ignore network errors, keep stored */ }
-        } else {
-          setIsAuthenticated(false);
-          setUser(null);
-          SygenAPI.logout();
-        }
+      // One-shot cleanup of legacy localStorage tokens from the pre-cookie era.
+      migrateLegacyLocalStorage();
+      // Seed UI with the cached user immediately so we don't flash unauth
+      // on reload while the /me round-trip is in flight.
+      const cached = getStoredUser();
+      if (cached) {
+        setUser(cached);
+        setIsAuthenticated(true);
+      }
+      // Cookies are the source of truth — ask the server who we are.
+      const ok = await SygenAPI.autoLogin();
+      if (ok) {
+        const refreshed = getStoredUser();
+        if (refreshed) setUser(refreshed);
+        setIsAuthenticated(true);
       } else {
         setIsAuthenticated(false);
         setUser(null);

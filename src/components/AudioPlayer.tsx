@@ -58,25 +58,23 @@ export default function AudioPlayer({ src, token, filePath, className }: AudioPl
     audio.addEventListener("durationchange", onDurationChange);
     audio.addEventListener("error", onError);
 
-    // Fetch with auth headers if token provided, then create blob URL
-    const authToken = token || (typeof window !== "undefined" ? localStorage.getItem("sygen_access_token") : null);
-    if (authToken) {
-      fetch(src, { headers: { Authorization: `Bearer ${authToken}` } })
-        .then((res) => {
-          if (!res.ok) throw new Error(`${res.status}`);
-          return res.blob();
-        })
-        .then((blob) => {
-          const url = URL.createObjectURL(blob);
-          blobUrlRef.current = url;
-          audio.src = url;
-        })
-        .catch(() => {
-          setHasError(true);
-        });
-    } else {
-      audio.src = src;
-    }
+    // The primary server uses cookie auth (`credentials: "include"`); remote
+    // servers still pass an explicit Bearer token via props.
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    fetch(src, { credentials: "include", headers })
+      .then((res) => {
+        if (!res.ok) throw new Error(`${res.status}`);
+        return res.blob();
+      })
+      .then((blob) => {
+        const url = URL.createObjectURL(blob);
+        blobUrlRef.current = url;
+        audio.src = url;
+      })
+      .catch(() => {
+        setHasError(true);
+      });
 
     return () => {
       audio.removeEventListener("loadedmetadata", onLoadedMetadata);

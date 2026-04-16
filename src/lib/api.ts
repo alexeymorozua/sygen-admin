@@ -184,20 +184,37 @@ export interface RagConfigUpdate {
 
 // ---------------------------------------------------------------------------
 // Token & user storage helpers
+//
+// Primary-server auth uses httpOnly cookies set by the API server. The admin
+// never sees access/refresh tokens — they live in browser cookie storage
+// inaccessible to JS, so XSS cannot exfiltrate them. CSRF is handled via a
+// double-submit cookie (`sygen_csrf`) echoed into the `X-CSRF-Token` header.
+//
+// The only thing we keep in localStorage is the user profile object (not
+// sensitive — display_name, role, allowed_agents).
 // ---------------------------------------------------------------------------
 
-function getStoredTokens(): { accessToken: string | null; refreshToken: string | null } {
-  if (typeof window === "undefined") return { accessToken: null, refreshToken: null };
-  return {
-    accessToken: localStorage.getItem("sygen_access_token"),
-    refreshToken: localStorage.getItem("sygen_refresh_token"),
-  };
+function readCookie(name: string): string | null {
+  if (typeof document === "undefined") return null;
+  const m = document.cookie.match(
+    new RegExp(`(?:^|; )${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}=([^;]*)`),
+  );
+  return m ? decodeURIComponent(m[1]) : null;
 }
 
-function storeTokens(access: string, refresh?: string) {
+function getCsrfToken(): string | null {
+  return readCookie("sygen_csrf");
+}
+
+/**
+ * One-shot cleanup: migrate any leftover JWTs from the pre-cookie era out of
+ * localStorage. Called once from AuthContext on first load — keeping this
+ * helper local so we can eventually delete it after a rollout window.
+ */
+export function migrateLegacyLocalStorage(): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem("sygen_access_token", access);
-  if (refresh) localStorage.setItem("sygen_refresh_token", refresh);
+  localStorage.removeItem("sygen_access_token");
+  localStorage.removeItem("sygen_refresh_token");
 }
 
 function storeUser(user: UserInfo) {
@@ -215,79 +232,83 @@ export function getStoredUser(): UserInfo | null {
   }
 }
 
-function clearTokens() {
+function clearUserState() {
   if (typeof window === "undefined") return;
-  localStorage.removeItem("sygen_access_token");
-  localStorage.removeItem("sygen_refresh_token");
   localStorage.removeItem("sygen_user");
+}
+
+const UNSAFE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
+function mergeAuthHeaders(
+  method: string | undefined,
+  base: HeadersInit | undefined,
+  extras: Record<string, string> = {},
+): HeadersInit {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...extras,
+  };
+  // Server falls back to Authorization if no cookie is present; remote-server
+  // flows rely on this (their token lives in sessionStorage).
+  const remoteToken = getApiToken();
+  if (remoteToken) headers["Authorization"] = `Bearer ${remoteToken}`;
+  const csrf = method && UNSAFE_METHODS.has(method.toUpperCase()) ? getCsrfToken() : null;
+  if (csrf) headers["X-CSRF-Token"] = csrf;
+  if (base) {
+    for (const [k, v] of Object.entries(base as Record<string, string>)) {
+      headers[k] = v;
+    }
+  }
+  return headers;
 }
 
 // ---------------------------------------------------------------------------
 // Core fetch with JWT handling
 // ---------------------------------------------------------------------------
 
-let _refreshPromise: Promise<string | null> | null = null;
+let _refreshPromise: Promise<boolean> | null = null;
 
-async function refreshAccessToken(): Promise<string | null> {
-  const { refreshToken } = getStoredTokens();
-  if (!refreshToken) return null;
-
+async function refreshAccessToken(): Promise<boolean> {
   try {
     const res = await fetch(`${getApiUrl()}/api/auth/refresh`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refresh_token: refreshToken }),
+      credentials: "include",
+      headers: mergeAuthHeaders("POST", undefined),
     });
-    if (!res.ok) return null;
-    const data = await res.json();
-    const newAccess = data.access_token;
-    if (newAccess) {
-      storeTokens(newAccess);
-      return newAccess;
-    }
-    return null;
+    return res.ok;
   } catch {
-    return null;
+    return false;
   }
 }
 
 async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  const { accessToken } = getStoredTokens();
-  const token = accessToken || getApiToken();
   const baseUrl = getApiUrl();
+  const method = options?.method || "GET";
 
   const res = await fetch(`${baseUrl}${endpoint}`, {
     ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options?.headers,
-    },
+    credentials: "include",
+    headers: mergeAuthHeaders(method, options?.headers),
   });
 
-  if (res.status === 401 && accessToken) {
-    // Try refresh once (deduplicated)
+  if (res.status === 401) {
     if (!_refreshPromise) {
       _refreshPromise = refreshAccessToken().finally(() => { _refreshPromise = null; });
     }
-    const newToken = await _refreshPromise;
-    if (newToken) {
+    const refreshed = await _refreshPromise;
+    if (refreshed) {
       const retry = await fetch(`${baseUrl}${endpoint}`, {
         ...options,
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${newToken}`,
-          ...options?.headers,
-        },
+        credentials: "include",
+        headers: mergeAuthHeaders(method, options?.headers),
       });
       if (retry.ok) {
         const json = await retry.json();
         return json.data !== undefined ? json.data : json;
       }
     }
-    // Refresh failed — clear tokens and redirect to login
-    clearTokens();
-    if (typeof window !== "undefined") {
+    clearUserState();
+    if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
       window.location.href = "/login";
     }
     throw new Error("Session expired");
@@ -312,6 +333,7 @@ export class SygenAPI {
   static async login(credentials: { username: string; password: string }): Promise<LoginResponse> {
     const res = await fetch(`${getApiUrl()}/api/auth/login`, {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(credentials),
     });
@@ -321,11 +343,10 @@ export class SygenAPI {
       throw new Error(body?.error || "Login failed");
     }
     const data = await res.json();
-    // If 2FA is required, don't store tokens yet — return early
+    // Auth cookies are set server-side; client only caches the user profile.
     if (data.requires_2fa) {
       return data;
     }
-    storeTokens(data.access_token, data.refresh_token);
     if (data.user) {
       storeUser(data.user);
     }
@@ -335,6 +356,7 @@ export class SygenAPI {
   static async login2FA(tempToken: string, code: string): Promise<LoginResponse> {
     const res = await fetch(`${getApiUrl()}/api/auth/2fa/login`, {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ temp_token: tempToken, code }),
     });
@@ -343,7 +365,6 @@ export class SygenAPI {
       throw new Error(body?.error || "2FA verification failed");
     }
     const data = await res.json();
-    storeTokens(data.access_token, data.refresh_token);
     if (data.user) {
       storeUser(data.user);
     }
@@ -351,33 +372,38 @@ export class SygenAPI {
   }
 
   static async logout(): Promise<void> {
-    const { refreshToken } = getStoredTokens();
-    if (refreshToken) {
-      try {
-        await fetch(`${getApiUrl()}/api/auth/logout`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ refresh_token: refreshToken }),
-        });
-      } catch { /* ignore */ }
-    }
-    clearTokens();
+    try {
+      await fetch(`${getApiUrl()}/api/auth/logout`, {
+        method: "POST",
+        credentials: "include",
+        headers: mergeAuthHeaders("POST", undefined),
+      });
+    } catch { /* ignore */ }
+    clearUserState();
   }
 
   static isAuthenticated(): boolean {
     if (USE_MOCK) return true;
-    const { accessToken } = getStoredTokens();
-    return !!accessToken;
+    // With httpOnly cookies the client can't see access tokens directly —
+    // the cached user profile acts as the "did we log in" signal. The
+    // server is still the source of truth; fetchAPI will flip us to
+    // /login on 401 if the session has expired.
+    return !!getStoredUser();
   }
 
-  // ---- Auto-login: validate existing stored JWT ----
-
   static async autoLogin(): Promise<boolean> {
-    const { accessToken } = getStoredTokens();
-    if (!accessToken) return false;
-    // We already have a stored JWT — consider authenticated.
-    // Token refresh on 401 is handled by fetchAPI.
-    return true;
+    if (USE_MOCK) return true;
+    try {
+      const me = await SygenAPI.getMe();
+      if (me?.username) {
+        storeUser(me);
+        return true;
+      }
+      return false;
+    } catch {
+      clearUserState();
+      return false;
+    }
   }
 
   // ---- Agents ----
@@ -1164,14 +1190,19 @@ export class SygenAPI {
   // ---- Avatar ----
 
   static async uploadAvatar(file: File): Promise<{ path: string }> {
-    const { accessToken } = getStoredTokens();
-    const token = accessToken || getApiToken();
     const formData = new FormData();
     formData.append("file", file);
 
+    const headers: Record<string, string> = {};
+    const remoteToken = getApiToken();
+    if (remoteToken) headers["Authorization"] = `Bearer ${remoteToken}`;
+    const csrf = getCsrfToken();
+    if (csrf) headers["X-CSRF-Token"] = csrf;
+
     const res = await fetch(`${getApiUrl()}/upload`, {
       method: "POST",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      credentials: "include",
+      headers,
       body: formData,
     });
     if (!res.ok) {
@@ -1264,8 +1295,10 @@ export class SygenAPI {
       return () => clearTimeout(timer);
     }
 
-    const { accessToken } = getStoredTokens();
-    const token = accessToken || getApiToken();
+    // The browser sends the sygen_access cookie automatically with WS
+    // handshakes against the same origin. For remote-server flows we still
+    // need the Bearer token in the auth frame.
+    const token = getApiToken();
     const wsUrl = getApiUrl().replace(/^http/, "ws");
     const ws = new WebSocket(`${wsUrl}/ws/chat/${agentId}`);
     ws.onopen = () => {
@@ -1283,16 +1316,21 @@ export class SygenAPI {
   }
 
   static async uploadAgentAvatar(agentName: string, file: File): Promise<void> {
-    const { accessToken } = getStoredTokens();
-    const token = accessToken || getApiToken();
     const formData = new FormData();
     formData.append("avatar", file, file.name);
+
+    const headers: Record<string, string> = {};
+    const remoteToken = getApiToken();
+    if (remoteToken) headers["Authorization"] = `Bearer ${remoteToken}`;
+    const csrf = getCsrfToken();
+    if (csrf) headers["X-CSRF-Token"] = csrf;
 
     const res = await fetch(
       `${getApiUrl()}/api/agents/${encodeURIComponent(agentName)}/avatar`,
       {
         method: "POST",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: "include",
+        headers,
         body: formData,
       }
     );
@@ -1357,8 +1395,6 @@ export class SygenAPI {
   }
 
   static async uploadFile(agent: string, subPath: string, file: File): Promise<{ path: string }> {
-    const { accessToken } = getStoredTokens();
-    const token = accessToken || getApiToken();
     const formData = new FormData();
     formData.append("file", file, file.name);
 
@@ -1367,9 +1403,16 @@ export class SygenAPI {
     const qs = new URLSearchParams({ agent });
     if (subPath) qs.set("relative_path", subPath);
 
+    const headers: Record<string, string> = {};
+    const remoteToken = getApiToken();
+    if (remoteToken) headers["Authorization"] = `Bearer ${remoteToken}`;
+    const csrf = getCsrfToken();
+    if (csrf) headers["X-CSRF-Token"] = csrf;
+
     const res = await fetch(`${getApiUrl()}/upload?${qs.toString()}`, {
       method: "POST",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      credentials: "include",
+      headers,
       body: formData,
     });
     if (!res.ok) {
@@ -1389,16 +1432,34 @@ export class SygenAPI {
   }
 
   static async downloadAuthedBlob(url: string): Promise<Blob> {
-    const { accessToken } = getStoredTokens();
-    const token = accessToken || getApiToken();
+    const headers: Record<string, string> = {};
+    const remoteToken = getApiToken();
+    if (remoteToken) headers["Authorization"] = `Bearer ${remoteToken}`;
     const res = await fetch(url, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      credentials: "include",
+      headers,
     });
     if (!res.ok) {
       const body = await res.json().catch(() => null);
       throw new Error(body?.error || `Download failed: ${res.status}`);
     }
     return res.blob();
+  }
+
+  static async signFileUrl(agent: string, relativePath: string, ttl = 60): Promise<string> {
+    const data = await fetchAPI<{ url: string; expires_at: number }>(
+      "/api/files/sign-url",
+      {
+        method: "POST",
+        body: JSON.stringify({ agent, relative_path: relativePath, ttl }),
+      },
+    );
+    // Server returns a relative URL (`/api/files/download?...&sig=...&exp=...`).
+    // Resolve against the active API base so callers can use it as-is.
+    if (data.url.startsWith("http://") || data.url.startsWith("https://")) {
+      return data.url;
+    }
+    return `${getApiUrl()}${data.url}`;
   }
 }
 

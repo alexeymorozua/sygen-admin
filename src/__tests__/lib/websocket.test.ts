@@ -53,9 +53,9 @@ beforeEach(() => {
 });
 
 describe("connect", () => {
-  it("sends auth message on open", async () => {
-    localStorage.setItem("sygen_access_token", "ws-jwt-token");
-
+  it("sends the remote-server fallback token in the auth frame", async () => {
+    // Primary-server auth now rides on the browser's cookie jar; the
+    // explicit token is only used for remote-server flows.
     const callbacks: SygenWSCallbacks = {};
     const ws = new SygenWebSocket(callbacks, {
       url: "http://test:8080",
@@ -68,22 +68,6 @@ describe("connect", () => {
     expect(mockWsInstance.sent).toHaveLength(1);
     const sent = JSON.parse(mockWsInstance.sent[0]);
     expect(sent.type).toBe("auth");
-    expect(sent.token).toBe("ws-jwt-token");
-
-    ws.disconnect();
-  });
-
-  it("uses fallback token when no localStorage token", async () => {
-    const callbacks: SygenWSCallbacks = {};
-    const ws = new SygenWebSocket(callbacks, {
-      url: "http://test:8080",
-      token: "fallback-token",
-    });
-
-    ws.connect();
-    await new Promise((r) => setTimeout(r, 10));
-
-    const sent = JSON.parse(mockWsInstance.sent[0]);
     expect(sent.token).toBe("fallback-token");
 
     ws.disconnect();

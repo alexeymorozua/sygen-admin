@@ -29,9 +29,8 @@ beforeEach(async () => {
   createApiForServer = mod.createApiForServer;
 });
 
-describe("fetchAPI — auth header", () => {
-  it("adds Authorization header from localStorage token", async () => {
-    localStorage.setItem("sygen_access_token", "my-jwt");
+describe("fetchAPI — cookie auth", () => {
+  it("sends credentials: 'include' on every request (cookies are source of truth)", async () => {
     const fetchSpy = mockFetch({ data: [] });
     vi.stubGlobal("fetch", fetchSpy);
 
@@ -39,36 +38,66 @@ describe("fetchAPI — auth header", () => {
 
     expect(fetchSpy).toHaveBeenCalledWith(
       "http://test-api:8080/api/agents",
-      expect.objectContaining({
-        headers: expect.objectContaining({
-          Authorization: "Bearer my-jwt",
-        }),
-      })
+      expect.objectContaining({ credentials: "include" }),
     );
   });
 
-  it("sends no Authorization when no localStorage token and no active server", async () => {
+  it("omits Authorization header by default (primary server uses cookie)", async () => {
     const fetchSpy = mockFetch({ data: [] });
     vi.stubGlobal("fetch", fetchSpy);
 
     await SygenAPI.getAgents();
 
     const callHeaders = fetchSpy.mock.calls[0][1]?.headers as Record<string, string>;
-    // No token available → empty bearer or no header
     expect(callHeaders.Authorization).toBeUndefined();
+  });
+
+  it("attaches X-CSRF-Token on unsafe methods when cookie is present", async () => {
+    // Simulate server-issued CSRF cookie
+    document.cookie = "sygen_csrf=csrf-abc; path=/";
+
+    const fetchSpy = mockFetch({ data: {} });
+    vi.stubGlobal("fetch", fetchSpy);
+
+    await SygenAPI.deleteCronJob("cron-1");
+
+    const callHeaders = fetchSpy.mock.calls[0][1]?.headers as Record<string, string>;
+    expect(callHeaders["X-CSRF-Token"]).toBe("csrf-abc");
+
+    // Cleanup cookie
+    document.cookie = "sygen_csrf=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+  });
+
+  it("does not send X-CSRF-Token on GET requests", async () => {
+    document.cookie = "sygen_csrf=csrf-abc; path=/";
+
+    const fetchSpy = mockFetch({ data: [] });
+    vi.stubGlobal("fetch", fetchSpy);
+
+    await SygenAPI.getAgents();
+
+    const callHeaders = fetchSpy.mock.calls[0][1]?.headers as Record<string, string>;
+    expect(callHeaders["X-CSRF-Token"]).toBeUndefined();
+
+    document.cookie = "sygen_csrf=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
   });
 });
 
-describe("fetchAPI — 401 retry with refresh", () => {
-  it("retries on 401 after successful token refresh", async () => {
-    localStorage.setItem("sygen_access_token", "old-jwt");
-    localStorage.setItem("sygen_refresh_token", "my-refresh");
-
-    let callCount = 0;
+describe("fetchAPI — 401 retry with cookie refresh", () => {
+  it("calls /api/auth/refresh and retries on 401 without inspecting tokens", async () => {
+    let authCalls = 0;
+    let refreshCalled = false;
     const fetchSpy = vi.fn().mockImplementation((url: string) => {
-      // First call to /api/agents → 401
-      if (url.includes("/api/agents") && callCount === 0) {
-        callCount++;
+      if (url.includes("/api/auth/refresh")) {
+        refreshCalled = true;
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({ ok: true }),
+        });
+      }
+      authCalls++;
+      if (authCalls === 1) {
         return Promise.resolve({
           ok: false,
           status: 401,
@@ -76,15 +105,6 @@ describe("fetchAPI — 401 retry with refresh", () => {
           json: () => Promise.resolve({ error: "Unauthorized" }),
         });
       }
-      // Token refresh
-      if (url.includes("/api/auth/refresh")) {
-        return Promise.resolve({
-          ok: true,
-          status: 200,
-          json: () => Promise.resolve({ access_token: "new-jwt" }),
-        });
-      }
-      // Retry call to /api/agents → success
       return Promise.resolve({
         ok: true,
         status: 200,
@@ -94,15 +114,12 @@ describe("fetchAPI — 401 retry with refresh", () => {
     vi.stubGlobal("fetch", fetchSpy);
 
     const agents = await SygenAPI.getAgents();
+    expect(refreshCalled).toBe(true);
     expect(agents).toHaveLength(1);
     expect(agents[0].name).toBe("main");
-    expect(localStorage.getItem("sygen_access_token")).toBe("new-jwt");
   });
 
-  it("redirects to /login on refresh failure", async () => {
-    localStorage.setItem("sygen_access_token", "old-jwt");
-    localStorage.setItem("sygen_refresh_token", "bad-refresh");
-
+  it("redirects to /login when refresh fails", async () => {
     const fetchSpy = vi.fn().mockImplementation((url: string) => {
       if (url.includes("/api/auth/refresh")) {
         return Promise.resolve({ ok: false, status: 401, json: () => Promise.resolve({}) });
@@ -116,13 +133,11 @@ describe("fetchAPI — 401 retry with refresh", () => {
     });
     vi.stubGlobal("fetch", fetchSpy);
 
-    // Mock window.location
-    const locationSpy = { href: "" };
+    const locationSpy = { href: "", pathname: "/" };
     Object.defineProperty(window, "location", { value: locationSpy, writable: true });
 
     await expect(SygenAPI.getAgents()).rejects.toThrow("Session expired");
     expect(locationSpy.href).toBe("/login");
-    expect(localStorage.getItem("sygen_access_token")).toBeNull();
   });
 });
 
@@ -194,29 +209,40 @@ describe("getAgents / getCronJobs — data mapping", () => {
 });
 
 describe("login / logout", () => {
-  it("login stores tokens", async () => {
+  it("login calls server with credentials:'include' and caches the user profile", async () => {
     const fetchSpy = mockFetch({
-      access_token: "new-access",
-      refresh_token: "new-refresh",
+      access_token: "ignored",
+      refresh_token: "ignored",
+      user: { username: "admin", role: "admin", display_name: "Admin", allowed_agents: [] },
     });
     vi.stubGlobal("fetch", fetchSpy);
 
-    const result = await SygenAPI.login({ username: "admin", password: "secret" });
-    expect(result.access_token).toBe("new-access");
-    expect(localStorage.getItem("sygen_access_token")).toBe("new-access");
-    expect(localStorage.getItem("sygen_refresh_token")).toBe("new-refresh");
+    await SygenAPI.login({ username: "admin", password: "secret" });
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "http://test-api:8080/api/auth/login",
+      expect.objectContaining({ credentials: "include", method: "POST" }),
+    );
+    // Tokens are set by the server as httpOnly cookies — admin never touches them
+    expect(localStorage.getItem("sygen_access_token")).toBeNull();
+    expect(localStorage.getItem("sygen_refresh_token")).toBeNull();
+    // Only the user profile is cached
+    const cached = localStorage.getItem("sygen_user");
+    expect(cached).toContain("admin");
   });
 
-  it("logout clears tokens", async () => {
-    localStorage.setItem("sygen_access_token", "some-token");
-    localStorage.setItem("sygen_refresh_token", "some-refresh");
-
+  it("logout clears the cached user and POSTs to /api/auth/logout", async () => {
+    localStorage.setItem("sygen_user", JSON.stringify({ username: "admin" }));
     const fetchSpy = mockFetch({});
     vi.stubGlobal("fetch", fetchSpy);
 
     await SygenAPI.logout();
-    expect(localStorage.getItem("sygen_access_token")).toBeNull();
-    expect(localStorage.getItem("sygen_refresh_token")).toBeNull();
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "http://test-api:8080/api/auth/logout",
+      expect.objectContaining({ credentials: "include", method: "POST" }),
+    );
+    expect(localStorage.getItem("sygen_user")).toBeNull();
   });
 });
 

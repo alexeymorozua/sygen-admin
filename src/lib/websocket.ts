@@ -66,10 +66,9 @@ const DEFAULT_API_URL =
   process.env.NEXT_PUBLIC_SYGEN_API_URL || "http://localhost:8741";
 const DEFAULT_API_TOKEN = "";
 
-function getStoredAccessToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem("sygen_access_token");
-}
+// Access tokens live in an httpOnly cookie now and are sent automatically
+// during the WebSocket handshake (same-origin). The auth frame still
+// exists for remote-server flows that pass a Bearer token via options.
 
 export interface SygenWSOptions {
   url?: string;
@@ -101,9 +100,10 @@ export class SygenWebSocket {
     this.ws = new WebSocket(`${wsUrl}/ws/admin`);
 
     this.ws.onopen = () => {
-      // Prefer JWT access token from localStorage, fall back to legacy token
-      const authToken = getStoredAccessToken() || this.token;
-      this.ws!.send(JSON.stringify({ type: "auth", token: authToken }));
+      // Cookies are sent automatically by the browser during the WS handshake.
+      // The auth frame is still needed for remote-server flows that rely on
+      // a Bearer token passed in via options.
+      this.ws!.send(JSON.stringify({ type: "auth", token: this.token }));
     };
 
     this.ws.onmessage = (event) => {
