@@ -26,6 +26,7 @@ import {
 import StreamingMessage from "@/components/StreamingMessage";
 import CommandMenu, { type CommandMenuHandle } from "@/components/CommandMenu";
 import StatusBadge from "@/components/StatusBadge";
+import { Select } from "@/components/Select";
 import VoiceRecorder from "@/components/VoiceRecorder";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { useToast } from "@/components/Toast";
@@ -404,17 +405,17 @@ export default function ChatPage() {
             </button>
           </div>
           <div className="flex items-center gap-2">
-            <select
+            <Select
               value={selectedAgent}
               onChange={(e) => setSelectedAgent(e.target.value)}
-              className="flex-1 bg-bg-card border border-border rounded-lg pl-3 pr-8 py-1.5 text-sm appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23888%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:12px] bg-[right_10px_center] bg-no-repeat"
+              className="flex-1"
             >
               {agents.map((a) => (
                 <option key={a} value={a}>
                   {a}
                 </option>
               ))}
-            </select>
+            </Select>
             <StatusBadge
               status={statusVariant as "online" | "running" | "offline"}
             />
@@ -638,17 +639,17 @@ export default function ChatPage() {
         <div className="p-3 md:p-4 border-t border-border">
           {/* Mobile agent selector */}
           <div className="flex items-center gap-2 mb-2 md:hidden">
-            <select
+            <Select
               value={selectedAgent}
               onChange={(e) => setSelectedAgent(e.target.value)}
-              className="flex-1 bg-bg-card border border-border rounded-lg pl-3 pr-8 py-1.5 text-sm appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23888%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:12px] bg-[right_10px_center] bg-no-repeat"
+              className="flex-1"
             >
               {agents.map((a) => (
                 <option key={a} value={a}>
                   {a}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
 
           <div className="relative flex items-end gap-2">

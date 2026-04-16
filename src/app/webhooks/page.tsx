@@ -5,6 +5,7 @@ import { Plus, X, Trash2, Edit2, Save, Play } from "lucide-react";
 import DataTable, { type Column } from "@/components/DataTable";
 import TableSearch from "@/components/TableSearch";
 import StatusBadge from "@/components/StatusBadge";
+import { Select } from "@/components/Select";
 import { LoadingSpinner, ErrorState } from "@/components/LoadingState";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/ConfirmDialog";
@@ -109,15 +110,15 @@ function WebhookFormDialog({
 
           <div>
             <label className="block text-xs text-text-secondary mb-1.5">{t('webhooks.method')}</label>
-            <select
+            <Select
               value={form.method}
               onChange={(e) => setForm({ ...form, method: e.target.value })}
-              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent"
+              className="w-full"
             >
               <option value="POST">POST</option>
               <option value="GET">GET</option>
               <option value="PUT">PUT</option>
-            </select>
+            </Select>
           </div>
 
           <div>

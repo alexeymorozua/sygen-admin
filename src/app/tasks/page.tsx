@@ -6,6 +6,7 @@ import { useTranslation } from "@/lib/i18n";
 import DataTable, { type Column } from "@/components/DataTable";
 import TableSearch from "@/components/TableSearch";
 import StatusBadge from "@/components/StatusBadge";
+import { Select } from "@/components/Select";
 import { LoadingSpinner, ErrorState } from "@/components/LoadingState";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/ConfirmDialog";
@@ -72,10 +73,10 @@ function TaskFormDialog({
 
           <div>
             <label className="block text-xs text-text-secondary mb-1.5">Agent</label>
-            <select
+            <Select
               value={agent}
               onChange={(e) => setAgent(e.target.value)}
-              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent"
+              className="w-full"
             >
               {agents.length > 0
                 ? agents.map((a) => (
@@ -83,7 +84,7 @@ function TaskFormDialog({
                   ))
                 : <option value="main">main</option>
               }
-            </select>
+            </Select>
           </div>
 
           <div>

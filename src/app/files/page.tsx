@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
 import { LoadingSpinner, ErrorState } from "@/components/LoadingState";
+import { Select } from "@/components/Select";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { SygenAPI } from "@/lib/api";
@@ -345,10 +346,10 @@ export default function FilesPage() {
           <h1 className="text-2xl font-bold">{t("files.title")}</h1>
           <div className="flex items-center gap-2">
             {/* Agent selector (mobile) */}
-            <select
+            <Select
               value={selectedAgent}
               onChange={(e) => handleAgentSelect(e.target.value)}
-              className="lg:hidden bg-bg-card border border-border rounded-lg px-2 py-1.5 text-sm"
+              className="lg:hidden"
             >
               <option value="main">Main</option>
               {agents
@@ -358,7 +359,7 @@ export default function FilesPage() {
                     {a.displayName || a.name}
                   </option>
                 ))}
-            </select>
+            </Select>
 
             <button
               type="button"
@@ -441,17 +442,17 @@ export default function FilesPage() {
           <div className="ml-auto flex items-center gap-2">
             <div className="flex items-center gap-1">
               <ArrowUpDown size={12} className="text-text-secondary" />
-              <select
+              <Select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortBy)}
-                className="bg-bg-card border border-border rounded-lg px-2 py-1 text-xs"
+                className="text-xs"
               >
                 {sortOptions.map((s) => (
                   <option key={s.value} value={s.value}>
                     {s.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div className="flex items-center bg-bg-card border border-border rounded-lg">
               <button

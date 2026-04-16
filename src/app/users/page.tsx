@@ -12,6 +12,7 @@ import type { UserInfo, AuditEntry } from "@/lib/api";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { LoadingSpinner, ErrorState } from "@/components/LoadingState";
+import { Select } from "@/components/Select";
 import { useTranslation } from "@/lib/i18n";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -490,15 +491,15 @@ function UserFormDialog({
           {/* Role */}
           <div>
             <label className="block text-xs text-text-secondary mb-1">{t("users.role") || "Role"}</label>
-            <select
+            <Select
               value={role}
               onChange={(e) => setRole(e.target.value)}
-              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm"
+              className="w-full"
             >
               <option value="admin">Admin</option>
               <option value="operator">Operator</option>
               <option value="viewer">Viewer</option>
-            </select>
+            </Select>
             <p className="text-xs text-text-secondary mt-1">
               {role === "admin" && "Full access to everything"}
               {role === "operator" && "Read + run tasks, cron, webhooks"}

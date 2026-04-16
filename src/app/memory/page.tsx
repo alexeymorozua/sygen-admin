@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Brain, Save, FileText, Loader2, Users, FolderOpen, ArrowLeft } from "lucide-react";
 import StatusBadge from "@/components/StatusBadge";
+import { Select } from "@/components/Select";
 import { LoadingSpinner } from "@/components/LoadingState";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/ConfirmDialog";
@@ -178,14 +179,14 @@ export default function MemoryPage() {
                 {t('memory.agent')}
               </span>
             </div>
-            <select
+            <Select
               value={selectedAgent}
               onChange={async (e) => {
                 const val = e.target.value;
                 if (dirty && !(await confirm({ message: t('memory.discardConfirm') }))) return;
                 setSelectedAgent(val);
               }}
-              className="w-full bg-bg-primary border border-border rounded-lg px-2 py-1.5 text-sm"
+              className="w-full"
             >
               <option value="">main</option>
               {agents
@@ -195,7 +196,7 @@ export default function MemoryPage() {
                     {a.displayName || a.name}
                   </option>
                 ))}
-            </select>
+            </Select>
           </div>
 
           {/* Module count */}
