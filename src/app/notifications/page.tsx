@@ -1,13 +1,72 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { Bell, Clock, Webhook, Cpu, Bot, Check, Reply, Filter, CheckCheck } from "lucide-react";
+import { useState, useCallback, useEffect } from "react";
+import { Bell, Clock, Webhook, Cpu, Bot, Check, Reply, Filter, CheckCheck, ChevronDown } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
 import { useNotifications } from "@/context/NotificationContext";
 import { cn } from "@/lib/utils";
+import { SygenAPI } from "@/lib/api";
 import type { SygenNotification } from "@/lib/api";
+import type { Agent } from "@/lib/mock-data";
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
+
+interface ReplyButtonProps {
+  defaultAgent: string;
+  agents: Agent[];
+  t: (key: string) => string;
+}
+
+function ReplyButton({ defaultAgent, agents, t }: ReplyButtonProps) {
+  const [open, setOpen] = useState(false);
+  const [agent, setAgent] = useState(defaultAgent);
+
+  useEffect(() => {
+    setAgent(defaultAgent);
+    setOpen(false);
+  }, [defaultAgent]);
+
+  return (
+    <div className="relative">
+      <div className="flex items-center bg-brand-500/20 text-brand-400 rounded-lg overflow-hidden">
+        <a
+          href={`/chat?agent=${encodeURIComponent(agent)}`}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium hover:bg-brand-500/30 transition-colors"
+        >
+          <Reply size={12} />
+          {t("notifications.reply")} → @{agent}
+        </a>
+        {agents.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            aria-label="Choose agent"
+            className="px-2 py-1.5 hover:bg-brand-500/30 border-l border-brand-500/30 transition-colors"
+          >
+            <ChevronDown size={12} className={cn("transition-transform", open && "rotate-180")} />
+          </button>
+        )}
+      </div>
+      {open && (
+        <div className="absolute top-full mt-1 right-0 z-10 bg-bg-card border border-border rounded-lg shadow-lg min-w-[160px] py-1 max-h-64 overflow-y-auto">
+          {agents.map((a) => (
+            <button
+              key={a.name}
+              type="button"
+              onClick={() => { setAgent(a.name); setOpen(false); }}
+              className={cn(
+                "w-full text-left px-3 py-1.5 text-xs hover:bg-bg-sidebar transition-colors",
+                agent === a.name ? "text-brand-400 font-medium" : "text-text-primary"
+              )}
+            >
+              @{a.name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 type NotificationFilter = "all" | "cron" | "system" | "task" | "webhook";
 
@@ -64,6 +123,11 @@ export default function NotificationsPage() {
   const { notifications, unreadCount, markRead, markAllRead, loading } = useNotifications();
   const [selected, setSelected] = useState<SygenNotification | null>(null);
   const [filter, setFilter] = useState<NotificationFilter>("all");
+  const [agents, setAgents] = useState<Agent[]>([]);
+
+  useEffect(() => {
+    SygenAPI.getAgents().then(setAgents).catch(() => {});
+  }, []);
 
   const filtered = filter === "all"
     ? notifications
@@ -225,13 +289,11 @@ export default function NotificationsPage() {
                 </button>
               )}
               {selected.agent && (
-                <a
-                  href={`/chat?agent=${encodeURIComponent(selected.agent)}`}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 transition-colors"
-                >
-                  <Reply size={12} />
-                  {t("notifications.reply")}
-                </a>
+                <ReplyButton
+                  defaultAgent={selected.agent}
+                  agents={agents}
+                  t={t}
+                />
               )}
             </div>
           </div>
@@ -286,13 +348,11 @@ export default function NotificationsPage() {
                 </button>
               )}
               {selected.agent && (
-                <a
-                  href={`/chat?agent=${encodeURIComponent(selected.agent)}`}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 transition-colors"
-                >
-                  <Reply size={12} />
-                  {t("notifications.reply")}
-                </a>
+                <ReplyButton
+                  defaultAgent={selected.agent}
+                  agents={agents}
+                  t={t}
+                />
               )}
             </div>
 
