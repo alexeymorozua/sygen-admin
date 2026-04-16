@@ -10,7 +10,7 @@ Web-based administration interface for the [Sygen](https://github.com/alexeymoro
 - **Webhooks** — full CRUD management via modal forms with test button (sends POST, shows status/response in toast)
 - **Background Tasks** — monitor running tasks with auto-refresh every 5 seconds, create tasks from UI, expandable result/output view, running task count indicator with pulse animation
 - **Memory Editor** — view and edit all memory modules with content loading on selection and path traversal protection. Root files (MAINMEMORY/SHAREDMEMORY) show a plain line count; nested modules under `modules/` show a colored `N / 80` pill (green → yellow → orange → red) so you can see at a glance which modules are near the cron cleanup threshold
-- **RAG Management** — dedicated block in Settings showing enable toggle, indexed chunk count, vector DB size, embedding model, top-K values, and sub-toggles for memory/workspace indexing and reranker (changes take effect after bot restart)
+- **RAG Management** — dedicated block in Settings showing enable toggle, memory-fact count (primary — drives 200/500 recommendation thresholds) alongside the raw indexed chunk count (technical counter), vector DB size, embedding model, top-K values, and sub-toggles for memory/workspace indexing and reranker (changes take effect after bot restart). Thresholds match the monthly-memory-review cron task and Telegram recommendations so all three surfaces agree on what "large knowledge base" means
 - **Agents** — detail panel on card click (model, provider, sessions, allowed users), logs viewer tab (last 200 lines), online/total count in header, and "Open Chat" quick action
 - **URL-based Detail Selection** — notifications, memory modules, cron jobs, webhooks, tasks, agents, and files all use `?id=…` / `?module=…` query params, so selected items survive page reloads and are linkable/shareable
 - **Settings** — configuration viewer with sanitized secrets (masked as `***`)
@@ -406,7 +406,7 @@ The per-session override is applied only for messages sent on that specific chat
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/api/rag/status` | Read RAG state: `enabled`, `embedding_model`, `reranker_enabled`, `reranker_model`, `index_workspace`, `index_memory`, `top_k_retrieval`, `top_k_final`, vector DB path/size/existence, and indexed `chunk_count` (counted directly from `chroma.sqlite3`) |
+| `GET` | `/api/rag/status` | Read RAG state: `enabled`, `embedding_model`, `reranker_enabled`, `reranker_model`, `index_workspace`, `index_memory`, `top_k_retrieval`, `top_k_final`, vector DB path/size/existence, indexed `chunk_count` (counted directly from `chroma.sqlite3`), and `memory_fact_count` (non-empty, non-comment lines across `memory_system/*.md` — UI applies 200/500 recommendation thresholds to this) |
 | `PUT` | `/api/rag/config` | Update RAG config (admin only). Accepts any subset of `enabled`, `reranker_enabled`, `index_workspace`, `index_memory`, `top_k_retrieval`, `top_k_final`. Unknown fields are rejected. Response includes `restart_required: true` — bot must be restarted for changes to apply |
 
 ### Users (Admin only)

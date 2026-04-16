@@ -101,9 +101,14 @@ export default function RagSection() {
                 <Brain size={14} className="text-text-secondary mt-0.5 shrink-0" />
                 <div className="min-w-0">
                   <p className="text-[10px] uppercase tracking-wider text-text-secondary">
-                    {t("rag.chunks")}
+                    {t("rag.memoryFacts")}
                   </p>
-                  <p className="text-sm font-medium tabular-nums">{status.chunk_count}</p>
+                  <p className="text-sm font-medium tabular-nums">
+                    {status.memory_fact_count ?? "—"}
+                  </p>
+                  <p className="text-[10px] text-text-secondary mt-0.5 tabular-nums">
+                    {t("rag.chunksInIndex", { count: status.chunk_count })}
+                  </p>
                 </div>
               </div>
               <div className="flex items-start gap-2">
@@ -118,7 +123,7 @@ export default function RagSection() {
                 </div>
               </div>
             </div>
-            <ChunkProgress count={status.chunk_count} />
+            <MemoryFactProgress count={status.memory_fact_count ?? 0} />
           </div>
 
           {/* Model info */}
@@ -174,7 +179,7 @@ export default function RagSection() {
   );
 }
 
-function ChunkProgress({ count }: { count: number }) {
+function MemoryFactProgress({ count }: { count: number }) {
   const { t } = useTranslation();
   const clamped = Math.min(count, LARGE_THRESHOLD);
   const pct = (clamped / LARGE_THRESHOLD) * 100;
@@ -236,7 +241,7 @@ function Recommendation({
     );
   }
 
-  const count = status.chunk_count;
+  const count = status.memory_fact_count ?? 0;
   let message: string;
   let canEnableReranker = false;
   if (count >= LARGE_THRESHOLD) {

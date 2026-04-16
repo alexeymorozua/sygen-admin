@@ -155,6 +155,17 @@ export interface RagStatus {
   vector_db_exists: boolean;
   vector_db_size_bytes: number;
   chunk_count: number;
+  memory_fact_count: number | null;
+}
+
+export interface Skill {
+  name: string;
+  description: string;
+  path: string;
+  mtime: number;
+  size: number;
+  has_doc: boolean;
+  doc_filename: string | null;
 }
 
 export interface RagConfigUpdate {
@@ -708,6 +719,53 @@ export class SygenAPI {
     });
   }
 
+  // ---- Skills ----
+
+  static async getSkills(agent: string): Promise<Skill[]> {
+    if (USE_MOCK) return [];
+    return fetchAPI<Skill[]>(`/api/agents/${encodeURIComponent(agent)}/skills`);
+  }
+
+  static async getSkill(agent: string, skill: string): Promise<{ name: string; filename: string | null; content: string }> {
+    if (USE_MOCK) return { name: skill, filename: "SKILL.md", content: "" };
+    return fetchAPI<{ name: string; filename: string | null; content: string }>(
+      `/api/agents/${encodeURIComponent(agent)}/skills/${encodeURIComponent(skill)}`,
+    );
+  }
+
+  static async updateSkill(agent: string, skill: string, content: string): Promise<void> {
+    if (USE_MOCK) return;
+    await fetchAPI(`/api/agents/${encodeURIComponent(agent)}/skills/${encodeURIComponent(skill)}`, {
+      method: "PUT",
+      body: JSON.stringify({ content }),
+    });
+  }
+
+  static async createSkill(agent: string, name: string, content: string): Promise<Skill> {
+    if (USE_MOCK) {
+      return {
+        name,
+        description: "",
+        path: "",
+        mtime: Date.now() / 1000,
+        size: content.length,
+        has_doc: true,
+        doc_filename: "SKILL.md",
+      };
+    }
+    return fetchAPI<Skill>(`/api/agents/${encodeURIComponent(agent)}/skills`, {
+      method: "POST",
+      body: JSON.stringify({ name, content }),
+    });
+  }
+
+  static async deleteSkill(agent: string, skill: string): Promise<void> {
+    if (USE_MOCK) return;
+    await fetchAPI(`/api/agents/${encodeURIComponent(agent)}/skills/${encodeURIComponent(skill)}`, {
+      method: "DELETE",
+    });
+  }
+
   // ---- RAG ----
 
   static async getRagStatus(): Promise<RagStatus> {
@@ -725,6 +783,7 @@ export class SygenAPI {
         vector_db_exists: false,
         vector_db_size_bytes: 0,
         chunk_count: 0,
+        memory_fact_count: 0,
       };
     }
     return fetchAPI<RagStatus>("/api/rag/status");

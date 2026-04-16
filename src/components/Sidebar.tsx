@@ -22,6 +22,7 @@ import {
   Users,
   User,
   FolderOpen,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
@@ -49,6 +50,7 @@ const navItems: NavItem[] = [
   { href: "/files", labelKey: "nav.files", icon: FolderOpen },
   { href: "/notifications", labelKey: "nav.notifications", icon: Bell },
   { href: "/memory", labelKey: "nav.memory", icon: Brain, minRole: "operator" },
+  { href: "/skills", labelKey: "nav.skills", icon: Sparkles, minRole: "operator" },
   { href: "/users", labelKey: "nav.users", icon: Users, minRole: "admin" },
   { href: "/servers", labelKey: "nav.servers", icon: Server, minRole: "admin" },
   { href: "/settings", labelKey: "nav.settings", icon: Settings },
