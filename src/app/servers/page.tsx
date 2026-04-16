@@ -9,7 +9,7 @@ import {
   Star,
   Wifi,
   WifiOff,
-  TestTube,
+  Plug,
   Loader2,
   X,
 } from "lucide-react";
@@ -309,7 +309,7 @@ function ServerForm({
             disabled={testing || !url}
             className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover rounded-lg text-sm transition-colors disabled:opacity-50"
           >
-            {testing ? <Loader2 size={14} className="animate-spin" /> : <TestTube size={14} />}
+            {testing ? <Loader2 size={14} className="animate-spin" /> : <Plug size={14} />}
             {t('servers.testConnection')}
           </button>
 
