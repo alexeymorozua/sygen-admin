@@ -301,7 +301,7 @@ export default function NotificationsPage() {
 
           {/* Detail body - markdown */}
           <div className="p-5 overflow-y-auto flex-1">
-            <div className="prose prose-invert prose-sm max-w-none [&_pre]:bg-black/30 [&_pre]:rounded-lg [&_pre]:p-3 [&_code]:text-brand-300 [&_a]:text-brand-400 [&_a:hover]:text-brand-500 [&_h1]:text-lg [&_h2]:text-base [&_h3]:text-sm [&_p]:text-text-secondary [&_li]:text-text-secondary [&_strong]:text-text-primary">
+            <div className="prose prose-invert prose-sm max-w-none [&_pre]:bg-black/30 [&_pre]:rounded-lg [&_pre]:p-3 [&_code]:text-brand-300 [&_a]:text-brand-400 [&_a:hover]:text-brand-500 [&_h1]:text-lg [&_h2]:text-base [&_h3]:text-sm [&_p]:text-text-secondary [&_p]:my-3 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0 [&_li]:text-text-secondary [&_strong]:text-text-primary">
               <ReactMarkdown remarkPlugins={[remarkBreaks]} rehypePlugins={[rehypeSanitize]}>
                 {selected.body}
               </ReactMarkdown>
@@ -357,7 +357,7 @@ export default function NotificationsPage() {
               )}
             </div>
 
-            <div className="prose prose-invert prose-sm max-w-none [&_pre]:bg-black/30 [&_pre]:rounded-lg [&_pre]:p-3 [&_code]:text-brand-300 [&_a]:text-brand-400 [&_p]:text-text-secondary [&_li]:text-text-secondary [&_strong]:text-text-primary">
+            <div className="prose prose-invert prose-sm max-w-none [&_pre]:bg-black/30 [&_pre]:rounded-lg [&_pre]:p-3 [&_code]:text-brand-300 [&_a]:text-brand-400 [&_p]:text-text-secondary [&_p]:my-3 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0 [&_li]:text-text-secondary [&_strong]:text-text-primary">
               <ReactMarkdown remarkPlugins={[remarkBreaks]} rehypePlugins={[rehypeSanitize]}>
                 {selected.body}
               </ReactMarkdown>
