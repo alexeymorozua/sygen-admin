@@ -78,6 +78,7 @@ export interface ActivityEvent {
 }
 
 export interface SystemHealth {
+  instanceName?: string;
   cpu: number;
   ram: number;
   disk: number;

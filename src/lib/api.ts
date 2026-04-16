@@ -657,6 +657,7 @@ export class SygenAPI {
     if (USE_MOCK) return mockSystemHealth;
     const data = await fetchAPI<Record<string, unknown>>("/api/system/status");
     return {
+      instanceName: String(data.instance_name || ""),
       cpu: Number(data.cpu_percent) || 0,
       ram: Number(data.ram_percent) || 0,
       disk: Number(data.disk_percent) || 0,
@@ -667,6 +668,13 @@ export class SygenAPI {
       tasksTotal: Number(data.tasks_total) || 0,
       tasksActive: Number(data.tasks_active) || 0,
     } as SystemHealth & Record<string, unknown>;
+  }
+
+  static async updateInstanceName(name: string): Promise<void> {
+    await fetchAPI("/api/system/instance-name", {
+      method: "PUT",
+      body: JSON.stringify({ instance_name: name }),
+    });
   }
 
   static async getLogs(lines?: number, agent?: string): Promise<{ agent: string; lines: string[] }> {

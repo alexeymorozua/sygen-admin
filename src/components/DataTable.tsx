@@ -19,6 +19,7 @@ interface DataTableProps<T> {
   onRowClick?: (item: T) => void;
   keyField: string;
   emptyMessage?: string;
+  defaultSort?: { key: string; dir: "asc" | "desc" };
 }
 
 export default function DataTable<T>({
@@ -28,9 +29,10 @@ export default function DataTable<T>({
   onRowClick,
   keyField,
   emptyMessage,
+  defaultSort,
 }: DataTableProps<T>) {
-  const [sortKey, setSortKey] = useState<string | null>(null);
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [sortKey, setSortKey] = useState<string | null>(defaultSort?.key ?? null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">(defaultSort?.dir ?? "asc");
   const [page, setPage] = useState(0);
 
   useEffect(() => { setPage(0); }, [data.length]);

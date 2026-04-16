@@ -17,7 +17,7 @@ import {
   updateServer as updateServerInStorage,
   removeServer as removeServerFromStorage,
 } from "@/lib/servers";
-import { setActiveServerForApi } from "@/lib/api";
+import { setActiveServerForApi, SygenAPI } from "@/lib/api";
 
 interface ServerContextValue {
   servers: SygenServer[];
@@ -36,13 +36,30 @@ export function ServerProvider({ children }: { children: React.ReactNode }) {
   const [activeServer, setActive] = useState<SygenServer | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Initialize from localStorage
+  // Initialize from localStorage, then sync instance name from backend
   useEffect(() => {
     const s = getServers();
     setServers(s);
     const active = getActiveServer();
     setActive(active);
     setActiveServerForApi(active);
+
+    // Sync default server name from backend (recovers name if localStorage was cleared)
+    const defaultServer = s.find((srv) => srv.id === "default");
+    if (defaultServer && defaultServer.name === "Default Server") {
+      SygenAPI.getSystemStatus()
+        .then((status) => {
+          const backendName = status.instanceName;
+          if (backendName && backendName !== defaultServer.name) {
+            updateServerInStorage("default", { name: backendName });
+            const refreshed = getServers();
+            setServers(refreshed);
+            const refreshedActive = refreshed.find((srv) => srv.id === active.id) || refreshed[0];
+            setActive(refreshedActive);
+          }
+        })
+        .catch(() => {});
+    }
   }, []);
 
   const switchServer = useCallback((id: string) => {
@@ -71,6 +88,10 @@ export function ServerProvider({ children }: { children: React.ReactNode }) {
         setActive(updated);
         setActiveServerForApi(updated);
       }
+    }
+    // Persist name to backend for the default server so it survives localStorage loss
+    if (id === "default" && data.name) {
+      SygenAPI.updateInstanceName(data.name).catch(() => {});
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeServer?.id]);

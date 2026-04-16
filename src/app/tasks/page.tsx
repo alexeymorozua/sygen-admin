@@ -319,6 +319,7 @@ export default function TasksPage() {
             keyField="id"
             onRowClick={(item) => { setSelected(item); setShowFullOutput(false); }}
             emptyMessage={t('common.noData')}
+            defaultSort={{ key: "startedAt", dir: "desc" }}
           />
         </div>
       </div>
