@@ -111,7 +111,7 @@ export default function NotificationBell() {
                 {t("notifications.empty")}
               </p>
             ) : (
-              notifications.slice(0, 20).map((n) => (
+              notifications.slice(0, 5).map((n) => (
                 <div
                   key={n.id}
                   className={cn(
@@ -149,6 +149,20 @@ export default function NotificationBell() {
                 </div>
               ))
             )}
+          </div>
+
+          {/* View all link */}
+          <div className="border-t border-border">
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                router.push("/notifications");
+              }}
+              className="w-full px-4 py-2.5 text-xs font-medium text-brand-400 hover:text-brand-500 hover:bg-white/5 transition-colors text-center"
+            >
+              {t("notifications.viewAll")}
+            </button>
           </div>
         </div>
       )}

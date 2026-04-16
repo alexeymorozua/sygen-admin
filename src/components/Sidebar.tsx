@@ -10,6 +10,7 @@ import {
   Clock,
   Webhook,
   ListTodo,
+  Bell,
   Brain,
   Settings,
   Menu,
@@ -29,6 +30,7 @@ import ConnectionStatus from "./ConnectionStatus";
 import ServerSwitcher from "./ServerSwitcher";
 import LanguageSwitcher from "./LanguageSwitcher";
 import NotificationBell from "./NotificationBell";
+import { useNotifications } from "@/context/NotificationContext";
 
 interface NavItem {
   href: string;
@@ -44,6 +46,7 @@ const navItems: NavItem[] = [
   { href: "/cron", labelKey: "nav.cron", icon: Clock, minRole: "operator" },
   { href: "/webhooks", labelKey: "nav.webhooks", icon: Webhook, minRole: "operator" },
   { href: "/tasks", labelKey: "nav.tasks", icon: ListTodo },
+  { href: "/notifications", labelKey: "nav.notifications", icon: Bell },
   { href: "/memory", labelKey: "nav.memory", icon: Brain, minRole: "operator" },
   { href: "/users", labelKey: "nav.users", icon: Users, minRole: "admin" },
   { href: "/servers", labelKey: "nav.servers", icon: Server, minRole: "admin" },
@@ -57,6 +60,7 @@ export default function Sidebar() {
   const { theme, toggleTheme } = useTheme();
   const { t } = useTranslation();
   const { hasRole, user } = useAuth();
+  const { unreadCount } = useNotifications();
 
   const visibleNav = navItems.filter((item) => !item.minRole || hasRole(item.minRole));
 
@@ -100,7 +104,14 @@ export default function Sidebar() {
                 : "text-text-secondary hover:text-text-primary hover:bg-white/5"
             )}
           >
-            <item.icon size={18} />
+            <div className="relative">
+              <item.icon size={18} />
+              {item.href === "/notifications" && unreadCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-danger text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </div>
             {t(item.labelKey)}
           </Link>
         ))}

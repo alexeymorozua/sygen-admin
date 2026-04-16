@@ -293,10 +293,14 @@ const ru: Record<string, string> = {
   "common.filter": "Фильтр",
   "common.searchPlaceholder": "Поиск...",
 
+  // Navigation - Notifications
+  "nav.notifications": "Уведомления",
+
   // Notifications
   "notifications.title": "Уведомления",
   "notifications.empty": "Нет уведомлений",
   "notifications.markAllRead": "Отметить все прочитанным",
+  "notifications.markRead": "Отметить прочитанным",
   "notifications.taskCompleted": "Задача завершена",
   "notifications.taskFailed": "Задача не выполнена",
   "notifications.cronFailed": "Cron задача не выполнена",
@@ -305,6 +309,15 @@ const ru: Record<string, string> = {
   "notifications.reply": "Ответить",
   "notifications.viewAll": "Показать все",
   "notifications.systemEvent": "Системное событие",
+  "notifications.filterAll": "Все",
+  "notifications.filterCron": "Cron",
+  "notifications.filterSystem": "Система",
+  "notifications.filterTask": "Задачи",
+  "notifications.filterWebhook": "Webhooks",
+  "notifications.typeCron": "Cron",
+  "notifications.typeWebhook": "Webhook",
+  "notifications.typeTask": "Задача",
+  "notifications.typeSystem": "Система",
 
   // Connection
   "connection.manageServers": "Управление серверами",

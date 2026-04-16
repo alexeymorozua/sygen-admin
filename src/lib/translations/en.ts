@@ -293,10 +293,14 @@ const en: Record<string, string> = {
   "common.filter": "Filter",
   "common.searchPlaceholder": "Search...",
 
+  // Navigation - Notifications
+  "nav.notifications": "Notifications",
+
   // Notifications
   "notifications.title": "Notifications",
   "notifications.empty": "No notifications",
   "notifications.markAllRead": "Mark all read",
+  "notifications.markRead": "Mark read",
   "notifications.taskCompleted": "Task completed",
   "notifications.taskFailed": "Task failed",
   "notifications.cronFailed": "Cron job failed",
@@ -305,6 +309,15 @@ const en: Record<string, string> = {
   "notifications.reply": "Reply",
   "notifications.viewAll": "View all",
   "notifications.systemEvent": "System event",
+  "notifications.filterAll": "All",
+  "notifications.filterCron": "Cron",
+  "notifications.filterSystem": "System",
+  "notifications.filterTask": "Tasks",
+  "notifications.filterWebhook": "Webhooks",
+  "notifications.typeCron": "Cron",
+  "notifications.typeWebhook": "Webhook",
+  "notifications.typeTask": "Task",
+  "notifications.typeSystem": "System",
 
   // Connection
   "connection.manageServers": "Manage Servers",
