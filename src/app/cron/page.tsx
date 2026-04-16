@@ -12,6 +12,7 @@ import { SygenAPI } from "@/lib/api";
 import { formatDateTime } from "@/lib/utils";
 import { isValidCron, describeCron, CRON_PRESETS } from "@/lib/cron";
 import { useTranslation } from "@/lib/i18n";
+import { useUrlSelection } from "@/hooks/useUrlSelection";
 import type { CronJob } from "@/lib/mock-data";
 
 type Filter = "all" | "active" | "paused" | "error";
@@ -219,7 +220,11 @@ function CronFormDialog({
 export default function CronPage() {
   const [jobs, setJobs] = useState<CronJob[]>([]);
   const [filter, setFilter] = useState<Filter>("all");
-  const [selected, setSelected] = useState<CronJob | null>(null);
+  const { selected, select, clear: clearSelection } = useUrlSelection<CronJob>(
+    "id",
+    jobs,
+    (j) => j.id,
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState<false | "create" | "edit">(false);
@@ -247,7 +252,6 @@ export default function CronPage() {
       const newStatus = job.status === "active" ? "paused" : "active";
       const updated = await SygenAPI.updateCronJob(job.id, { status: newStatus } as Partial<CronJob>);
       setJobs((prev) => prev.map((j) => (j.id === job.id ? updated : j)));
-      if (selected?.id === job.id) setSelected(updated);
       success(`Job "${job.name}" ${newStatus === "active" ? "resumed" : "paused"}`);
     } catch (err) {
       toastError(err instanceof Error ? err.message : "Failed to update job");
@@ -268,7 +272,7 @@ export default function CronPage() {
     try {
       await SygenAPI.deleteCronJob(job.id);
       setJobs((prev) => prev.filter((j) => j.id !== job.id));
-      if (selected?.id === job.id) setSelected(null);
+      if (selected?.id === job.id) clearSelection();
       success(`Job "${job.name}" deleted`);
     } catch (err) {
       toastError(err instanceof Error ? err.message : "Failed to delete job");
@@ -299,7 +303,6 @@ export default function CronPage() {
       description: data.description,
     } as Partial<CronJob>);
     setJobs((prev) => prev.map((j) => (j.id === selected.id ? updated : j)));
-    setSelected(updated);
     setShowForm(false);
     success(`Job "${data.name}" updated`);
   };
@@ -409,7 +412,7 @@ export default function CronPage() {
         </div>
 
         <div className="bg-bg-card border border-border rounded-xl overflow-hidden">
-          <DataTable data={filtered} columns={columns} keyField="id" onRowClick={(item) => setSelected(item)} emptyMessage={t('common.noData')} />
+          <DataTable data={filtered} columns={columns} keyField="id" onRowClick={(item) => select(item)} emptyMessage={t('common.noData')} />
         </div>
       </div>
 
@@ -422,7 +425,7 @@ export default function CronPage() {
               <button type="button" onClick={() => setShowForm("edit")} className="p-1.5 hover:bg-bg-primary rounded-lg transition-colors text-text-secondary" title="Edit">
                 <Edit2 size={14} />
               </button>
-              <button type="button" onClick={() => setSelected(null)} className="p-1 hover:bg-bg-primary rounded-lg" aria-label="Close details">
+              <button type="button" onClick={() => clearSelection()} className="p-1 hover:bg-bg-primary rounded-lg" aria-label="Close details">
                 <X size={16} className="text-text-secondary" />
               </button>
             </div>
