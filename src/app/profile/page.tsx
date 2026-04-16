@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { User, Shield, ShieldCheck, Eye, KeyRound, Save, Camera, Loader2 } from "lucide-react";
+import { User, Shield, ShieldCheck, Eye, KeyRound, Save, Camera, Loader2, Trash2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { SygenAPI } from "@/lib/api";
 import { useToast } from "@/components/Toast";
@@ -48,6 +48,19 @@ export default function ProfilePage() {
       toast.success(t("profile.saved"));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to upload avatar");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const handleAvatarDelete = async () => {
+    setUploadingAvatar(true);
+    try {
+      const updated = await SygenAPI.updateProfile({ avatar: "" });
+      refreshUser({ ...user, avatar: "" });
+      toast.success(t("profile.saved"));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete avatar");
     } finally {
       setUploadingAvatar(false);
     }
@@ -110,28 +123,41 @@ export default function ProfilePage() {
       <form onSubmit={handleSave} className="space-y-6">
         {/* Avatar */}
         <div className="flex items-center gap-5">
-          <button
-            type="button"
-            onClick={() => avatarInputRef.current?.click()}
-            disabled={uploadingAvatar}
-            className="relative w-20 h-20 rounded-full shrink-0 overflow-hidden border-2 border-border hover:border-accent transition-colors group"
-          >
-            {avatarUrl ? (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full bg-bg-card flex items-center justify-center">
-                <User size={32} className="text-text-secondary" />
-              </div>
-            )}
-            <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-              {uploadingAvatar ? (
-                <Loader2 size={20} className="text-white animate-spin" />
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => avatarInputRef.current?.click()}
+              disabled={uploadingAvatar}
+              className="relative w-20 h-20 rounded-full shrink-0 overflow-hidden border-2 border-border hover:border-accent transition-colors group"
+            >
+              {avatarUrl ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
-                <Camera size={20} className="text-white" />
+                <div className="w-full h-full bg-bg-card flex items-center justify-center">
+                  <User size={32} className="text-text-secondary" />
+                </div>
               )}
-            </div>
-          </button>
+              <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                {uploadingAvatar ? (
+                  <Loader2 size={20} className="text-white animate-spin" />
+                ) : (
+                  <Camera size={20} className="text-white" />
+                )}
+              </div>
+            </button>
+            {avatarUrl && (
+              <button
+                type="button"
+                onClick={handleAvatarDelete}
+                disabled={uploadingAvatar}
+                className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-danger hover:bg-red-600 text-white flex items-center justify-center transition-colors disabled:opacity-50"
+                title={t("common.delete")}
+              >
+                <Trash2 size={12} />
+              </button>
+            )}
+          </div>
           <input
             ref={avatarInputRef}
             type="file"

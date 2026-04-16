@@ -21,6 +21,7 @@ import {
   Moon,
   Users,
   User,
+  FolderOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
@@ -46,6 +47,7 @@ const navItems: NavItem[] = [
   { href: "/cron", labelKey: "nav.cron", icon: Clock, minRole: "operator" },
   { href: "/webhooks", labelKey: "nav.webhooks", icon: Webhook, minRole: "operator" },
   { href: "/tasks", labelKey: "nav.tasks", icon: ListTodo },
+  { href: "/files", labelKey: "nav.files", icon: FolderOpen },
   { href: "/notifications", labelKey: "nav.notifications", icon: Bell },
   { href: "/memory", labelKey: "nav.memory", icon: Brain, minRole: "operator" },
   { href: "/users", labelKey: "nav.users", icon: Users, minRole: "admin" },

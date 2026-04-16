@@ -85,6 +85,15 @@ export interface SygenNotification {
   read: boolean;
 }
 
+export interface FileEntry {
+  name: string;
+  path: string;
+  size: number;
+  mime: string;
+  modified: number;
+  isDir: boolean;
+}
+
 export interface AuditEntry {
   ts: string;
   user: string;
@@ -961,7 +970,7 @@ export class SygenAPI {
   static getAvatarUrl(path: string): string {
     const { accessToken } = getStoredTokens();
     const token = accessToken || getApiToken();
-    let url = `${getApiUrl()}/files?path=${encodeURIComponent(path)}`;
+    let url = `${getApiUrl()}/api/files/download?path=${encodeURIComponent(path)}`;
     if (token) url += `&token=${encodeURIComponent(token)}`;
     return url;
   }
@@ -1087,6 +1096,66 @@ export class SygenAPI {
 
   static getAgentAvatarUrl(agentName: string): string {
     return `${getApiUrl()}/api/agents/${encodeURIComponent(agentName)}/avatar`;
+  }
+
+  // ---- File Manager ----
+
+  static async listFiles(params: {
+    agent?: string;
+    path?: string;
+    type?: string;
+    sort?: string;
+  }): Promise<FileEntry[]> {
+    const qs = new URLSearchParams();
+    if (params.agent) qs.set("agent", params.agent);
+    if (params.path) qs.set("path", params.path);
+    if (params.type) qs.set("type", params.type);
+    if (params.sort) qs.set("sort", params.sort);
+    const query = qs.toString();
+    return fetchAPI<FileEntry[]>(`/api/files/list${query ? `?${query}` : ""}`);
+  }
+
+  static async deleteFile(path: string): Promise<void> {
+    await fetchAPI("/api/files", {
+      method: "DELETE",
+      body: JSON.stringify({ path }),
+    });
+  }
+
+  static async createFolder(agent: string, name: string): Promise<void> {
+    await fetchAPI("/api/files/mkdir", {
+      method: "POST",
+      body: JSON.stringify({ agent, name }),
+    });
+  }
+
+  static async uploadFile(agent: string, subPath: string, file: File): Promise<{ path: string }> {
+    const { accessToken } = getStoredTokens();
+    const token = accessToken || getApiToken();
+    const formData = new FormData();
+    formData.append("file", file, file.name);
+    if (subPath) formData.append("subpath", subPath);
+    formData.append("agent", agent);
+
+    const res = await fetch(`${getApiUrl()}/upload`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      throw new Error(body?.error || "Upload failed");
+    }
+    const data = await res.json();
+    return { path: data.path as string };
+  }
+
+  static getFileDownloadUrl(filePath: string): string {
+    const { accessToken } = getStoredTokens();
+    const token = accessToken || getApiToken();
+    let url = `${getApiUrl()}/api/files/download?path=${encodeURIComponent(filePath)}`;
+    if (token) url += `&token=${encodeURIComponent(token)}`;
+    return url;
   }
 }
 
