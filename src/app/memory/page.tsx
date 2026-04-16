@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Brain, Save, FileText, Loader2, Users, FolderOpen } from "lucide-react";
+import { Brain, Save, FileText, Loader2, Users, FolderOpen, ArrowLeft } from "lucide-react";
 import StatusBadge from "@/components/StatusBadge";
 import { LoadingSpinner, ErrorState } from "@/components/LoadingState";
 import { useToast } from "@/components/Toast";
@@ -136,9 +136,14 @@ export default function MemoryPage() {
         <div className="mb-4 text-sm text-danger bg-danger/10 rounded-lg px-3 py-2">{error}</div>
       )}
 
-      <div className="flex gap-6 h-[calc(100vh-12rem)]">
+      <div className="flex flex-col md:flex-row gap-6 h-[calc(100vh-12rem)]">
         {/* Module List */}
-        <div className="w-72 bg-bg-card border border-border rounded-xl overflow-hidden flex flex-col shrink-0">
+        <div
+          className={cn(
+            "w-full md:w-72 bg-bg-card border border-border rounded-xl overflow-hidden md:flex flex-col shrink-0",
+            selected ? "hidden md:flex" : "flex"
+          )}
+        >
           {/* Agent selector */}
           <div className="p-3 border-b border-border">
             <div className="flex items-center gap-2 mb-2">
@@ -244,17 +249,37 @@ export default function MemoryPage() {
         </div>
 
         {/* Editor */}
-        <div className="flex-1 bg-bg-card border border-border rounded-xl overflow-hidden flex flex-col">
+        <div
+          className={cn(
+            "flex-1 bg-bg-card border border-border rounded-xl overflow-hidden md:flex flex-col",
+            selected ? "flex" : "hidden md:flex"
+          )}
+        >
           {selected ? (
             <>
               <div className="flex items-center justify-between px-5 py-3 border-b border-border">
-                <div>
-                  <h3 className="font-medium text-sm">{selected.name}</h3>
-                  <p className="text-xs text-text-secondary">
-                    {selectedAgent && selectedAgent !== "main"
-                      ? `${selectedAgent} / ${selected.filename}`
-                      : selected.filename}
-                  </p>
+                <div className="flex items-center gap-2 min-w-0">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (dirty && !(await confirm({ message: t('memory.discardConfirm') }))) return;
+                      setSelected(null);
+                      setContent("");
+                      setDirty(false);
+                    }}
+                    className="md:hidden p-1 -ml-1 text-text-secondary hover:text-text-primary shrink-0"
+                    aria-label="Back"
+                  >
+                    <ArrowLeft size={18} />
+                  </button>
+                  <div className="min-w-0">
+                    <h3 className="font-medium text-sm truncate">{selected.name}</h3>
+                    <p className="text-xs text-text-secondary truncate">
+                      {selectedAgent && selectedAgent !== "main"
+                        ? `${selectedAgent} / ${selected.filename}`
+                        : selected.filename}
+                    </p>
+                  </div>
                 </div>
                 <div className="flex items-center gap-3">
                   {dirty && (
