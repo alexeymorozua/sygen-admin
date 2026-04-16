@@ -119,6 +119,30 @@ export interface ChatSessionMessage {
   files?: { path: string; name: string; size?: number; mime?: string }[];
 }
 
+export interface RagStatus {
+  enabled: boolean;
+  embedding_model: string;
+  reranker_enabled: boolean;
+  reranker_model: string;
+  index_workspace: boolean;
+  index_memory: boolean;
+  top_k_retrieval: number;
+  top_k_final: number;
+  vector_db_path: string;
+  vector_db_exists: boolean;
+  vector_db_size_bytes: number;
+  chunk_count: number;
+}
+
+export interface RagConfigUpdate {
+  enabled: boolean;
+  reranker_enabled: boolean;
+  index_workspace: boolean;
+  index_memory: boolean;
+  top_k_retrieval: number;
+  top_k_final: number;
+}
+
 // ---------------------------------------------------------------------------
 // Token & user storage helpers
 // ---------------------------------------------------------------------------
@@ -658,6 +682,36 @@ export class SygenAPI {
     await fetchAPI(`/api/memory/modules/${encodeURIComponent(filename)}${qs}`, {
       method: "PUT",
       body: JSON.stringify({ content }),
+    });
+  }
+
+  // ---- RAG ----
+
+  static async getRagStatus(): Promise<RagStatus> {
+    if (USE_MOCK) {
+      return {
+        enabled: false,
+        embedding_model: "paraphrase-multilingual-MiniLM-L12-v2",
+        reranker_enabled: false,
+        reranker_model: "antoinelouis/colbert-xm",
+        index_workspace: true,
+        index_memory: true,
+        top_k_retrieval: 20,
+        top_k_final: 5,
+        vector_db_path: "/mock/vector_db",
+        vector_db_exists: false,
+        vector_db_size_bytes: 0,
+        chunk_count: 0,
+      };
+    }
+    return fetchAPI<RagStatus>("/api/rag/status");
+  }
+
+  static async updateRagConfig(updates: Partial<RagConfigUpdate>): Promise<void> {
+    if (USE_MOCK) return;
+    await fetchAPI("/api/rag/config", {
+      method: "PUT",
+      body: JSON.stringify(updates),
     });
   }
 

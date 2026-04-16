@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { Settings, Server, Bot, Clock, Webhook, Globe, RefreshCw, LogOut, Download, Upload, FileJson, Check, X, Shield, Copy, AlertCircle, Loader2 } from "lucide-react";
 import { LoadingSpinner, ErrorState } from "@/components/LoadingState";
+import RagSection from "@/components/RagSection";
 import { SygenAPI } from "@/lib/api";
 import type { TwoFactorSetupResponse } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -378,6 +379,9 @@ export default function SettingsPage() {
 
       {/* 2FA Section */}
       <TwoFactorSection />
+
+      {/* RAG */}
+      <RagSection />
 
       {/* API Connection */}
       <div className="bg-bg-card border border-border rounded-xl p-5 mb-6">
