@@ -1,22 +1,27 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Brain, Save, FileText, Loader2, Users, FolderOpen, ArrowLeft } from "lucide-react";
 import StatusBadge from "@/components/StatusBadge";
-import { LoadingSpinner, ErrorState } from "@/components/LoadingState";
+import { LoadingSpinner } from "@/components/LoadingState";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { useTranslation } from "@/lib/i18n";
 import { SygenAPI } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useUrlSelection } from "@/hooks/useUrlSelection";
 import type { MemoryModule } from "@/lib/mock-data";
 import type { Agent } from "@/lib/mock-data";
 
 export default function MemoryPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const selectedAgent = searchParams.get("agent") ?? "";
+
   const [agents, setAgents] = useState<Agent[]>([]);
-  const [selectedAgent, setSelectedAgent] = useState<string>("");
   const [modules, setModules] = useState<MemoryModule[]>([]);
-  const [selected, setSelected] = useState<MemoryModule | null>(null);
   const [content, setContent] = useState("");
   const [dirty, setDirty] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -28,30 +33,45 @@ export default function MemoryPage() {
   const { confirm } = useConfirm();
   const { t } = useTranslation();
 
+  const { selected, select, clear: clearSelection } = useUrlSelection<MemoryModule>(
+    "file",
+    modules,
+    (m) => m.filename,
+  );
+
+  const setSelectedAgent = useCallback(
+    (val: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (val && val !== "main") {
+        params.set("agent", val);
+      } else {
+        params.delete("agent");
+      }
+      params.delete("file");
+      const qs = params.toString();
+      router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [searchParams, router, pathname],
+  );
+
   // Load agents list
   useEffect(() => {
     SygenAPI.getAgents()
-      .then((list) => {
-        setAgents(list);
-        // Default to "main" or first agent
-        const main = list.find((a) => a.name === "main");
-        setSelectedAgent(main ? "" : "");
-      })
+      .then((list) => setAgents(list))
       .catch(() => setAgents([]))
       .finally(() => setLoading(false));
   }, []);
+
+  const agentParam = selectedAgent === "" || selectedAgent === "main" ? undefined : selectedAgent;
 
   // Load modules when agent changes
   const loadModules = useCallback(
     async (agent: string) => {
       setLoadingModules(true);
       setError("");
-      setSelected(null);
-      setContent("");
-      setDirty(false);
       try {
-        const agentParam = agent === "" || agent === "main" ? undefined : agent;
-        const mods = await SygenAPI.getMemoryModules(agentParam);
+        const param = agent === "" || agent === "main" ? undefined : agent;
+        const mods = await SygenAPI.getMemoryModules(param);
         setModules(mods);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load memory modules");
@@ -69,21 +89,27 @@ export default function MemoryPage() {
     }
   }, [selectedAgent, loading, loadModules]);
 
-  const agentParam = selectedAgent === "" || selectedAgent === "main" ? undefined : selectedAgent;
+  // Fetch module content whenever the URL-selected module changes.
+  // Covers click-to-switch, back-swipe (selected becomes null), and direct links.
+  useEffect(() => {
+    if (!selected) {
+      setContent("");
+      setDirty(false);
+      return;
+    }
+    let cancelled = false;
+    setLoadingContent(true);
+    setDirty(false);
+    SygenAPI.getMemoryModuleContent(selected.filename, agentParam)
+      .then((text) => { if (!cancelled) setContent(text); })
+      .catch(() => { if (!cancelled) setContent("(Failed to load content)"); })
+      .finally(() => { if (!cancelled) setLoadingContent(false); });
+    return () => { cancelled = true; };
+  }, [selected, agentParam]);
 
   const selectModule = async (mod: MemoryModule) => {
     if (dirty && !(await confirm({ message: t('memory.discardConfirm') }))) return;
-    setSelected(mod);
-    setDirty(false);
-    setLoadingContent(true);
-    try {
-      const text = await SygenAPI.getMemoryModuleContent(mod.filename, agentParam);
-      setContent(text);
-    } catch {
-      setContent("(Failed to load content)");
-    } finally {
-      setLoadingContent(false);
-    }
+    select(mod);
   };
 
   const handleSave = async () => {
@@ -263,9 +289,7 @@ export default function MemoryPage() {
                     type="button"
                     onClick={async () => {
                       if (dirty && !(await confirm({ message: t('memory.discardConfirm') }))) return;
-                      setSelected(null);
-                      setContent("");
-                      setDirty(false);
+                      clearSelection();
                     }}
                     className="md:hidden p-1 -ml-1 text-text-secondary hover:text-text-primary shrink-0"
                     aria-label="Back"
