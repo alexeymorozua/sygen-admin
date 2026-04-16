@@ -9,6 +9,7 @@ import { useToast } from "@/components/Toast";
 import { SygenAPI } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n";
+import { useUrlSelection } from "@/hooks/useUrlSelection";
 import type { Agent } from "@/lib/mock-data";
 
 type DetailTab = "info" | "logs" | "metrics";
@@ -89,7 +90,11 @@ function MetricCard({
 
 export default function AgentsPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
-  const [selected, setSelected] = useState<Agent | null>(null);
+  const { selected, selectedId, select, clear: clearSelection } = useUrlSelection<Agent>(
+    "name",
+    agents,
+    (a) => a.name,
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [detailTab, setDetailTab] = useState<DetailTab>("info");
@@ -197,14 +202,14 @@ export default function AgentsPage() {
     }
   }, []);
 
-  const handleSelectAgent = (agent: Agent) => {
+  // Reset per-agent view state whenever selection changes (via click, swipe-back, or shared link).
+  useEffect(() => {
     stopLiveTail();
-    setSelected(agent);
     setDetailTab("info");
     setLogs([]);
     setMetrics(null);
     setMetricsHistory([]);
-  };
+  }, [selectedId, stopLiveTail]);
 
   const handleShowLogs = (agent: Agent) => {
     setDetailTab("logs");
@@ -252,10 +257,7 @@ export default function AgentsPage() {
     setAgents((prev) =>
       prev.map((a) => (a.name === agentName ? { ...a, hasAvatar } : a))
     );
-    if (selected?.name === agentName) {
-      setSelected((prev) => prev ? { ...prev, hasAvatar } : prev);
-    }
-  }, [selected]);
+  }, []);
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -348,7 +350,7 @@ export default function AgentsPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {agents.map((agent) => (
-              <div key={agent.id} onClick={() => handleSelectAgent(agent)} className="cursor-pointer">
+              <div key={agent.id} onClick={() => select(agent)} className="cursor-pointer">
                 <AgentCard agent={agent} />
               </div>
             ))}
@@ -395,7 +397,7 @@ export default function AgentsPage() {
                 <p className="text-[10px] text-text-secondary font-mono">{selected.name}</p>
               </div>
             </div>
-            <button type="button" onClick={() => { setSelected(null); stopLiveTail(); }} className="p-1 hover:bg-bg-primary rounded-lg" aria-label="Close details">
+            <button type="button" onClick={() => clearSelection()} className="p-1 hover:bg-bg-primary rounded-lg" aria-label="Close details">
               <X size={16} className="text-text-secondary" />
             </button>
           </div>
