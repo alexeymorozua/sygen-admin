@@ -85,7 +85,7 @@ function CronFormDialog({
           {error && <div className="text-sm text-danger bg-danger/10 rounded-lg px-3 py-2">{error}</div>}
 
           <div>
-            <label className="block text-xs text-text-secondary mb-1.5">{t('common.name')} *</label>
+            <label className="block text-sm text-text-secondary mb-1.5">{t('common.name')} *</label>
             <input
               type="text"
               value={form.name}
@@ -97,7 +97,7 @@ function CronFormDialog({
 
           {!isEdit && (
             <div>
-              <label className="block text-xs text-text-secondary mb-1.5">{t('common.id')}</label>
+              <label className="block text-sm text-text-secondary mb-1.5">{t('common.id')}</label>
               <input
                 type="text"
                 value={form.id}
@@ -110,7 +110,7 @@ function CronFormDialog({
 
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs text-text-secondary">{t('cron.schedule')} (cron) *</label>
+              <label className="text-sm text-text-secondary">{t('cron.schedule')} (cron) *</label>
               <div className="relative">
                 <button
                   type="button"
@@ -159,7 +159,7 @@ function CronFormDialog({
           </div>
 
           <div>
-            <label className="block text-xs text-text-secondary mb-1.5">{t('common.agent')}</label>
+            <label className="block text-sm text-text-secondary mb-1.5">{t('common.agent')}</label>
             <input
               type="text"
               value={form.agent}
@@ -170,7 +170,7 @@ function CronFormDialog({
           </div>
 
           <div>
-            <label className="block text-xs text-text-secondary mb-1.5">{t('common.description')}</label>
+            <label className="block text-sm text-text-secondary mb-1.5">{t('common.description')}</label>
             <textarea
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -182,7 +182,7 @@ function CronFormDialog({
 
           {/* Enabled toggle */}
           <div className="flex items-center justify-between">
-            <label className="text-xs text-text-secondary">{t('cron.startEnabled')}</label>
+            <label className="text-sm text-text-secondary">{t('cron.startEnabled')}</label>
             <button
               type="button"
               onClick={() => setForm({ ...form, enabled: !form.enabled })}
@@ -432,52 +432,52 @@ export default function CronPage() {
           </div>
           <div className="space-y-4">
             <div>
-              <p className="text-xs text-text-secondary mb-1">{t('common.name')}</p>
+              <p className="text-sm text-text-secondary mb-1">{t('common.name')}</p>
               <p className="text-sm font-medium">{selected.name}</p>
             </div>
             <div>
-              <p className="text-xs text-text-secondary mb-1">{t('common.id')}</p>
+              <p className="text-sm text-text-secondary mb-1">{t('common.id')}</p>
               <p className="text-sm font-mono text-text-secondary">{selected.id}</p>
             </div>
             <div>
-              <p className="text-xs text-text-secondary mb-1">{t('common.status')}</p>
+              <p className="text-sm text-text-secondary mb-1">{t('common.status')}</p>
               <StatusBadge status={selected.status} />
             </div>
             <div>
-              <p className="text-xs text-text-secondary mb-1">{t('cron.schedule')}</p>
+              <p className="text-sm text-text-secondary mb-1">{t('cron.schedule')}</p>
               <code className="text-sm bg-bg-primary px-2 py-0.5 rounded">{selected.schedule}</code>
               {selected.schedule && (
                 <p className="text-[10px] text-green-400 mt-1">{describeCron(selected.schedule)}</p>
               )}
             </div>
             <div>
-              <p className="text-xs text-text-secondary mb-1">{t('common.agent')}</p>
+              <p className="text-sm text-text-secondary mb-1">{t('common.agent')}</p>
               <p className="text-sm text-brand-400">{selected.agent}</p>
             </div>
             <div>
-              <p className="text-xs text-text-secondary mb-1">{t('common.description')}</p>
+              <p className="text-sm text-text-secondary mb-1">{t('common.description')}</p>
               <p className="text-sm text-text-secondary">{selected.description || "—"}</p>
             </div>
             <div>
-              <p className="text-xs text-text-secondary mb-1">{t('cron.lastRun')}</p>
+              <p className="text-sm text-text-secondary mb-1">{t('cron.lastRun')}</p>
               <p className="text-sm">{formatDateTime(selected.lastRun)}</p>
             </div>
             <div>
-              <p className="text-xs text-text-secondary mb-1">{t('cron.nextRun')}</p>
+              <p className="text-sm text-text-secondary mb-1">{t('cron.nextRun')}</p>
               <p className="text-sm">{formatDateTime(selected.nextRun)}</p>
             </div>
             <div>
-              <p className="text-xs text-text-secondary mb-1">{t('cron.executions')}</p>
+              <p className="text-sm text-text-secondary mb-1">{t('cron.executions')}</p>
               <p className="text-sm">{selected.executionCount}</p>
             </div>
             <div className="pt-2 border-t border-border flex items-center gap-2">
-              <button type="button" onClick={() => handleToggle(selected)} className={`flex-1 py-2 text-xs font-medium rounded-lg transition-colors ${selected.status === "active" ? "bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30" : "bg-green-500/20 text-green-400 hover:bg-green-500/30"}`}>
+              <button type="button" onClick={() => handleToggle(selected)} className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${selected.status === "active" ? "bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30" : "bg-green-500/20 text-green-400 hover:bg-green-500/30"}`}>
                 {selected.status === "active" ? t('cron.pause') : t('cron.resume')}
               </button>
-              <button type="button" onClick={() => handleRunNow(selected)} className="flex-1 py-2 text-xs font-medium rounded-lg bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 transition-colors">
+              <button type="button" onClick={() => handleRunNow(selected)} className="flex-1 py-2 text-sm font-medium rounded-lg bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 transition-colors">
                 {t('cron.runNow')}
               </button>
-              <button type="button" onClick={() => handleDelete(selected)} className="py-2 px-3 text-xs font-medium rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors">
+              <button type="button" onClick={() => handleDelete(selected)} className="py-2 px-3 text-sm font-medium rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors">
                 <Trash2 size={12} />
               </button>
             </div>

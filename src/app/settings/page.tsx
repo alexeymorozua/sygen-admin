@@ -152,7 +152,7 @@ function TwoFactorSection() {
             </div>
           </div>
           <div className="bg-bg-primary border border-border rounded-lg p-4">
-            <p className="text-xs text-text-secondary mb-2">{t("auth.secretKey") || "Secret Key"}</p>
+            <p className="text-sm text-text-secondary mb-2">{t("auth.secretKey") || "Secret Key"}</p>
             <div className="flex items-center gap-2">
               <code className="text-sm font-mono text-brand-400 break-all select-all">
                 {setupData.secret}

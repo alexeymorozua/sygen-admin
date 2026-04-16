@@ -515,7 +515,7 @@ export default function FilesPage() {
               </div>
               <div className="p-5 space-y-4">
                 <div>
-                  <label className="block text-xs text-text-secondary mb-1.5">
+                  <label className="block text-sm text-text-secondary mb-1.5">
                     {t("files.folderName")}
                   </label>
                   <input
@@ -757,19 +757,19 @@ export default function FilesPage() {
               </div>
             )}
             <div>
-              <p className="text-xs text-text-secondary mb-1">
+              <p className="text-sm text-text-secondary mb-1">
                 {t("files.size")}
               </p>
               <p className="text-sm">{formatFileSize(previewFile.size)}</p>
             </div>
             <div>
-              <p className="text-xs text-text-secondary mb-1">
+              <p className="text-sm text-text-secondary mb-1">
                 {t("files.type")}
               </p>
               <p className="text-sm font-mono text-xs">{previewFile.mime}</p>
             </div>
             <div>
-              <p className="text-xs text-text-secondary mb-1">
+              <p className="text-sm text-text-secondary mb-1">
                 {t("files.modified")}
               </p>
               <p className="text-sm">
@@ -780,7 +780,7 @@ export default function FilesPage() {
               <button
                 type="button"
                 onClick={() => handleDownload(previewFile)}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium rounded-lg bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 transition-colors"
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 text-sm font-medium rounded-lg bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 transition-colors"
               >
                 <Download size={12} />
                 {t("files.download")}
@@ -788,7 +788,7 @@ export default function FilesPage() {
               <button
                 type="button"
                 onClick={() => handleDelete(previewFile)}
-                className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-danger/20 text-danger hover:bg-danger/30 transition-colors"
+                className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg bg-danger/20 text-danger hover:bg-danger/30 transition-colors"
               >
                 <Trash2 size={12} />
               </button>

@@ -107,7 +107,7 @@ export default function LoginPage() {
                 {mode === "credentials" ? (
                   <>
                     <div>
-                      <label className="block text-xs text-text-secondary mb-1.5">
+                      <label className="block text-sm text-text-secondary mb-1.5">
                         {t("login.username") || "Username"}
                       </label>
                       <input
@@ -121,7 +121,7 @@ export default function LoginPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-text-secondary mb-1.5">
+                      <label className="block text-sm text-text-secondary mb-1.5">
                         {t("login.password") || "Password"}
                       </label>
                       <input
@@ -136,7 +136,7 @@ export default function LoginPage() {
                   </>
                 ) : (
                   <div>
-                    <label className="block text-xs text-text-secondary mb-1.5">
+                    <label className="block text-sm text-text-secondary mb-1.5">
                       {t("login.tokenLabel")}
                     </label>
                     <input

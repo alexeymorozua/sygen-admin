@@ -449,7 +449,7 @@ function UserFormDialog({
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
           {/* Username */}
           <div>
-            <label className="block text-xs text-text-secondary mb-1">{t("users.username") || "Username"}</label>
+            <label className="block text-sm text-text-secondary mb-1">{t("users.username") || "Username"}</label>
             <input
               type="text"
               value={username}
@@ -462,7 +462,7 @@ function UserFormDialog({
 
           {/* Password */}
           <div>
-            <label className="block text-xs text-text-secondary mb-1">
+            <label className="block text-sm text-text-secondary mb-1">
               {isEdit ? (t("users.newPassword") || "New Password (leave empty to keep)") : (t("users.password") || "Password")}
             </label>
             <input
@@ -476,7 +476,7 @@ function UserFormDialog({
 
           {/* Display Name */}
           <div>
-            <label className="block text-xs text-text-secondary mb-1">{t("users.displayName") || "Display Name"}</label>
+            <label className="block text-sm text-text-secondary mb-1">{t("users.displayName") || "Display Name"}</label>
             <input
               type="text"
               value={displayName}
@@ -488,7 +488,7 @@ function UserFormDialog({
 
           {/* Role */}
           <div>
-            <label className="block text-xs text-text-secondary mb-1">{t("users.role") || "Role"}</label>
+            <label className="block text-sm text-text-secondary mb-1">{t("users.role") || "Role"}</label>
             <Select
               value={role}
               onChange={(e) => setRole(e.target.value)}
@@ -508,7 +508,7 @@ function UserFormDialog({
           {/* Allowed Agents */}
           {agents.length > 0 && (
             <div>
-              <label className="block text-xs text-text-secondary mb-1">
+              <label className="block text-sm text-text-secondary mb-1">
                 {t("users.allowedAgents") || "Allowed Agents"}
               </label>
               <p className="text-xs text-text-secondary mb-2">

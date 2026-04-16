@@ -74,7 +74,7 @@ function WebhookFormDialog({
           {error && <div className="text-sm text-danger bg-danger/10 rounded-lg px-3 py-2">{error}</div>}
 
           <div>
-            <label className="block text-xs text-text-secondary mb-1.5">{t('common.name')} *</label>
+            <label className="block text-sm text-text-secondary mb-1.5">{t('common.name')} *</label>
             <input
               type="text"
               value={form.name}
@@ -86,7 +86,7 @@ function WebhookFormDialog({
 
           {!isEdit && (
             <div>
-              <label className="block text-xs text-text-secondary mb-1.5">{t('common.id')}</label>
+              <label className="block text-sm text-text-secondary mb-1.5">{t('common.id')}</label>
               <input
                 type="text"
                 value={form.id}
@@ -98,7 +98,7 @@ function WebhookFormDialog({
           )}
 
           <div>
-            <label className="block text-xs text-text-secondary mb-1.5">{t('webhooks.urlPath')} *</label>
+            <label className="block text-sm text-text-secondary mb-1.5">{t('webhooks.urlPath')} *</label>
             <input
               type="text"
               value={form.url}
@@ -109,7 +109,7 @@ function WebhookFormDialog({
           </div>
 
           <div>
-            <label className="block text-xs text-text-secondary mb-1.5">{t('webhooks.method')}</label>
+            <label className="block text-sm text-text-secondary mb-1.5">{t('webhooks.method')}</label>
             <Select
               value={form.method}
               onChange={(e) => setForm({ ...form, method: e.target.value })}
@@ -122,7 +122,7 @@ function WebhookFormDialog({
           </div>
 
           <div>
-            <label className="block text-xs text-text-secondary mb-1.5">{t('common.agent')}</label>
+            <label className="block text-sm text-text-secondary mb-1.5">{t('common.agent')}</label>
             <input
               type="text"
               value={form.agent}
@@ -133,7 +133,7 @@ function WebhookFormDialog({
           </div>
 
           <div>
-            <label className="block text-xs text-text-secondary mb-1.5">{t('common.description')}</label>
+            <label className="block text-sm text-text-secondary mb-1.5">{t('common.description')}</label>
             <textarea
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -144,7 +144,7 @@ function WebhookFormDialog({
           </div>
 
           <div>
-            <label className="block text-xs text-text-secondary mb-1.5">
+            <label className="block text-sm text-text-secondary mb-1.5">
               {t('webhooks.secret') || "Secret"} <span className="text-text-secondary/50">({t('common.optional') || "optional"})</span>
             </label>
             <input
@@ -420,45 +420,45 @@ export default function WebhooksPage() {
           </div>
           <div className="space-y-4">
             <div>
-              <p className="text-xs text-text-secondary mb-1">{t('common.name')}</p>
+              <p className="text-sm text-text-secondary mb-1">{t('common.name')}</p>
               <p className="text-sm font-medium">{selected.name}</p>
             </div>
             <div>
-              <p className="text-xs text-text-secondary mb-1">{t('common.id')}</p>
+              <p className="text-sm text-text-secondary mb-1">{t('common.id')}</p>
               <p className="text-sm font-mono text-text-secondary">{selected.id}</p>
             </div>
             <div>
-              <p className="text-xs text-text-secondary mb-1">{t('common.status')}</p>
+              <p className="text-sm text-text-secondary mb-1">{t('common.status')}</p>
               <StatusBadge status={selected.status} />
             </div>
             <div>
-              <p className="text-xs text-text-secondary mb-1">{t('webhooks.endpoint')}</p>
+              <p className="text-sm text-text-secondary mb-1">{t('webhooks.endpoint')}</p>
               <div className="flex items-center gap-2">
                 <span className="text-xs bg-accent/30 text-brand-400 px-1.5 py-0.5 rounded font-mono">{selected.method}</span>
                 <code className="text-xs break-all">{selected.url}</code>
               </div>
             </div>
             <div>
-              <p className="text-xs text-text-secondary mb-1">{t('common.agent')}</p>
+              <p className="text-sm text-text-secondary mb-1">{t('common.agent')}</p>
               <p className="text-sm text-brand-400">{selected.agent}</p>
             </div>
             <div>
-              <p className="text-xs text-text-secondary mb-1">{t('common.description')}</p>
+              <p className="text-sm text-text-secondary mb-1">{t('common.description')}</p>
               <p className="text-sm text-text-secondary">{selected.description || "—"}</p>
             </div>
             {selected.secret && (
               <div>
-                <p className="text-xs text-text-secondary mb-1">{t('webhooks.signature') || "Signature"}</p>
+                <p className="text-sm text-text-secondary mb-1">{t('webhooks.signature') || "Signature"}</p>
                 <p className="text-xs font-mono text-brand-400">X-Sygen-Signature</p>
                 <p className="text-xs text-text-secondary mt-0.5">HMAC-SHA256</p>
               </div>
             )}
             <div>
-              <p className="text-xs text-text-secondary mb-1">{t('webhooks.totalTriggers')}</p>
+              <p className="text-sm text-text-secondary mb-1">{t('webhooks.totalTriggers')}</p>
               <p className="text-sm">{selected.triggerCount.toLocaleString()}</p>
             </div>
             <div>
-              <p className="text-xs text-text-secondary mb-1">{t('webhooks.lastTriggered')}</p>
+              <p className="text-sm text-text-secondary mb-1">{t('webhooks.lastTriggered')}</p>
               <p className="text-sm">{formatDateTime(selected.lastTriggered)}</p>
             </div>
             {/* Quick actions */}
@@ -466,21 +466,21 @@ export default function WebhooksPage() {
               <button
                 type="button"
                 onClick={() => handleTest(selected)}
-                className="flex-1 py-2 text-xs font-medium rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors"
+                className="flex-1 py-2 text-sm font-medium rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors"
               >
                 Test
               </button>
               <button
                 type="button"
                 onClick={() => setShowForm("edit")}
-                className="flex-1 py-2 text-xs font-medium rounded-lg bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 transition-colors"
+                className="flex-1 py-2 text-sm font-medium rounded-lg bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 transition-colors"
               >
                 {t('common.edit')}
               </button>
               <button
                 type="button"
                 onClick={() => handleDelete(selected)}
-                className="py-2 px-3 text-xs font-medium rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+                className="py-2 px-3 text-sm font-medium rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
               >
                 <Trash2 size={12} />
               </button>

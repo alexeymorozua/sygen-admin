@@ -62,7 +62,7 @@ function TaskFormDialog({
           {error && <div className="text-sm text-danger bg-danger/10 rounded-lg px-3 py-2">{error}</div>}
 
           <div>
-            <label className="block text-xs text-text-secondary mb-1.5">Name *</label>
+            <label className="block text-sm text-text-secondary mb-1.5">Name *</label>
             <input
               type="text"
               value={name}
@@ -73,7 +73,7 @@ function TaskFormDialog({
           </div>
 
           <div>
-            <label className="block text-xs text-text-secondary mb-1.5">Agent</label>
+            <label className="block text-sm text-text-secondary mb-1.5">Agent</label>
             <Select
               value={agent}
               onChange={(e) => setAgent(e.target.value)}
@@ -89,7 +89,7 @@ function TaskFormDialog({
           </div>
 
           <div>
-            <label className="block text-xs text-text-secondary mb-1.5">Prompt</label>
+            <label className="block text-sm text-text-secondary mb-1.5">Prompt</label>
             <textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
@@ -333,38 +333,38 @@ export default function TasksPage() {
           </div>
           <div className="space-y-4">
             <div>
-              <p className="text-xs text-text-secondary mb-1">{t('common.name')}</p>
+              <p className="text-sm text-text-secondary mb-1">{t('common.name')}</p>
               <p className="text-sm font-medium">{selected.name}</p>
             </div>
             <div>
-              <p className="text-xs text-text-secondary mb-1">{t('common.id')}</p>
+              <p className="text-sm text-text-secondary mb-1">{t('common.id')}</p>
               <p className="text-sm font-mono text-text-secondary break-all">{selected.id}</p>
             </div>
             <div>
-              <p className="text-xs text-text-secondary mb-1">{t('common.status')}</p>
+              <p className="text-sm text-text-secondary mb-1">{t('common.status')}</p>
               <StatusBadge status={selected.status} />
             </div>
             <div>
-              <p className="text-xs text-text-secondary mb-1">{t('common.agent')}</p>
+              <p className="text-sm text-text-secondary mb-1">{t('common.agent')}</p>
               <p className="text-sm text-brand-400">{selected.agent}</p>
             </div>
             <div>
-              <p className="text-xs text-text-secondary mb-1">{t('agents.provider')}</p>
+              <p className="text-sm text-text-secondary mb-1">{t('agents.provider')}</p>
               <p className="text-sm capitalize">{selected.provider}</p>
             </div>
             <div>
-              <p className="text-xs text-text-secondary mb-1">{t('tasks.duration')}</p>
+              <p className="text-sm text-text-secondary mb-1">{t('tasks.duration')}</p>
               <p className="text-sm font-mono">{selected.duration}</p>
             </div>
             <div>
-              <p className="text-xs text-text-secondary mb-1">{t('tasks.started')}</p>
+              <p className="text-sm text-text-secondary mb-1">{t('tasks.started')}</p>
               <p className="text-sm">{formatDateTime(selected.startedAt)}</p>
             </div>
 
             {/* Prompt / Description */}
             {selected.description && (
               <div>
-                <p className="text-xs text-text-secondary mb-1 flex items-center gap-1">
+                <p className="text-sm text-text-secondary mb-1 flex items-center gap-1">
                   <FileText size={10} />
                   {t('tasks.prompt')}
                 </p>
@@ -380,7 +380,7 @@ export default function TasksPage() {
                 <button
                   type="button"
                   onClick={() => setShowFullOutput(!showFullOutput)}
-                  className="flex items-center gap-1 text-xs text-text-secondary mb-1 hover:text-text-primary transition-colors"
+                  className="flex items-center gap-1 text-sm text-text-secondary mb-1 hover:text-text-primary transition-colors"
                 >
                   {showFullOutput ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
                   {t('tasks.result')}
@@ -401,7 +401,7 @@ export default function TasksPage() {
                 <button
                   type="button"
                   onClick={() => handleCancel(selected)}
-                  className="w-full py-2 text-xs font-medium rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+                  className="w-full py-2 text-sm font-medium rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
                 >
                   {t('tasks.cancel')}
                 </button>

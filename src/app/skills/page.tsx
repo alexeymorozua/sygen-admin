@@ -361,7 +361,7 @@ export default function SkillsPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-lg font-semibold mb-3">{t("skills.newSkillTitle")}</h2>
-            <label className="block text-xs text-text-secondary mb-1">
+            <label className="block text-sm text-text-secondary mb-1">
               {t("skills.nameLabel")}
             </label>
             <input
@@ -373,7 +373,7 @@ export default function SkillsPage() {
               autoFocus
             />
             <p className="text-[10px] text-text-secondary mb-3">{t("skills.nameHint")}</p>
-            <label className="block text-xs text-text-secondary mb-1">
+            <label className="block text-sm text-text-secondary mb-1">
               {t("skills.contentLabel")}
             </label>
             <textarea

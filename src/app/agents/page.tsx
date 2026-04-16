@@ -446,34 +446,34 @@ export default function AgentsPage() {
             {detailTab === "info" ? (
               <div className="space-y-4">
                 <div>
-                  <p className="text-xs text-text-secondary mb-1">{t('common.status')}</p>
+                  <p className="text-sm text-text-secondary mb-1">{t('common.status')}</p>
                   <StatusBadge status={selected.status} />
                 </div>
                 <div>
-                  <p className="text-xs text-text-secondary mb-1 flex items-center gap-1"><Cpu size={10} /> {t('agents.model')}</p>
+                  <p className="text-sm text-text-secondary mb-1 flex items-center gap-1"><Cpu size={10} /> {t('agents.model')}</p>
                   <p className="text-sm font-mono">{selected.model}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-text-secondary mb-1">{t('agents.provider')}</p>
+                  <p className="text-sm text-text-secondary mb-1">{t('agents.provider')}</p>
                   <p className="text-sm capitalize">{selected.provider}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-text-secondary mb-1 flex items-center gap-1"><MessageSquare size={10} /> {t('agents.activeSessions')}</p>
+                  <p className="text-sm text-text-secondary mb-1 flex items-center gap-1"><MessageSquare size={10} /> {t('agents.activeSessions')}</p>
                   <p className="text-sm">{selected.sessions}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-text-secondary mb-1 flex items-center gap-1"><Clock size={10} /> {t('agents.lastActive')}</p>
+                  <p className="text-sm text-text-secondary mb-1 flex items-center gap-1"><Clock size={10} /> {t('agents.lastActive')}</p>
                   <p className="text-sm">{formatDate(selected.lastActive) || "—"}</p>
                 </div>
                 {selected.description && (
                   <div>
-                    <p className="text-xs text-text-secondary mb-1">{t('common.description')}</p>
+                    <p className="text-sm text-text-secondary mb-1">{t('common.description')}</p>
                     <p className="text-sm text-text-secondary">{selected.description}</p>
                   </div>
                 )}
                 {selected.allowedUsers && selected.allowedUsers.length > 0 && (
                   <div>
-                    <p className="text-xs text-text-secondary mb-1 flex items-center gap-1"><Users size={10} /> {t('agents.allowedUsers')}</p>
+                    <p className="text-sm text-text-secondary mb-1 flex items-center gap-1"><Users size={10} /> {t('agents.allowedUsers')}</p>
                     <div className="flex flex-wrap gap-1">
                       {selected.allowedUsers.map((u) => (
                         <span key={u} className="text-xs bg-bg-primary px-2 py-0.5 rounded">{u}</span>
@@ -482,13 +482,13 @@ export default function AgentsPage() {
                   </div>
                 )}
                 <div className="pt-2 border-t border-border">
-                  <p className="text-xs text-text-secondary mb-2 flex items-center gap-1"><Camera size={10} /> {t("agents.avatar") || "Avatar"}</p>
+                  <p className="text-sm text-text-secondary mb-2 flex items-center gap-1"><Camera size={10} /> {t("agents.avatar") || "Avatar"}</p>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => avatarInputRef.current?.click()}
                       disabled={uploadingAvatar}
-                      className="flex-1 py-1.5 text-center text-xs font-medium rounded-lg bg-bg-primary hover:bg-white/5 transition-colors disabled:opacity-40"
+                      className="flex-1 py-1.5 text-center text-sm font-medium rounded-lg bg-bg-primary hover:bg-white/5 transition-colors disabled:opacity-40"
                     >
                       {uploadingAvatar ? t("common.loading") || "..." : t("agents.uploadAvatar") || "Upload"}
                     </button>
@@ -505,7 +505,7 @@ export default function AgentsPage() {
                   </div>
                 </div>
                 <div className="pt-2 border-t border-border">
-                  <a href={`/chat?agent=${selected.name}`} className="block w-full py-2 text-center text-xs font-medium rounded-lg bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 transition-colors">
+                  <a href={`/chat?agent=${selected.name}`} className="block w-full py-2 text-center text-sm font-medium rounded-lg bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 transition-colors">
                     {t('agents.openChat')}
                   </a>
                 </div>

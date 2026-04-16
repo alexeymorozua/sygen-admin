@@ -175,7 +175,7 @@ export default function ProfilePage() {
         <div className="bg-bg-card border border-border rounded-xl p-5 space-y-4">
           {/* Username (read-only) */}
           <div>
-            <label className="block text-xs text-text-secondary mb-1">
+            <label className="block text-sm text-text-secondary mb-1">
               {t("users.username")}
             </label>
             <p className="text-sm font-mono text-text-secondary">@{user.username}</p>
@@ -183,7 +183,7 @@ export default function ProfilePage() {
 
           {/* Role (read-only) */}
           <div>
-            <label className="block text-xs text-text-secondary mb-1">
+            <label className="block text-sm text-text-secondary mb-1">
               {t("users.role")}
             </label>
             <span
@@ -199,7 +199,7 @@ export default function ProfilePage() {
 
           {/* Display Name (editable) */}
           <div>
-            <label className="block text-xs text-text-secondary mb-1.5">
+            <label className="block text-sm text-text-secondary mb-1.5">
               {t("users.displayName")}
             </label>
             <input
@@ -219,7 +219,7 @@ export default function ProfilePage() {
           </h3>
 
           <div>
-            <label className="block text-xs text-text-secondary mb-1.5">
+            <label className="block text-sm text-text-secondary mb-1.5">
               {t("profile.currentPassword")}
             </label>
             <input
@@ -232,7 +232,7 @@ export default function ProfilePage() {
           </div>
 
           <div>
-            <label className="block text-xs text-text-secondary mb-1.5">
+            <label className="block text-sm text-text-secondary mb-1.5">
               {t("profile.newPassword")}
             </label>
             <input
@@ -245,7 +245,7 @@ export default function ProfilePage() {
           </div>
 
           <div>
-            <label className="block text-xs text-text-secondary mb-1.5">
+            <label className="block text-sm text-text-secondary mb-1.5">
               {t("profile.confirmPassword")}
             </label>
             <input

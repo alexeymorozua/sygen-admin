@@ -774,31 +774,31 @@ export default function ChatPage() {
           <h3 className="font-semibold mb-4">{t('chat.connectionInfo')}</h3>
           <div className="space-y-4">
             <div>
-              <p className="text-xs text-text-secondary mb-1">{t('common.status')}</p>
+              <p className="text-sm text-text-secondary mb-1">{t('common.status')}</p>
               <StatusBadge
                 status={statusVariant as "online" | "running" | "offline"}
               />
             </div>
             <div>
-              <p className="text-xs text-text-secondary mb-1">{t('chat.activeAgent')}</p>
+              <p className="text-sm text-text-secondary mb-1">{t('chat.activeAgent')}</p>
               <p className="text-sm">{selectedAgent}</p>
             </div>
             <div>
-              <p className="text-xs text-text-secondary mb-1">{t('chat.sessions')}</p>
+              <p className="text-sm text-text-secondary mb-1">{t('chat.sessions')}</p>
               <p className="text-sm">{sessions.length}</p>
             </div>
             <div>
-              <p className="text-xs text-text-secondary mb-1">
+              <p className="text-sm text-text-secondary mb-1">
                 {t('chat.availableAgents')}
               </p>
               <p className="text-sm">{agents.join(", ") || "None"}</p>
             </div>
             <div>
-              <p className="text-xs text-text-secondary mb-1">{t('chat.messages')}</p>
+              <p className="text-sm text-text-secondary mb-1">{t('chat.messages')}</p>
               <p className="text-sm">{messages.length}</p>
             </div>
             <div>
-              <p className="text-xs text-text-secondary mb-1">{t('chat.server')}</p>
+              <p className="text-sm text-text-secondary mb-1">{t('chat.server')}</p>
               <p className="text-sm truncate">{activeServer.name}</p>
               <p className="text-xs text-text-secondary truncate">
                 {activeServer.url}
