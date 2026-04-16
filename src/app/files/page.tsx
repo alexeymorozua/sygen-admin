@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   FolderOpen,
   File,
@@ -30,6 +31,7 @@ import { SygenAPI } from "@/lib/api";
 import type { FileEntry } from "@/lib/api";
 import type { Agent } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
+import { useUrlSelection } from "@/hooks/useUrlSelection";
 
 type ViewMode = "list" | "grid";
 type TypeFilter = "" | "image" | "document" | "audio" | "video" | "archive";
@@ -102,16 +104,18 @@ function isPreviewable(mime: string): boolean {
 }
 
 export default function FilesPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [agents, setAgents] = useState<Agent[]>([]);
   const [selectedAgent, setSelectedAgent] = useState("main");
-  const [currentPath, setCurrentPath] = useState<string[]>([]);
   const [files, setFiles] = useState<FileEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("");
   const [sortBy, setSortBy] = useState<SortBy>("name");
-  const [previewFile, setPreviewFile] = useState<FileEntry | null>(null);
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [creatingFolder, setCreatingFolder] = useState(false);
@@ -123,7 +127,30 @@ export default function FilesPage() {
   const { confirm } = useConfirm();
   const { t } = useTranslation();
 
-  const subPath = currentPath.join("/");
+  const subPath = searchParams.get("path") ?? "";
+  const currentPath = subPath ? subPath.split("/") : [];
+
+  const setCurrentPath = useCallback(
+    (segments: string[]) => {
+      const params = new URLSearchParams(searchParams.toString());
+      const joined = segments.join("/");
+      if (joined) {
+        params.set("path", joined);
+      } else {
+        params.delete("path");
+      }
+      params.delete("preview");
+      const qs = params.toString();
+      router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [searchParams, router, pathname],
+  );
+
+  const {
+    selected: previewFile,
+    select: selectPreview,
+    clear: clearPreview,
+  } = useUrlSelection<FileEntry>("preview", files, (f) => f.path);
 
   const loadAgents = useCallback(async () => {
     try {
@@ -163,21 +190,18 @@ export default function FilesPage() {
   const handleAgentSelect = (agent: string) => {
     setSelectedAgent(agent);
     setCurrentPath([]);
-    setPreviewFile(null);
   };
 
   const handleNavigate = (entry: FileEntry) => {
     if (entry.isDir) {
-      setCurrentPath((prev) => [...prev, entry.name]);
-      setPreviewFile(null);
+      setCurrentPath([...currentPath, entry.name]);
     } else if (isPreviewable(entry.mime)) {
-      setPreviewFile(entry);
+      selectPreview(entry);
     }
   };
 
   const handleBreadcrumb = (index: number) => {
-    setCurrentPath((prev) => prev.slice(0, index));
-    setPreviewFile(null);
+    setCurrentPath(currentPath.slice(0, index));
   };
 
   const handleDownload = (entry: FileEntry) => {
@@ -210,7 +234,7 @@ export default function FilesPage() {
     try {
       await SygenAPI.deleteFile(fullPath);
       toastSuccess(`${entry.name} deleted`);
-      if (previewFile?.path === entry.path) setPreviewFile(null);
+      if (previewFile?.path === entry.path) clearPreview();
       loadFiles();
     } catch (err) {
       toastError(err instanceof Error ? err.message : "Delete failed");
@@ -593,7 +617,7 @@ export default function FilesPage() {
                           {!entry.isDir && isPreviewable(entry.mime) && (
                             <button
                               type="button"
-                              onClick={() => setPreviewFile(entry)}
+                              onClick={() => selectPreview(entry)}
                               className="p-1.5 hover:bg-bg-primary rounded-lg text-text-secondary hover:text-text-primary transition-colors"
                               title={t("files.preview")}
                             >
@@ -708,7 +732,7 @@ export default function FilesPage() {
             </h3>
             <button
               type="button"
-              onClick={() => setPreviewFile(null)}
+              onClick={() => clearPreview()}
               className="p-1 hover:bg-bg-primary rounded-lg"
             >
               <X size={14} className="text-text-secondary" />
