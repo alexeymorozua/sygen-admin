@@ -5,7 +5,7 @@ Web-based administration interface for the [Sygen](https://github.com/alexeymoro
 ## Features
 
 - **Dashboard** — real CPU, RAM, and disk metrics from `/proc` with sparkline history charts (last 30 readings), auto-refresh every 10 seconds, and manual refresh
-- **Real-time Chat** — WebSocket-based streaming chat with any agent, multi-session support (create/switch/delete sessions per agent with server-side persistence), voice messages with inline audio player
+- **Real-time Chat** — WebSocket-based streaming chat with any agent, multi-session support (create/switch/delete sessions per agent with server-side persistence), voice messages with inline audio player, per-session provider/model override via header switcher (Claude/Gemini/Codex, override persists for that chat session only)
 - **Cron Jobs** — full CRUD with modal forms, client-side cron expression validation with real-time hints, human-readable schedule descriptions, preset schedule picker, and enabled/disabled toggle
 - **Webhooks** — full CRUD management via modal forms with test button (sends POST, shows status/response in toast)
 - **Background Tasks** — monitor running tasks with auto-refresh every 5 seconds, create tasks from UI, expandable result/output view, running task count indicator with pulse animation
@@ -333,8 +333,17 @@ All endpoints require `Authorization: Bearer <token>` header unless noted.
 | `POST` | `/api/chat/sessions` | Create chat session (`{agent, title?}`) |
 | `PUT` | `/api/chat/sessions/{id}` | Rename chat session (`{title: string}`) |
 | `DELETE` | `/api/chat/sessions/{id}` | Delete chat session and its history |
+| `POST` | `/api/chat/sessions/{id}/provider` | Set or clear per-session provider/model override (`{provider, model}` or `{provider: null, model: null}`) |
 | `GET` | `/api/chat/sessions/{id}/messages` | Get session message history |
 | `PUT` | `/api/chat/sessions/{id}/messages` | Save session messages (`{messages: [...]}`) |
+
+### Providers
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/providers/available` | List authenticated CLI providers (Claude/Gemini/Codex), their models, and the main agent default |
+
+The per-session override is applied only for messages sent on that specific chat session — it is not written back to the agent's config. Sending a message with an active override transparently prepends an `@<model>` directive, so the directive parser in the orchestrator picks it up and routes the message to the selected provider.
 
 ### Audio
 

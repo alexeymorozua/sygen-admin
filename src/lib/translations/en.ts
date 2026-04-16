@@ -97,6 +97,13 @@ const en: Record<string, string> = {
   "chat.playAudio": "Play",
   "chat.pauseAudio": "Pause",
   "chat.transcribe": "Transcribe",
+  "chat.provider": "Provider",
+  "chat.model": "Model",
+  "chat.providerOverride": "Custom provider active",
+  "chat.resetToDefault": "Reset to default",
+  "chat.providerAuthFailed": "Provider not authenticated",
+  "chat.defaultLabel": "default",
+  "chat.providerUpdateFailed": "Failed to update provider",
 
   // Cron
   "cron.title": "Cron Jobs",

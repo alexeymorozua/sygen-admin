@@ -108,6 +108,29 @@ export interface ChatSession {
   title: string;
   created_at: number;
   updated_at: number;
+  provider_override?: string | null;
+  model_override?: string | null;
+}
+
+export interface AvailableProvider {
+  name: string;
+  authenticated: boolean;
+  models: string[];
+  default_model: string | null;
+  display_name?: string | null;
+  color?: string | null;
+}
+
+export interface AvailableProvidersResponse {
+  providers: AvailableProvider[];
+  agent_default_model: string | null;
+  agent_default_provider: string | null;
+}
+
+export interface SessionProviderInfo {
+  session_id: string;
+  provider: string | null;
+  model: string | null;
 }
 
 export interface ChatSessionMessage {
@@ -809,6 +832,53 @@ export class SygenAPI {
       method: "PUT",
       body: JSON.stringify({ messages }),
     });
+  }
+
+  // ---- Provider switching ----
+
+  static async getAvailableProviders(): Promise<AvailableProvidersResponse> {
+    if (USE_MOCK) {
+      return {
+        providers: [
+          { name: "claude", authenticated: true, models: ["haiku", "sonnet", "opus"], default_model: "sonnet" },
+          { name: "gemini", authenticated: true, models: ["flash", "pro"], default_model: "flash" },
+          { name: "codex", authenticated: false, models: [], default_model: null },
+        ],
+        agent_default_model: "sonnet",
+        agent_default_provider: "claude",
+      };
+    }
+    return fetchAPI<AvailableProvidersResponse>("/api/providers/available");
+  }
+
+  static async setSessionProvider(
+    sessionId: string,
+    provider: string,
+    model: string
+  ): Promise<SessionProviderInfo> {
+    if (USE_MOCK) {
+      return { session_id: sessionId, provider, model };
+    }
+    return fetchAPI<SessionProviderInfo>(
+      `/api/chat/sessions/${encodeURIComponent(sessionId)}/provider`,
+      {
+        method: "POST",
+        body: JSON.stringify({ provider, model }),
+      }
+    );
+  }
+
+  static async resetSessionProvider(sessionId: string): Promise<SessionProviderInfo> {
+    if (USE_MOCK) {
+      return { session_id: sessionId, provider: null, model: null };
+    }
+    return fetchAPI<SessionProviderInfo>(
+      `/api/chat/sessions/${encodeURIComponent(sessionId)}/provider`,
+      {
+        method: "POST",
+        body: JSON.stringify({ provider: null, model: null }),
+      }
+    );
   }
 
   static async transcribeAudio(filePath: string): Promise<string> {

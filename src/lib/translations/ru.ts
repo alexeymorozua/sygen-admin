@@ -97,6 +97,13 @@ const ru: Record<string, string> = {
   "chat.playAudio": "Воспроизвести",
   "chat.pauseAudio": "Пауза",
   "chat.transcribe": "Расшифровать",
+  "chat.provider": "Провайдер",
+  "chat.model": "Модель",
+  "chat.providerOverride": "Кастомный провайдер",
+  "chat.resetToDefault": "Сбросить к default",
+  "chat.providerAuthFailed": "Провайдер не авторизован",
+  "chat.defaultLabel": "default",
+  "chat.providerUpdateFailed": "Не удалось переключить провайдер",
 
   // Cron
   "cron.title": "Cron задачи",

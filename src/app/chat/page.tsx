@@ -27,6 +27,7 @@ import StreamingMessage from "@/components/StreamingMessage";
 import CommandMenu, { type CommandMenuHandle } from "@/components/CommandMenu";
 import StatusBadge from "@/components/StatusBadge";
 import { Select } from "@/components/Select";
+import { ProviderSwitcher } from "@/components/ProviderSwitcher";
 import VoiceRecorder from "@/components/VoiceRecorder";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { useToast } from "@/components/Toast";
@@ -371,6 +372,20 @@ export default function ChatPage() {
 
   const activeSession = sessions.find((s) => s.id === activeSessionId);
 
+  const handleProviderChange = useCallback(
+    (provider: string | null, model: string | null) => {
+      if (!activeSessionId) return;
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === activeSessionId
+            ? { ...s, provider_override: provider, model_override: model }
+            : s
+        )
+      );
+    },
+    [activeSessionId, setSessions]
+  );
+
   return (
     <div className="flex h-[calc(100vh-5rem)] gap-0 -m-6 lg:-m-8 mt-0 lg:mt-0">
       {/* Mobile sidebar overlay */}
@@ -566,7 +581,16 @@ export default function ChatPage() {
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
+            {activeSessionId && (
+              <ProviderSwitcher
+                sessionId={activeSessionId}
+                currentOverrideProvider={activeSession?.provider_override ?? null}
+                currentOverrideModel={activeSession?.model_override ?? null}
+                agentDefaultLabel={null}
+                onChange={handleProviderChange}
+              />
+            )}
             <button
               type="button"
               onClick={handleNewChat}

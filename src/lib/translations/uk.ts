@@ -97,6 +97,13 @@ const uk: Record<string, string> = {
   "chat.playAudio": "Відтворити",
   "chat.pauseAudio": "Пауза",
   "chat.transcribe": "Розшифрувати",
+  "chat.provider": "Провайдер",
+  "chat.model": "Модель",
+  "chat.providerOverride": "Кастомний провайдер",
+  "chat.resetToDefault": "Скинути до default",
+  "chat.providerAuthFailed": "Провайдер не авторизований",
+  "chat.defaultLabel": "default",
+  "chat.providerUpdateFailed": "Не вдалося переключити провайдер",
 
   // Cron
   "cron.title": "Cron задачі",

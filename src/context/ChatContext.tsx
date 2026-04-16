@@ -367,7 +367,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       setIsStreaming(true);
       setAgentStatus(null);
 
-      wsRef.current.sendMessage(selectedAgent, text);
+      wsRef.current.sendMessage(selectedAgent, text, sessionId);
     },
     [activeSessionId, selectedAgent, wsStatus, addMessage]
   );
@@ -405,7 +405,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       setIsStreaming(true);
       setAgentStatus(null);
 
-      wsRef.current?.sendMessage(selectedAgent, prompt);
+      wsRef.current?.sendMessage(selectedAgent, prompt, sessionId);
     },
     [selectedAgent, addMessage]
   );
