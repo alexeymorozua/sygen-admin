@@ -51,14 +51,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (success) {
           setIsAuthenticated(true);
           const stored = getStoredUser();
-          if (stored) {
-            setUser(stored);
-          } else {
-            try {
-              const me = await SygenAPI.getMe();
-              setUser(me);
-            } catch { /* ignore */ }
-          }
+          if (stored) setUser(stored);
+          try {
+            const me = await SygenAPI.getMe();
+            setUser(me);
+          } catch { /* ignore network errors, keep stored */ }
         } else {
           setIsAuthenticated(false);
           setUser(null);
@@ -79,6 +76,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       router.replace("/login");
     }
   }, [isAuthenticated, isLoading, pathname, router]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const refresh = async () => {
+      if (document.visibilityState !== "visible") return;
+      try {
+        const me = await SygenAPI.getMe();
+        setUser(me);
+      } catch { /* ignore */ }
+    };
+    document.addEventListener("visibilitychange", refresh);
+    return () => document.removeEventListener("visibilitychange", refresh);
+  }, [isAuthenticated]);
 
   const login = useCallback(async (credentials: { username: string; password: string } | { token: string }) => {
     const response = await SygenAPI.login(credentials);
