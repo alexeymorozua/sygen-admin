@@ -9,8 +9,10 @@ Web-based administration interface for the [Sygen](https://github.com/alexeymoro
 - **Cron Jobs** — full CRUD with modal forms, client-side cron expression validation with real-time hints, human-readable schedule descriptions, preset schedule picker, and enabled/disabled toggle
 - **Webhooks** — full CRUD management via modal forms with test button (sends POST, shows status/response in toast)
 - **Background Tasks** — monitor running tasks with auto-refresh every 5 seconds, create tasks from UI, expandable result/output view, running task count indicator with pulse animation
-- **Memory Editor** — view and edit all memory modules with content loading on selection and path traversal protection
+- **Memory Editor** — view and edit all memory modules with content loading on selection and path traversal protection. Each module shows current line count against the soft limit (`N / 80`), colored by usage (green → yellow → orange → red) so you can see at a glance which modules are near the cron cleanup threshold
+- **RAG Management** — dedicated block in Settings showing enable toggle, indexed chunk count, vector DB size, embedding model, top-K values, and sub-toggles for memory/workspace indexing and reranker (changes take effect after bot restart)
 - **Agents** — detail panel on card click (model, provider, sessions, allowed users), logs viewer tab (last 200 lines), online/total count in header, and "Open Chat" quick action
+- **URL-based Detail Selection** — notifications, memory modules, cron jobs, webhooks, tasks, agents, and files all use `?id=…` / `?module=…` query params, so selected items survive page reloads and are linkable/shareable
 - **Settings** — configuration viewer with sanitized secrets (masked as `***`)
 - **Users & RBAC** — user management (create/edit/delete), three roles (admin/operator/viewer), per-agent access control (`allowed_agents`), audit log with action history
 - **i18n** — full internationalization with English, Ukrainian, and Russian translations, language switcher in sidebar
@@ -387,9 +389,16 @@ All endpoints require `Authorization: Bearer <token>` header unless noted.
 |--------|----------|-------------|
 | `GET` | `/api/memory` | Get main memory content |
 | `PUT` | `/api/memory` | Update memory content |
-| `GET` | `/api/memory/modules` | List memory modules |
+| `GET` | `/api/memory/modules` | List memory modules (each module includes `lines`, `size_bytes`, and `mtime` so the admin panel can render N/80 progress against the cron cleanup limit) |
 | `GET` | `/api/memory/modules/{filename}` | Read a specific memory module |
 | `PUT` | `/api/memory/modules/{filename}` | Update a specific memory module |
+
+### RAG
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/rag/status` | Read RAG state: `enabled`, `embedding_model`, `reranker_enabled`, `reranker_model`, `index_workspace`, `index_memory`, `top_k_retrieval`, `top_k_final`, vector DB path/size/existence, and indexed `chunk_count` (counted directly from `chroma.sqlite3`) |
+| `PUT` | `/api/rag/config` | Update RAG config (admin only). Accepts any subset of `enabled`, `reranker_enabled`, `index_workspace`, `index_memory`, `top_k_retrieval`, `top_k_final`. Unknown fields are rejected. Response includes `restart_required: true` — bot must be restarted for changes to apply |
 
 ### Users (Admin only)
 
