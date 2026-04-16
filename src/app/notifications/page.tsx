@@ -11,6 +11,7 @@ import type { Agent } from "@/lib/mock-data";
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import remarkBreaks from "remark-breaks";
+import { useUrlSelection } from "@/hooks/useUrlSelection";
 
 interface ReplyButtonProps {
   defaultAgent: string;
@@ -122,7 +123,6 @@ function getTypeLabel(type: SygenNotification["type"], t: (key: string) => strin
 export default function NotificationsPage() {
   const { t } = useTranslation();
   const { notifications, unreadCount, markRead, markAllRead, loading } = useNotifications();
-  const [selected, setSelected] = useState<SygenNotification | null>(null);
   const [filter, setFilter] = useState<NotificationFilter>("all");
   const [agents, setAgents] = useState<Agent[]>([]);
 
@@ -134,12 +134,18 @@ export default function NotificationsPage() {
     ? notifications
     : notifications.filter((n) => n.type === filter);
 
+  const { selected, select, clear: clearSelection } = useUrlSelection<SygenNotification>(
+    "id",
+    notifications,
+    (n) => n.id,
+  );
+
   const handleSelect = useCallback(
     (n: SygenNotification) => {
-      setSelected(n);
+      select(n);
       if (!n.read) markRead(n.id);
     },
-    [markRead]
+    [select, markRead]
   );
 
   const filters: { key: NotificationFilter; labelKey: string }[] = [
@@ -182,7 +188,7 @@ export default function NotificationsPage() {
             <button
               key={f.key}
               type="button"
-              onClick={() => { setFilter(f.key); setSelected(null); }}
+              onClick={() => { setFilter(f.key); clearSelection(); }}
               className={cn(
                 "px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
                 filter === f.key
@@ -315,7 +321,7 @@ export default function NotificationsPage() {
         <div className="xl:hidden fixed inset-0 z-50 bg-bg-primary/95 overflow-y-auto p-4 pt-16">
           <button
             type="button"
-            onClick={() => setSelected(null)}
+            onClick={() => clearSelection()}
             className="absolute top-4 right-4 p-2 bg-bg-card border border-border rounded-lg text-text-secondary hover:text-text-primary"
           >
             ✕
