@@ -309,25 +309,12 @@ async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> 
 export class SygenAPI {
   // ---- Auth ----
 
-  static async login(credentials: { username: string; password: string } | { token: string }): Promise<LoginResponse> {
-    let res: Response;
-
-    if ("token" in credentials) {
-      // Token login goes through the server-side proxy to avoid
-      // exposing secrets in the client bundle.
-      res = await fetch("/api/auth/token-login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: credentials.token }),
-      });
-    } else {
-      // Username/password login hits Sygen Core directly — no secrets involved.
-      res = await fetch(`${getApiUrl()}/api/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(credentials),
-      });
-    }
+  static async login(credentials: { username: string; password: string }): Promise<LoginResponse> {
+    const res = await fetch(`${getApiUrl()}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(credentials),
+    });
 
     if (!res.ok) {
       const body = await res.json().catch(() => null);

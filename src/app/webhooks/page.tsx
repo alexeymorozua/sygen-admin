@@ -151,7 +151,7 @@ function WebhookFormDialog({
               onChange={(e) => setForm({ ...form, description: e.target.value })}
               rows={2}
               className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent resize-none"
-              placeholder="What this webhook does..."
+              placeholder={t('webhooks.placeholderDescription')}
             />
           </div>
 
@@ -165,7 +165,7 @@ function WebhookFormDialog({
               onChange={(e) => setForm({ ...form, secret: e.target.value, clearSecret: false })}
               disabled={form.clearSecret}
               className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-accent disabled:opacity-50"
-              placeholder={isEdit && hasExistingSecret ? "•••••• (unchanged)" : "HMAC signing secret"}
+              placeholder={isEdit && hasExistingSecret ? "•••••• (unchanged)" : t('webhooks.placeholderSecret')}
               autoComplete="off"
             />
             {isEdit && hasExistingSecret && (
@@ -346,8 +346,8 @@ export default function WebhooksPage() {
             type="button"
             onClick={() => handleTest(w)}
             className="p-1.5 hover:bg-bg-primary rounded-lg transition-colors text-green-400"
-            title="Test"
-            aria-label="Test webhook"
+            title={t('common.test')}
+            aria-label={t('common.test')}
           >
             <Play size={14} />
           </button>
@@ -355,12 +355,12 @@ export default function WebhooksPage() {
             type="button"
             onClick={() => { select(w); setShowForm("edit"); }}
             className="p-1.5 hover:bg-bg-primary rounded-lg transition-colors text-text-secondary"
-            title="Edit"
-            aria-label="Edit webhook"
+            title={t('common.edit')}
+            aria-label={t('common.edit')}
           >
             <Edit2 size={14} />
           </button>
-          <button type="button" onClick={() => handleDelete(w)} className="p-1.5 hover:bg-bg-primary rounded-lg transition-colors text-danger" title="Delete" aria-label="Delete webhook">
+          <button type="button" onClick={() => handleDelete(w)} className="p-1.5 hover:bg-bg-primary rounded-lg transition-colors text-danger" title={t('common.delete')} aria-label={t('common.delete')}>
             <Trash2 size={14} />
           </button>
         </div>
@@ -428,7 +428,7 @@ export default function WebhooksPage() {
           onClick={() => handleTest(selected)}
           className="flex-1 py-2 text-sm font-medium rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors"
         >
-          Test
+          {t('common.test')}
         </button>
         <button
           type="button"
@@ -518,7 +518,7 @@ export default function WebhooksPage() {
               type="button"
               onClick={() => setShowForm("edit")}
               className="p-1.5 hover:bg-bg-primary rounded-lg transition-colors text-text-secondary"
-              title="Edit"
+              title={t('common.edit')}
             >
               <Edit2 size={14} />
             </button>

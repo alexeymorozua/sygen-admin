@@ -126,6 +126,7 @@ const uk: Record<string, string> = {
   "cron.invalidCron": "Невірний cron вираз. Формат: хвилина година день місяць день_тижня",
   "cron.nameRequired": "Назва обов'язкова",
   "cron.scheduleRequired": "Розклад обов'язковий",
+  "cron.placeholderDescription": "Що робить це завдання...",
 
   // Webhooks
   "webhooks.title": "Webhooks",
@@ -140,6 +141,8 @@ const uk: Record<string, string> = {
   "webhooks.totalTriggers": "Всього тригерів",
   "webhooks.lastTriggered": "Останній виклик",
   "webhooks.nameUrlRequired": "Назва та URL обов'язкові",
+  "webhooks.placeholderDescription": "Що робить цей webhook...",
+  "webhooks.placeholderSecret": "HMAC-секрет підпису",
 
   // Tasks
   "tasks.title": "Задачі",
@@ -259,6 +262,7 @@ const uk: Record<string, string> = {
   "common.of": "з",
   "common.refresh": "Оновити",
   "common.lines": "рядків",
+  "common.test": "Тест",
 
   // RAG
   "rag.title": "RAG (Retrieval)",
@@ -294,9 +298,7 @@ const uk: Record<string, string> = {
 
   // Login
   "login.title": "Sygen Admin",
-  "login.subtitle": "Введіть API токен для продовження",
-  "login.tokenPlaceholder": "Введіть API токен...",
-  "login.tokenLabel": "API токен",
+  "login.subtitle": "Увійдіть для продовження",
   "login.submit": "Увійти",
   "login.authenticating": "Автентифікація...",
   "login.failed": "Помилка входу",
@@ -304,8 +306,6 @@ const uk: Record<string, string> = {
   "login.usernamePlaceholder": "Введіть ім'я користувача",
   "login.password": "Пароль",
   "login.passwordPlaceholder": "Введіть пароль",
-  "login.useToken": "Використати API токен",
-  "login.useCredentials": "Використати логін та пароль",
 
   // Users / RBAC
   "users.title": "Користувачі",

@@ -55,8 +55,6 @@ docker run -d \
   --name sygen-admin \
   -p 3000:3000 \
   -e NEXT_PUBLIC_SYGEN_API_URL=http://your-sygen-server:8799 \
-  -e SYGEN_API_URL=http://your-sygen-server:8799 \
-  -e SYGEN_API_TOKEN=your-api-token \
   -e NEXT_PUBLIC_USE_MOCK=false \
   ghcr.io/alexeymorozua/sygen-admin:latest
 ```
@@ -92,12 +90,10 @@ The app starts on `http://localhost:3000`.
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `NEXT_PUBLIC_SYGEN_API_URL` | Yes | `http://localhost:8080` | Base URL of your Sygen Core API server (used by client-side code) |
-| `SYGEN_API_URL` | No | same as `NEXT_PUBLIC_SYGEN_API_URL` | Server-side API URL (used by the token-login proxy; keeps internal topology private) |
-| `SYGEN_API_TOKEN` | No | — | Static API token for server-side auth (never exposed to the browser) |
+| `NEXT_PUBLIC_SYGEN_API_URL` | Yes | `http://localhost:8080` | Base URL of your Sygen Core API server |
 | `NEXT_PUBLIC_USE_MOCK` | No | `false` | Set to `true` for development/demo. When `true`, the UI uses built-in mock data |
 
-> **Note:** Variables prefixed with `NEXT_PUBLIC_` are embedded at build time in Docker. `SYGEN_API_URL` and `SYGEN_API_TOKEN` are server-side only and never reach the client bundle.
+> **Note:** Auth uses username/password + JWT. Obtain a JWT via `/api/auth/login` — no static master token is required or accepted.
 
 ### Sygen Core Setup
 

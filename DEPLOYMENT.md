@@ -163,8 +163,6 @@ services:
       - "127.0.0.1:3000:3000"  # Bind to localhost only (Nginx fronts it)
     environment:
       - NEXT_PUBLIC_SYGEN_API_URL=http://your-sygen-server:8799
-      - SYGEN_API_URL=http://your-sygen-server:8799
-      - SYGEN_API_TOKEN=${SYGEN_API_TOKEN}
       - NEXT_PUBLIC_USE_MOCK=false
     restart: unless-stopped
     healthcheck:

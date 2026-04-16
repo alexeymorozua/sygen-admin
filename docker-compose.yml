@@ -6,6 +6,4 @@ services:
     environment:
       - NEXT_PUBLIC_SYGEN_API_URL=${NEXT_PUBLIC_SYGEN_API_URL:-http://localhost:8080}
       - NEXT_PUBLIC_USE_MOCK=${NEXT_PUBLIC_USE_MOCK:-true}
-      - SYGEN_API_URL=${SYGEN_API_URL:-http://localhost:8080}
-      - SYGEN_API_TOKEN=${SYGEN_API_TOKEN:-}
     restart: unless-stopped

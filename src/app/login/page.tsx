@@ -5,17 +5,14 @@ import { KeyRound, AlertCircle, Loader2, ArrowLeft, Shield } from "lucide-react"
 import { useAuth } from "@/context/AuthContext";
 import { useTranslation } from "@/lib/i18n";
 
-type LoginMode = "credentials" | "token";
 type LoginStep = "credentials" | "2fa";
 
 export default function LoginPage() {
   const { login, login2FA } = useAuth();
   const { t } = useTranslation();
-  const [mode, setMode] = useState<LoginMode>("credentials");
   const [step, setStep] = useState<LoginStep>("credentials");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [token, setToken] = useState("");
   const [tempToken, setTempToken] = useState("");
   const [totpCode, setTotpCode] = useState("");
   const [error, setError] = useState("");
@@ -33,17 +30,12 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      if (mode === "credentials") {
-        if (!username.trim() || !password) return;
-        const response = await login({ username: username.trim(), password });
-        if (response.requires_2fa && response.temp_token) {
-          setTempToken(response.temp_token);
-          setStep("2fa");
-          setTotpCode("");
-        }
-      } else {
-        if (!token.trim()) return;
-        await login({ token: token.trim() });
+      if (!username.trim() || !password) return;
+      const response = await login({ username: username.trim(), password });
+      if (response.requires_2fa && response.temp_token) {
+        setTempToken(response.temp_token);
+        setStep("2fa");
+        setTotpCode("");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : t("login.failed"));
@@ -86,8 +78,7 @@ export default function LoginPage() {
     setError("");
   };
 
-  const canSubmit =
-    mode === "credentials" ? !!(username.trim() && password) : !!token.trim();
+  const canSubmit = !!(username.trim() && password);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-bg-primary p-4">
@@ -104,51 +95,33 @@ export default function LoginPage() {
               </p>
 
               <form onSubmit={handleSubmit} className="space-y-4">
-                {mode === "credentials" ? (
-                  <>
-                    <div>
-                      <label className="block text-sm text-text-secondary mb-1.5">
-                        {t("login.username") || "Username"}
-                      </label>
-                      <input
-                        type="text"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        placeholder={t("login.usernamePlaceholder") || "Enter username"}
-                        autoFocus
-                        autoComplete="username"
-                        className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2.5 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:border-accent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-text-secondary mb-1.5">
-                        {t("login.password") || "Password"}
-                      </label>
-                      <input
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder={t("login.passwordPlaceholder") || "Enter password"}
-                        autoComplete="current-password"
-                        className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2.5 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:border-accent"
-                      />
-                    </div>
-                  </>
-                ) : (
-                  <div>
-                    <label className="block text-sm text-text-secondary mb-1.5">
-                      {t("login.tokenLabel")}
-                    </label>
-                    <input
-                      type="password"
-                      value={token}
-                      onChange={(e) => setToken(e.target.value)}
-                      placeholder={t("login.tokenPlaceholder")}
-                      autoFocus
-                      className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2.5 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:border-accent"
-                    />
-                  </div>
-                )}
+                <div>
+                  <label className="block text-sm text-text-secondary mb-1.5">
+                    {t("login.username")}
+                  </label>
+                  <input
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder={t("login.usernamePlaceholder")}
+                    autoFocus
+                    autoComplete="username"
+                    className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2.5 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:border-accent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-text-secondary mb-1.5">
+                    {t("login.password")}
+                  </label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder={t("login.passwordPlaceholder")}
+                    autoComplete="current-password"
+                    className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2.5 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:border-accent"
+                  />
+                </div>
 
                 {error && (
                   <div className="flex items-center gap-2 text-danger text-sm bg-danger/10 rounded-lg px-3 py-2">
@@ -166,8 +139,6 @@ export default function LoginPage() {
                   {loading ? t("login.authenticating") : t("login.submit")}
                 </button>
               </form>
-
-              {/* Token login removed for security — admin is publicly accessible */}
             </>
           ) : (
             <>
@@ -176,10 +147,10 @@ export default function LoginPage() {
                 <Shield size={24} className="text-brand-400" />
               </div>
               <h1 className="text-xl font-bold text-center mb-1">
-                {t("auth.twoFactor") || "Two-Factor Authentication"}
+                {t("auth.twoFactor")}
               </h1>
               <p className="text-sm text-text-secondary text-center mb-6">
-                {t("auth.enterCode") || "Enter the 6-digit code from your authenticator app"}
+                {t("auth.enterCode")}
               </p>
 
               <form onSubmit={handle2FASubmit} className="space-y-4">
@@ -220,7 +191,7 @@ export default function LoginPage() {
                 className="w-full flex items-center justify-center gap-1.5 text-xs text-text-secondary hover:text-text-primary mt-4 transition-colors"
               >
                 <ArrowLeft size={12} />
-                {t("common.back") || "Back"}
+                {t("common.back")}
               </button>
             </>
           )}

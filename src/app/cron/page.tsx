@@ -206,7 +206,7 @@ function CronFormDialog({
               onChange={(e) => setForm({ ...form, description: e.target.value })}
               rows={2}
               className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent resize-none"
-              placeholder="What this job does..."
+              placeholder={t('cron.placeholderDescription')}
             />
           </div>
 
@@ -531,7 +531,7 @@ export default function CronPage() {
               type="button"
               onClick={() => setShowForm("edit")}
               className="p-1.5 hover:bg-bg-primary rounded-lg transition-colors text-text-secondary"
-              title="Edit"
+              title={t('common.edit')}
             >
               <Edit2 size={14} />
             </button>

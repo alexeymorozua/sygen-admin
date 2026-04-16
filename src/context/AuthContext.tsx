@@ -9,7 +9,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   user: UserInfo | null;
-  login: (credentials: { username: string; password: string } | { token: string }) => Promise<LoginResponse>;
+  login: (credentials: { username: string; password: string }) => Promise<LoginResponse>;
   login2FA: (tempToken: string, code: string) => Promise<void>;
   logout: () => Promise<void>;
   hasRole: (minRole: "viewer" | "operator" | "admin") => boolean;
@@ -90,7 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => document.removeEventListener("visibilitychange", refresh);
   }, [isAuthenticated]);
 
-  const login = useCallback(async (credentials: { username: string; password: string } | { token: string }) => {
+  const login = useCallback(async (credentials: { username: string; password: string }) => {
     const response = await SygenAPI.login(credentials);
     if (response.requires_2fa) {
       // Don't authenticate yet — caller handles 2FA step

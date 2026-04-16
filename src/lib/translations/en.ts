@@ -126,6 +126,7 @@ const en: Record<string, string> = {
   "cron.invalidCron": "Invalid cron expression. Format: minute hour day month weekday",
   "cron.nameRequired": "Name is required",
   "cron.scheduleRequired": "Schedule is required",
+  "cron.placeholderDescription": "What this job does...",
 
   // Webhooks
   "webhooks.title": "Webhooks",
@@ -140,6 +141,8 @@ const en: Record<string, string> = {
   "webhooks.totalTriggers": "Total Triggers",
   "webhooks.lastTriggered": "Last Triggered",
   "webhooks.nameUrlRequired": "Name and URL are required",
+  "webhooks.placeholderDescription": "What this webhook does...",
+  "webhooks.placeholderSecret": "HMAC signing secret",
 
   // Tasks
   "tasks.title": "Tasks",
@@ -259,6 +262,7 @@ const en: Record<string, string> = {
   "common.of": "of",
   "common.refresh": "Refresh",
   "common.lines": "lines",
+  "common.test": "Test",
 
   // RAG
   "rag.title": "RAG (Retrieval)",
@@ -294,9 +298,7 @@ const en: Record<string, string> = {
 
   // Login
   "login.title": "Sygen Admin",
-  "login.subtitle": "Enter your API token to continue",
-  "login.tokenPlaceholder": "Enter API token...",
-  "login.tokenLabel": "API Token",
+  "login.subtitle": "Sign in to continue",
   "login.submit": "Login",
   "login.authenticating": "Authenticating...",
   "login.failed": "Login failed",
@@ -304,8 +306,6 @@ const en: Record<string, string> = {
   "login.usernamePlaceholder": "Enter username",
   "login.password": "Password",
   "login.passwordPlaceholder": "Enter password",
-  "login.useToken": "Use API token instead",
-  "login.useCredentials": "Use username & password",
 
   // Users / RBAC
   "users.title": "Users",

@@ -126,6 +126,7 @@ const ru: Record<string, string> = {
   "cron.invalidCron": "Неверное cron выражение. Формат: минута час день месяц день_недели",
   "cron.nameRequired": "Название обязательно",
   "cron.scheduleRequired": "Расписание обязательно",
+  "cron.placeholderDescription": "Что делает эта задача...",
 
   // Webhooks
   "webhooks.title": "Webhooks",
@@ -140,6 +141,8 @@ const ru: Record<string, string> = {
   "webhooks.totalTriggers": "Всего триггеров",
   "webhooks.lastTriggered": "Последний вызов",
   "webhooks.nameUrlRequired": "Название и URL обязательны",
+  "webhooks.placeholderDescription": "Что делает этот webhook...",
+  "webhooks.placeholderSecret": "HMAC-секрет подписи",
 
   // Tasks
   "tasks.title": "Задачи",
@@ -259,6 +262,7 @@ const ru: Record<string, string> = {
   "common.of": "из",
   "common.refresh": "Обновить",
   "common.lines": "строк",
+  "common.test": "Тест",
 
   // RAG
   "rag.title": "RAG (Retrieval)",
@@ -294,9 +298,7 @@ const ru: Record<string, string> = {
 
   // Login
   "login.title": "Sygen Admin",
-  "login.subtitle": "Введите API токен для продолжения",
-  "login.tokenPlaceholder": "Введите API токен...",
-  "login.tokenLabel": "API токен",
+  "login.subtitle": "Войдите для продолжения",
   "login.submit": "Войти",
   "login.authenticating": "Аутентификация...",
   "login.failed": "Ошибка входа",
@@ -304,8 +306,6 @@ const ru: Record<string, string> = {
   "login.usernamePlaceholder": "Введите имя пользователя",
   "login.password": "Пароль",
   "login.passwordPlaceholder": "Введите пароль",
-  "login.useToken": "Использовать API токен",
-  "login.useCredentials": "Использовать логин и пароль",
 
   // Users / RBAC
   "users.title": "Пользователи",

@@ -201,7 +201,7 @@ describe("login / logout", () => {
     });
     vi.stubGlobal("fetch", fetchSpy);
 
-    const result = await SygenAPI.login({ token: "my-master-token" });
+    const result = await SygenAPI.login({ username: "admin", password: "secret" });
     expect(result.access_token).toBe("new-access");
     expect(localStorage.getItem("sygen_access_token")).toBe("new-access");
     expect(localStorage.getItem("sygen_refresh_token")).toBe("new-refresh");
