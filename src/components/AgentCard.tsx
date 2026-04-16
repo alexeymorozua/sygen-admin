@@ -7,20 +7,23 @@ import { Bot, Clock, Users } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n";
 import { SygenAPI } from "@/lib/api";
+import { useAuthedImage } from "@/lib/hooks";
 
 export default function AgentCard({ agent }: { agent: Agent }) {
   const { t } = useTranslation();
   const [imgError, setImgError] = useState(false);
+  const avatarApiUrl = agent.hasAvatar ? SygenAPI.getAgentAvatarUrl(agent.name) : null;
+  const avatarUrl = useAuthedImage(avatarApiUrl);
 
   return (
     <div className="bg-bg-card border border-border rounded-xl p-5 hover:border-accent/50 transition-colors">
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-accent/30 flex items-center justify-center overflow-hidden">
-            {agent.hasAvatar && !imgError ? (
+            {avatarUrl && !imgError ? (
               /* eslint-disable-next-line @next/next/no-img-element */
               <img
-                src={SygenAPI.getAgentAvatarUrl(agent.name)}
+                src={avatarUrl}
                 alt={agent.displayName}
                 className="w-10 h-10 rounded-lg object-cover"
                 onError={() => setImgError(true)}

@@ -14,6 +14,7 @@ import {
   File as FileIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuthedImage } from "@/lib/hooks";
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import AudioPlayer from "@/components/AudioPlayer";
@@ -193,6 +194,9 @@ export default function StreamingMessage({
   const [avatarError, setAvatarError] = useState(false);
   const [userAvatarError, setUserAvatarError] = useState(false);
   const isUser = sender === "user";
+  // userAvatarUrl comes from the parent as an object URL (already authed).
+  // agentAvatarUrl is a raw API URL — fetch it with auth and turn into an object URL.
+  const agentAvatarBlobUrl = useAuthedImage(agentAvatarUrl);
 
   // Parse <file:...> from agent content
   const { cleanText, files: parsedFiles } = isUser
@@ -237,10 +241,10 @@ export default function StreamingMessage({
           ) : (
             <User size={16} />
           )
-        ) : agentAvatarUrl && !avatarError ? (
+        ) : agentAvatarBlobUrl && !avatarError ? (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img
-            src={agentAvatarUrl}
+            src={agentAvatarBlobUrl}
             alt={agentName || "agent"}
             className="w-8 h-8 rounded-full object-cover"
             onError={() => setAvatarError(true)}

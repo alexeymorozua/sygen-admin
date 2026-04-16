@@ -1152,11 +1152,7 @@ export class SygenAPI {
   }
 
   static getAvatarUrl(path: string): string {
-    const { accessToken } = getStoredTokens();
-    const token = accessToken || getApiToken();
-    let url = `${getApiUrl()}/api/files/download?path=${encodeURIComponent(path)}`;
-    if (token) url += `&token=${encodeURIComponent(token)}`;
-    return url;
+    return `${getApiUrl()}/api/files/download?path=${encodeURIComponent(path)}`;
   }
 
   // ---- Webhook signature verify ----
@@ -1299,10 +1295,17 @@ export class SygenAPI {
     return fetchAPI<FileEntry[]>(`/api/files/list${query ? `?${query}` : ""}`);
   }
 
-  static async deleteFile(path: string): Promise<void> {
+  static async deleteFile(
+    agentOrPath: string,
+    relativePath?: string,
+  ): Promise<void> {
+    const body =
+      relativePath !== undefined
+        ? { agent: agentOrPath, relative_path: relativePath }
+        : { path: agentOrPath };
     await fetchAPI("/api/files", {
       method: "DELETE",
-      body: JSON.stringify({ path }),
+      body: JSON.stringify(body),
     });
   }
 
@@ -1334,12 +1337,25 @@ export class SygenAPI {
     return { path: data.path as string };
   }
 
-  static getFileDownloadUrl(filePath: string): string {
+  static getFileDownloadUrl(agent: string, relativePath: string): string {
+    const qs = new URLSearchParams({
+      agent,
+      relative_path: relativePath,
+    });
+    return `${getApiUrl()}/api/files/download?${qs.toString()}`;
+  }
+
+  static async downloadAuthedBlob(url: string): Promise<Blob> {
     const { accessToken } = getStoredTokens();
     const token = accessToken || getApiToken();
-    let url = `${getApiUrl()}/api/files/download?path=${encodeURIComponent(filePath)}`;
-    if (token) url += `&token=${encodeURIComponent(token)}`;
-    return url;
+    const res = await fetch(url, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      throw new Error(body?.error || `Download failed: ${res.status}`);
+    }
+    return res.blob();
   }
 }
 

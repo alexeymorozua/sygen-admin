@@ -8,6 +8,7 @@ import StatusBadge from "@/components/StatusBadge";
 import { LoadingSpinner, ErrorState, CardSkeleton } from "@/components/LoadingState";
 import { useToast } from "@/components/Toast";
 import { SygenAPI } from "@/lib/api";
+import { useAuthedImage } from "@/lib/hooks";
 import { formatDate } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n";
 import { useUrlSelection } from "@/hooks/useUrlSelection";
@@ -117,6 +118,12 @@ export default function AgentsPage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const { success, error: toastError } = useToast();
   const { t } = useTranslation();
+
+  const selectedAvatarApiUrl =
+    selected && (selected.hasAvatar || avatarKey > 0)
+      ? `${SygenAPI.getAgentAvatarUrl(selected.name)}?v=${avatarKey}`
+      : null;
+  const selectedAvatarUrl = useAuthedImage(selectedAvatarApiUrl);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -375,11 +382,11 @@ export default function AgentsPage() {
                 onClick={() => avatarInputRef.current?.click()}
                 title={t("agents.changeAvatar") || "Change avatar"}
               >
-                {(selected.hasAvatar || avatarKey > 0) && !avatarError[selected.name] ? (
+                {selectedAvatarUrl && !avatarError[selected.name] ? (
                   /* eslint-disable-next-line @next/next/no-img-element */
                   <img
                     key={avatarKey}
-                    src={SygenAPI.getAgentAvatarUrl(selected.name) + `?v=${avatarKey}`}
+                    src={selectedAvatarUrl}
                     alt={selected.displayName}
                     className="w-10 h-10 rounded-lg object-cover"
                     onError={() => setAvatarError((prev) => ({ ...prev, [selected.name]: true }))}

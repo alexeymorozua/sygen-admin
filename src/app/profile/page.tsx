@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { User, Shield, ShieldCheck, Eye, KeyRound, Save, Camera, Loader2, Trash2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { SygenAPI } from "@/lib/api";
+import { useAuthedImage } from "@/lib/hooks";
 import { useToast } from "@/components/Toast";
 import { useTranslation } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -33,9 +34,10 @@ export default function ProfilePage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
-  if (!user) return null;
+  const avatarApiUrl = user?.avatar ? SygenAPI.getAvatarUrl(user.avatar) : null;
+  const avatarUrl = useAuthedImage(avatarApiUrl);
 
-  const avatarUrl = user.avatar ? SygenAPI.getAvatarUrl(user.avatar) : null;
+  if (!user) return null;
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

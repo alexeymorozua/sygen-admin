@@ -29,6 +29,7 @@ import { Select } from "@/components/Select";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { SygenAPI } from "@/lib/api";
+import { useAuthedImage } from "@/lib/hooks";
 import type { FileEntry } from "@/lib/api";
 import type { Agent } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
@@ -37,6 +38,25 @@ import { useUrlSelection } from "@/hooks/useUrlSelection";
 type ViewMode = "list" | "grid";
 type TypeFilter = "" | "image" | "document" | "audio" | "video" | "archive";
 type SortBy = "name" | "size" | "date";
+
+function AuthedImage({
+  agent,
+  relativePath,
+  alt,
+  className,
+  loading,
+}: {
+  agent: string;
+  relativePath: string;
+  alt: string;
+  className?: string;
+  loading?: "lazy" | "eager";
+}) {
+  const url = useAuthedImage(SygenAPI.getFileDownloadUrl(agent, relativePath));
+  if (!url) return null;
+  /* eslint-disable-next-line @next/next/no-img-element */
+  return <img src={url} alt={alt} className={className} loading={loading} />;
+}
 
 function getFileIcon(entry: FileEntry) {
   if (entry.isDir) return FolderOpen;
@@ -205,15 +225,21 @@ export default function FilesPage() {
     setCurrentPath(currentPath.slice(0, index));
   };
 
-  const handleDownload = (entry: FileEntry) => {
-    const home = `${process.env.HOME || "/Users/aiagent"}/.sygen`;
-    const agentBase =
-      selectedAgent === "main" || selectedAgent === "shared"
-        ? `${home}/workspace`
-        : `${home}/agents/${selectedAgent}/workspace`;
-    const fullPath = `${agentBase}/${entry.path}`;
-    const url = SygenAPI.getFileDownloadUrl(fullPath);
-    window.open(url, "_blank");
+  const handleDownload = async (entry: FileEntry) => {
+    try {
+      const url = SygenAPI.getFileDownloadUrl(selectedAgent, entry.path);
+      const blob = await SygenAPI.downloadAuthedBlob(url);
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = entry.name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Download failed");
+    }
   };
 
   const handleDelete = async (entry: FileEntry) => {
@@ -225,15 +251,8 @@ export default function FilesPage() {
     )
       return;
 
-    const home = `${process.env.HOME || "/Users/aiagent"}/.sygen`;
-    const agentBase =
-      selectedAgent === "main" || selectedAgent === "shared"
-        ? `${home}/workspace`
-        : `${home}/agents/${selectedAgent}/workspace`;
-    const fullPath = `${agentBase}/${entry.path}`;
-
     try {
-      await SygenAPI.deleteFile(fullPath);
+      await SygenAPI.deleteFile(selectedAgent, entry.path);
       toastSuccess(`${entry.name} deleted`);
       if (previewFile?.path === entry.path) clearPreview();
       loadFiles();
@@ -667,15 +686,9 @@ export default function FilesPage() {
                 >
                   <div className="aspect-square rounded-lg bg-bg-primary flex items-center justify-center mb-2 overflow-hidden">
                     {isImage ? (
-                      /* eslint-disable-next-line @next/next/no-img-element */
-                      <img
-                        src={SygenAPI.getFileDownloadUrl(
-                          `${process.env.HOME || "/Users/aiagent"}/.sygen/${
-                            selectedAgent === "main" || selectedAgent === "shared"
-                              ? "workspace"
-                              : `agents/${selectedAgent}/workspace`
-                          }/${entry.path}`
-                        )}
+                      <AuthedImage
+                        agent={selectedAgent}
+                        relativePath={entry.path}
                         alt={entry.name}
                         className="w-full h-full object-cover"
                         loading="lazy"
@@ -742,15 +755,9 @@ export default function FilesPage() {
           <div className="p-4 space-y-4">
             {isPreviewable(previewFile.mime) && (
               <div className="rounded-lg overflow-hidden bg-bg-primary">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={SygenAPI.getFileDownloadUrl(
-                    `${process.env.HOME || "/Users/aiagent"}/.sygen/${
-                      selectedAgent === "main" || selectedAgent === "shared"
-                        ? "workspace"
-                        : `agents/${selectedAgent}/workspace`
-                    }/${previewFile.path}`
-                  )}
+                <AuthedImage
+                  agent={selectedAgent}
+                  relativePath={previewFile.path}
                   alt={previewFile.name}
                   className="w-full"
                 />

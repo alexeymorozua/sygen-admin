@@ -32,6 +32,7 @@ import VoiceRecorder from "@/components/VoiceRecorder";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { useToast } from "@/components/Toast";
 import { SygenAPI, type ChatSession } from "@/lib/api";
+import { useAuthedImage } from "@/lib/hooks";
 import { useServer } from "@/context/ServerContext";
 import { useChat } from "@/context/ChatContext";
 import { useAuth } from "@/context/AuthContext";
@@ -41,6 +42,19 @@ import { cn } from "@/lib/utils";
 function getStoredAccessToken(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("sygen_access_token");
+}
+
+function HeaderAgentAvatar({
+  apiUrl,
+  alt,
+}: {
+  apiUrl: string | null;
+  alt: string;
+}) {
+  const url = useAuthedImage(apiUrl);
+  if (!url) return <Bot size={16} className="text-brand-400" />;
+  /* eslint-disable-next-line @next/next/no-img-element */
+  return <img src={url} alt={alt} className="w-8 h-8 rounded-full object-cover" />;
 }
 
 function getFileTypeIcon(name: string) {
@@ -71,10 +85,11 @@ export default function ChatPage() {
   const searchParams = useSearchParams();
   const { user } = useAuth();
 
-  const userAvatarUrl = useMemo(
-    () => (user?.avatar ? SygenAPI.getAvatarUrl(user.avatar) : undefined),
+  const userAvatarApiUrl = useMemo(
+    () => (user?.avatar ? SygenAPI.getAvatarUrl(user.avatar) : null),
     [user?.avatar]
   );
+  const userAvatarUrl = useAuthedImage(userAvatarApiUrl) ?? undefined;
 
   // Global chat state from context (persists across navigation)
   const chat = useChat();
@@ -563,16 +578,14 @@ export default function ChatPage() {
               <Menu size={18} />
             </button>
             <div className="w-8 h-8 rounded-full bg-accent/30 flex items-center justify-center overflow-hidden">
-              {agentAvatars.has(selectedAgent) ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img
-                  src={SygenAPI.getAgentAvatarUrl(selectedAgent)}
-                  alt={selectedAgent}
-                  className="w-8 h-8 rounded-full object-cover"
-                />
-              ) : (
-                <Bot size={16} className="text-brand-400" />
-              )}
+              <HeaderAgentAvatar
+                apiUrl={
+                  agentAvatars.has(selectedAgent)
+                    ? SygenAPI.getAgentAvatarUrl(selectedAgent)
+                    : null
+                }
+                alt={selectedAgent}
+              />
             </div>
             <div>
               <p className="font-medium text-sm">
