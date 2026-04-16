@@ -6,15 +6,26 @@ import { cn } from "@/lib/utils";
 
 type ToastType = "success" | "error" | "warning" | "info";
 
+interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
+
 interface Toast {
   id: string;
   type: ToastType;
   message: string;
   duration: number;
+  action?: ToastAction;
+}
+
+interface ToastOptions {
+  duration?: number;
+  action?: ToastAction;
 }
 
 interface ToastContextValue {
-  toast: (message: string, type?: ToastType, duration?: number) => void;
+  toast: (message: string, type?: ToastType, options?: ToastOptions | number) => void;
   success: (message: string) => void;
   error: (message: string) => void;
   warning: (message: string) => void;
@@ -54,7 +65,21 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string)
       )}
     >
       <Icon size={18} className="shrink-0 mt-0.5" />
-      <p className="text-sm flex-1">{toast.message}</p>
+      <div className="flex-1 flex flex-col gap-2">
+        <p className="text-sm">{toast.message}</p>
+        {toast.action && (
+          <button
+            type="button"
+            onClick={() => {
+              toast.action?.onClick();
+              onDismiss(toast.id);
+            }}
+            className="self-start rounded-md border border-current/40 bg-current/10 px-2.5 py-1 text-xs font-medium hover:bg-current/20 transition-colors"
+          >
+            {toast.action.label}
+          </button>
+        )}
+      </div>
       <button
         type="button"
         onClick={() => onDismiss(toast.id)}
@@ -80,9 +105,19 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addToast = useCallback(
-    (message: string, type: ToastType = "info", duration = 4000) => {
+    (
+      message: string,
+      type: ToastType = "info",
+      options?: ToastOptions | number,
+    ) => {
+      const opts: ToastOptions =
+        typeof options === "number" ? { duration: options } : options ?? {};
+      const duration = opts.duration ?? 4000;
       const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-      setToasts((prev) => [...prev.slice(-4), { id, type, message, duration }]);
+      setToasts((prev) => [
+        ...prev.slice(-4),
+        { id, type, message, duration, action: opts.action },
+      ]);
       const timer = setTimeout(() => dismiss(id), duration);
       timersRef.current.set(id, timer);
     },

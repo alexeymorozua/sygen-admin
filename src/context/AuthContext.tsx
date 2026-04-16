@@ -101,6 +101,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async () => {
     await SygenAPI.logout();
+    if (typeof navigator !== "undefined" && navigator.serviceWorker?.controller) {
+      navigator.serviceWorker.controller.postMessage({ type: "CLEAR_PAGES_CACHE" });
+    }
     setIsAuthenticated(false);
     setUser(null);
     router.replace("/login");
