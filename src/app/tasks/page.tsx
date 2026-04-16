@@ -246,9 +246,9 @@ export default function TasksPage() {
   const runningCount = tasks.filter((t) => t.status === "running").length;
 
   return (
-    <div className="flex gap-6">
+    <div className="flex gap-4 md:gap-6">
       <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4 md:mb-6">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold">{t('tasks.title')}</h1>
             {runningCount > 0 && (

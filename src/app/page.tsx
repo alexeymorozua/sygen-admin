@@ -147,7 +147,7 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4 md:mb-6">
         <h1 className="text-2xl font-bold">{t('dashboard.title')}</h1>
         <RefreshButton
           loading={refreshing}
@@ -158,7 +158,7 @@ export default function DashboardPage() {
 
       {/* Connected Servers */}
       {servers.length > 1 && (
-        <div className="bg-bg-card border border-border rounded-xl p-4 mb-6">
+        <div className="bg-bg-card border border-border rounded-xl p-4 mb-4 md:mb-6">
           <h2 className="text-sm font-semibold text-text-secondary mb-3 flex items-center gap-2">
             <Server size={14} />
             {t('dashboard.connectedServers')}
@@ -187,14 +187,14 @@ export default function DashboardPage() {
       )}
 
       {/* Status Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 md:mb-8">
         <StatusCard title={t('nav.agents')} value={`${onlineAgents}/${agents.length}`} icon={Bot} trend={`${onlineAgents} ${t('dashboard.online')}`} />
         <StatusCard title={t('dashboard.activeTasks')} value={taskCount.total} icon={ListTodo} trend={`${taskCount.running} ${t('dashboard.running')}`} />
         <StatusCard title={t('nav.cron')} value={cronCount.total} icon={Clock} trend={`${cronCount.active} ${t('dashboard.active')}, ${cronCount.paused} ${t('dashboard.paused')}`} />
         <StatusCard title={t('nav.webhooks')} value={webhookCount.total} icon={WebhookIcon} trend={`${webhookCount.active} ${t('dashboard.active')}`} />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
         {/* Agent Status */}
         <div className="bg-bg-card border border-border rounded-xl p-5">
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">

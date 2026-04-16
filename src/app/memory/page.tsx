@@ -168,7 +168,7 @@ export default function MemoryPage() {
         <div className="mb-4 text-sm text-danger bg-danger/10 rounded-lg px-3 py-2">{error}</div>
       )}
 
-      <div className="flex flex-col md:flex-row gap-6 h-[calc(100vh-12rem)]">
+      <div className="flex flex-col md:flex-row gap-4 md:gap-6 h-[calc(100vh-12rem)]">
         {/* Module List */}
         <div
           className={cn(

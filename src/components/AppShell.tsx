@@ -30,7 +30,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <CommandPalette />
       <KeyboardShortcuts />
       <main className="lg:ml-64 min-h-screen">
-        <div className="p-6 lg:p-8 pt-16 lg:pt-8">{children}</div>
+        <div className="p-3 sm:p-4 md:p-6 lg:p-8 pt-16 md:pt-6 lg:pt-8">{children}</div>
       </main>
     </>
   );

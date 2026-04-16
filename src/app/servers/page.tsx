@@ -88,7 +88,7 @@ export default function ServersPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4 md:mb-6">
         <h1 className="text-2xl font-bold">{t('servers.title')}</h1>
         <div className="flex items-center gap-2">
           <RefreshButton loading={refreshing} onClick={checkAll} />
@@ -103,7 +103,7 @@ export default function ServersPage() {
       </div>
 
       {/* Server Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 mb-6 md:mb-8">
         {servers.map((server) => {
           const status = statusMap[server.id];
           const isActive = server.id === activeServer.id;

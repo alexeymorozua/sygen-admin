@@ -114,7 +114,7 @@ export default function UsersPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4 md:mb-6">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Users size={22} />
           {t("users.title") || "Users"}
@@ -137,7 +137,7 @@ export default function UsersPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-6 bg-bg-card rounded-lg p-1 w-fit">
+      <div className="flex gap-1 mb-4 md:mb-6 bg-bg-card rounded-lg p-1 w-fit">
         <button
           type="button"
           onClick={() => setTab("users")}

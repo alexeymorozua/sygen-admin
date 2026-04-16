@@ -363,9 +363,9 @@ export default function CronPage() {
   if (error && jobs.length === 0) return <ErrorState message={error} onRetry={loadData} />;
 
   return (
-    <div className="flex gap-6">
+    <div className="flex gap-4 md:gap-6">
       <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4 md:mb-6">
           <h1 className="text-2xl font-bold">{t('cron.title')}</h1>
           <button
             type="button"

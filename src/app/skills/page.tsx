@@ -209,7 +209,7 @@ export default function SkillsPage() {
         <div className="mb-4 text-sm text-danger bg-danger/10 rounded-lg px-3 py-2">{error}</div>
       )}
 
-      <div className="flex flex-col md:flex-row gap-6 h-[calc(100vh-12rem)]">
+      <div className="flex flex-col md:flex-row gap-4 md:gap-6 h-[calc(100vh-12rem)]">
         <div
           className={cn(
             "w-full md:w-72 bg-bg-card border border-border rounded-xl overflow-hidden md:flex flex-col shrink-0",

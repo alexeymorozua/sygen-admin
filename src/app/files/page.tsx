@@ -301,7 +301,7 @@ export default function FilesPage() {
   ];
 
   return (
-    <div className="flex gap-6 h-full">
+    <div className="flex gap-4 md:gap-6 h-full">
       {/* Agent sidebar */}
       <div className="w-48 shrink-0 hidden lg:block">
         <h2 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3">
