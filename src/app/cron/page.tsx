@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Plus, X, Play, Pause, RotateCcw, Trash2, Edit2, Save, Clock, ChevronDown } from "lucide-react";
 import DataTable, { type Column } from "@/components/DataTable";
 import TableSearch from "@/components/TableSearch";
 import StatusBadge from "@/components/StatusBadge";
+import { Select } from "@/components/Select";
+import DetailDrawer from "@/components/DetailDrawer";
 import { LoadingSpinner, ErrorState } from "@/components/LoadingState";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/ConfirmDialog";
@@ -13,7 +15,7 @@ import { formatDateTime } from "@/lib/utils";
 import { isValidCron, describeCron, CRON_PRESETS } from "@/lib/cron";
 import { useTranslation } from "@/lib/i18n";
 import { useUrlSelection } from "@/hooks/useUrlSelection";
-import type { CronJob } from "@/lib/mock-data";
+import type { CronJob, Agent } from "@/lib/mock-data";
 
 type Filter = "all" | "active" | "paused" | "error";
 
@@ -31,11 +33,13 @@ const EMPTY_FORM: CronFormData = { id: "", name: "", schedule: "", agent: "main"
 function CronFormDialog({
   initial,
   isEdit,
+  agents,
   onSave,
   onCancel,
 }: {
   initial: CronFormData;
   isEdit: boolean;
+  agents: Agent[];
   onSave: (data: CronFormData) => Promise<void>;
   onCancel: () => void;
 }) {
@@ -44,9 +48,29 @@ function CronFormDialog({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [showPresets, setShowPresets] = useState(false);
+  const presetsRef = useRef<HTMLDivElement>(null);
 
   const cronHint = form.schedule.trim() ? describeCron(form.schedule) : "";
   const cronValid = !form.schedule.trim() || isValidCron(form.schedule);
+
+  // Close presets on outside click or Escape
+  useEffect(() => {
+    if (!showPresets) return;
+    const onClick = (e: MouseEvent) => {
+      if (presetsRef.current && !presetsRef.current.contains(e.target as Node)) {
+        setShowPresets(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowPresets(false);
+    };
+    document.addEventListener("mousedown", onClick);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onClick);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [showPresets]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,6 +95,10 @@ function CronFormDialog({
       setSaving(false);
     }
   };
+
+  const agentOptions = agents.length > 0
+    ? agents
+    : [{ id: "main", name: "main", displayName: "Main" } as Agent];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onCancel}>
@@ -111,7 +139,7 @@ function CronFormDialog({
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-sm text-text-secondary">{t('cron.schedule')} (cron) *</label>
-              <div className="relative">
+              <div className="relative" ref={presetsRef}>
                 <button
                   type="button"
                   onClick={() => setShowPresets(!showPresets)}
@@ -160,13 +188,15 @@ function CronFormDialog({
 
           <div>
             <label className="block text-sm text-text-secondary mb-1.5">{t('common.agent')}</label>
-            <input
-              type="text"
+            <Select
               value={form.agent}
               onChange={(e) => setForm({ ...form, agent: e.target.value })}
-              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent"
-              placeholder="main"
-            />
+              className="w-full"
+            >
+              {agentOptions.map((a) => (
+                <option key={a.id || a.name} value={a.name}>{a.displayName || a.name}</option>
+              ))}
+            </Select>
           </div>
 
           <div>
@@ -219,6 +249,7 @@ function CronFormDialog({
 
 export default function CronPage() {
   const [jobs, setJobs] = useState<CronJob[]>([]);
+  const [agents, setAgents] = useState<Agent[]>([]);
   const [filter, setFilter] = useState<Filter>("all");
   const { selected, select, clear: clearSelection } = useUrlSelection<CronJob>(
     "id",
@@ -232,27 +263,42 @@ export default function CronPage() {
   const { success, error: toastError } = useToast();
   const { confirm } = useConfirm();
   const { t } = useTranslation();
+  const abortRef = useRef<AbortController | null>(null);
 
   const loadData = useCallback(async () => {
+    abortRef.current?.abort();
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
     setLoading(true);
-    setError("");
     try {
-      setJobs(await SygenAPI.getCronJobs());
+      const next = await SygenAPI.getCronJobs();
+      if (ctrl.signal.aborted) return;
+      setJobs(next);
+      setError("");
     } catch (err) {
+      if (ctrl.signal.aborted) return;
+      if ((err as { name?: string } | null)?.name === "AbortError") return;
       setError(err instanceof Error ? err.message : "Failed to load cron jobs");
     } finally {
-      setLoading(false);
+      if (!ctrl.signal.aborted) setLoading(false);
     }
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    loadData();
+    SygenAPI.getAgents().then(setAgents).catch(() => {});
+    return () => abortRef.current?.abort();
+  }, [loadData]);
 
   const handleToggle = async (job: CronJob) => {
     try {
-      const newStatus = job.status === "active" ? "paused" : "active";
-      const updated = await SygenAPI.updateCronJob(job.id, { status: newStatus } as Partial<CronJob>);
+      const nextEnabled = job.status !== "active";
+      const updated = await SygenAPI.updateCronJob(
+        job.id,
+        { enabled: nextEnabled } as Partial<CronJob> & { enabled: boolean },
+      );
       setJobs((prev) => prev.map((j) => (j.id === job.id ? updated : j)));
-      success(`Job "${job.name}" ${newStatus === "active" ? "resumed" : "paused"}`);
+      success(`Job "${job.name}" ${nextEnabled ? "resumed" : "paused"}`);
     } catch (err) {
       toastError(err instanceof Error ? err.message : "Failed to update job");
     }
@@ -287,8 +333,8 @@ export default function CronPage() {
       schedule: data.schedule,
       agent: data.agent || "main",
       description: data.description,
-      status: data.enabled ? "active" : "paused",
-    } as Partial<CronJob>);
+      enabled: data.enabled,
+    } as Partial<CronJob> & { enabled: boolean });
     setJobs((prev) => [...prev, created]);
     setShowForm(false);
     success(`Job "${data.name}" created`);
@@ -296,12 +342,16 @@ export default function CronPage() {
 
   const handleEdit = async (data: CronFormData) => {
     if (!selected) return;
-    const updated = await SygenAPI.updateCronJob(selected.id, {
-      name: data.name,
-      schedule: data.schedule,
-      agent: data.agent,
-      description: data.description,
-    } as Partial<CronJob>);
+    const updated = await SygenAPI.updateCronJob(
+      selected.id,
+      {
+        name: data.name,
+        schedule: data.schedule,
+        agent: data.agent,
+        description: data.description,
+        enabled: data.enabled,
+      } as Partial<CronJob> & { enabled: boolean },
+    );
     setJobs((prev) => prev.map((j) => (j.id === selected.id ? updated : j)));
     setShowForm(false);
     success(`Job "${data.name}" updated`);
@@ -359,8 +409,63 @@ export default function CronPage() {
     { label: t('common.error'), value: "error" },
   ];
 
-  if (loading) return <LoadingSpinner />;
+  if (loading && jobs.length === 0) return <LoadingSpinner />;
   if (error && jobs.length === 0) return <ErrorState message={error} onRetry={loadData} />;
+
+  const detailBody = selected ? (
+    <div className="space-y-4">
+      <div>
+        <p className="text-sm text-text-secondary mb-1">{t('common.name')}</p>
+        <p className="text-sm font-medium">{selected.name}</p>
+      </div>
+      <div>
+        <p className="text-sm text-text-secondary mb-1">{t('common.id')}</p>
+        <p className="text-sm font-mono text-text-secondary">{selected.id}</p>
+      </div>
+      <div>
+        <p className="text-sm text-text-secondary mb-1">{t('common.status')}</p>
+        <StatusBadge status={selected.status} />
+      </div>
+      <div>
+        <p className="text-sm text-text-secondary mb-1">{t('cron.schedule')}</p>
+        <code className="text-sm bg-bg-primary px-2 py-0.5 rounded">{selected.schedule}</code>
+        {selected.schedule && (
+          <p className="text-[10px] text-green-400 mt-1">{describeCron(selected.schedule)}</p>
+        )}
+      </div>
+      <div>
+        <p className="text-sm text-text-secondary mb-1">{t('common.agent')}</p>
+        <p className="text-sm text-brand-400">{selected.agent}</p>
+      </div>
+      <div>
+        <p className="text-sm text-text-secondary mb-1">{t('common.description')}</p>
+        <p className="text-sm text-text-secondary">{selected.description || "—"}</p>
+      </div>
+      <div>
+        <p className="text-sm text-text-secondary mb-1">{t('cron.lastRun')}</p>
+        <p className="text-sm">{formatDateTime(selected.lastRun)}</p>
+      </div>
+      <div>
+        <p className="text-sm text-text-secondary mb-1">{t('cron.nextRun')}</p>
+        <p className="text-sm">{formatDateTime(selected.nextRun)}</p>
+      </div>
+      <div>
+        <p className="text-sm text-text-secondary mb-1">{t('cron.executions')}</p>
+        <p className="text-sm">{selected.executionCount}</p>
+      </div>
+      <div className="pt-2 border-t border-border flex items-center gap-2">
+        <button type="button" onClick={() => handleToggle(selected)} className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${selected.status === "active" ? "bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30" : "bg-green-500/20 text-green-400 hover:bg-green-500/30"}`}>
+          {selected.status === "active" ? t('cron.pause') : t('cron.resume')}
+        </button>
+        <button type="button" onClick={() => handleRunNow(selected)} className="flex-1 py-2 text-sm font-medium rounded-lg bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 transition-colors">
+          {t('cron.runNow')}
+        </button>
+        <button type="button" onClick={() => handleDelete(selected)} className="py-2 px-3 text-sm font-medium rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors">
+          <Trash2 size={12} />
+        </button>
+      </div>
+    </div>
+  ) : null;
 
   return (
     <div className="flex gap-4 md:gap-6">
@@ -416,82 +521,34 @@ export default function CronPage() {
         </div>
       </div>
 
-      {/* Detail Panel */}
-      {selected && (
-        <div className="w-80 bg-bg-card border border-border rounded-xl p-5 shrink-0 hidden xl:block h-fit sticky top-8">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold">{t('cron.jobDetails')}</h3>
-            <div className="flex items-center gap-1">
-              <button type="button" onClick={() => setShowForm("edit")} className="p-1.5 hover:bg-bg-primary rounded-lg transition-colors text-text-secondary" title="Edit">
-                <Edit2 size={14} />
-              </button>
-              <button type="button" onClick={() => clearSelection()} className="p-1 hover:bg-bg-primary rounded-lg" aria-label="Close details">
-                <X size={16} className="text-text-secondary" />
-              </button>
-            </div>
-          </div>
-          <div className="space-y-4">
-            <div>
-              <p className="text-sm text-text-secondary mb-1">{t('common.name')}</p>
-              <p className="text-sm font-medium">{selected.name}</p>
-            </div>
-            <div>
-              <p className="text-sm text-text-secondary mb-1">{t('common.id')}</p>
-              <p className="text-sm font-mono text-text-secondary">{selected.id}</p>
-            </div>
-            <div>
-              <p className="text-sm text-text-secondary mb-1">{t('common.status')}</p>
-              <StatusBadge status={selected.status} />
-            </div>
-            <div>
-              <p className="text-sm text-text-secondary mb-1">{t('cron.schedule')}</p>
-              <code className="text-sm bg-bg-primary px-2 py-0.5 rounded">{selected.schedule}</code>
-              {selected.schedule && (
-                <p className="text-[10px] text-green-400 mt-1">{describeCron(selected.schedule)}</p>
-              )}
-            </div>
-            <div>
-              <p className="text-sm text-text-secondary mb-1">{t('common.agent')}</p>
-              <p className="text-sm text-brand-400">{selected.agent}</p>
-            </div>
-            <div>
-              <p className="text-sm text-text-secondary mb-1">{t('common.description')}</p>
-              <p className="text-sm text-text-secondary">{selected.description || "—"}</p>
-            </div>
-            <div>
-              <p className="text-sm text-text-secondary mb-1">{t('cron.lastRun')}</p>
-              <p className="text-sm">{formatDateTime(selected.lastRun)}</p>
-            </div>
-            <div>
-              <p className="text-sm text-text-secondary mb-1">{t('cron.nextRun')}</p>
-              <p className="text-sm">{formatDateTime(selected.nextRun)}</p>
-            </div>
-            <div>
-              <p className="text-sm text-text-secondary mb-1">{t('cron.executions')}</p>
-              <p className="text-sm">{selected.executionCount}</p>
-            </div>
-            <div className="pt-2 border-t border-border flex items-center gap-2">
-              <button type="button" onClick={() => handleToggle(selected)} className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${selected.status === "active" ? "bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30" : "bg-green-500/20 text-green-400 hover:bg-green-500/30"}`}>
-                {selected.status === "active" ? t('cron.pause') : t('cron.resume')}
-              </button>
-              <button type="button" onClick={() => handleRunNow(selected)} className="flex-1 py-2 text-sm font-medium rounded-lg bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 transition-colors">
-                {t('cron.runNow')}
-              </button>
-              <button type="button" onClick={() => handleDelete(selected)} className="py-2 px-3 text-sm font-medium rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors">
-                <Trash2 size={12} />
-              </button>
-            </div>
-          </div>
-        </div>
+      {selected && detailBody && (
+        <DetailDrawer
+          open={true}
+          title={t('cron.jobDetails')}
+          onClose={clearSelection}
+          actions={
+            <button
+              type="button"
+              onClick={() => setShowForm("edit")}
+              className="p-1.5 hover:bg-bg-primary rounded-lg transition-colors text-text-secondary"
+              title="Edit"
+            >
+              <Edit2 size={14} />
+            </button>
+          }
+        >
+          {detailBody}
+        </DetailDrawer>
       )}
 
       {showForm === "create" && (
-        <CronFormDialog initial={EMPTY_FORM} isEdit={false} onSave={handleCreate} onCancel={() => setShowForm(false)} />
+        <CronFormDialog initial={EMPTY_FORM} isEdit={false} agents={agents} onSave={handleCreate} onCancel={() => setShowForm(false)} />
       )}
       {showForm === "edit" && selected && (
         <CronFormDialog
           initial={{ id: selected.id, name: selected.name, schedule: selected.schedule, agent: selected.agent, description: selected.description, enabled: selected.status === "active" }}
           isEdit={true}
+          agents={agents}
           onSave={handleEdit}
           onCancel={() => setShowForm(false)}
         />

@@ -36,6 +36,11 @@ function getApiUrl(): string {
   return _activeServer?.url || API_URL;
 }
 
+/** Public accessor for the active Sygen server base URL. */
+export function getServerBaseUrl(): string {
+  return getApiUrl();
+}
+
 function getApiToken(): string {
   return _activeServer?.token || "";
 }
@@ -469,14 +474,19 @@ export class SygenAPI {
       };
       return newJob;
     }
-    const body = {
+    const { status, name, ...rest } = job;
+    const body: Record<string, unknown> = {
       id: job.id || `cron-${Date.now()}`,
-      title: job.name,
+      title: name,
       schedule: job.schedule,
       agent: job.agent,
       description: job.description,
-      ...job,
+      ...rest,
     };
+    if (status !== undefined) body.enabled = status === "active";
+    if (typeof (job as { enabled?: unknown }).enabled === "boolean") {
+      body.enabled = (job as { enabled: boolean }).enabled;
+    }
     const data = await fetchAPI<Record<string, unknown>>("/api/cron", {
       method: "POST",
       body: JSON.stringify(body),
@@ -489,9 +499,16 @@ export class SygenAPI {
       const job = mockCronJobs.find((j) => j.id === id);
       return { ...job!, ...data };
     }
+    const { status, name, ...rest } = data;
+    const body: Record<string, unknown> = { ...rest };
+    if (name !== undefined) body.title = name;
+    if (status !== undefined) body.enabled = status === "active";
+    if (typeof (data as { enabled?: unknown }).enabled === "boolean") {
+      body.enabled = (data as { enabled: boolean }).enabled;
+    }
     const result = await fetchAPI<Record<string, unknown>>(`/api/cron/${id}`, {
       method: "PUT",
-      body: JSON.stringify(data),
+      body: JSON.stringify(body),
     });
     return mapCronJob(result);
   }
@@ -606,19 +623,34 @@ export class SygenAPI {
 
   // ---- Webhook test ----
 
-  static async testWebhook(url: string): Promise<{ status: number; body: string }> {
+  static async testWebhook(
+    pathOrUrl: string,
+    method: string = "POST",
+  ): Promise<{ status: number; body: string }> {
     if (USE_MOCK) {
       return { status: 200, body: '{"ok": true}' };
     }
-    // Validate the URL to prevent SSRF via client-side fetch to internal networks
+
+    // A webhook's stored `url` is usually a relative path like "/webhooks/github".
+    // Resolve it against the active Sygen server base; keep absolute URLs as-is.
+    let finalUrl: string;
     try {
-      const parsed = new URL(url);
+      const parsed = new URL(pathOrUrl);
+      finalUrl = parsed.toString();
+    } catch {
+      const base = getApiUrl().replace(/\/+$/, "");
+      const rel = pathOrUrl.startsWith("/") ? pathOrUrl : `/${pathOrUrl}`;
+      finalUrl = `${base}${rel}`;
+    }
+
+    // SSRF guard: block internal/private addresses regardless of how we got here.
+    try {
+      const parsed = new URL(finalUrl);
       if (!["http:", "https:"].includes(parsed.protocol)) {
         throw new Error("Only HTTP(S) URLs are allowed");
       }
-      // Block requests to common internal/private addresses
       const hostname = parsed.hostname.toLowerCase();
-      if (
+      const isInternal =
         hostname === "localhost" ||
         hostname === "127.0.0.1" ||
         hostname === "0.0.0.0" ||
@@ -627,8 +659,17 @@ export class SygenAPI {
         hostname.startsWith("172.") ||
         hostname === "[::1]" ||
         hostname.endsWith(".internal") ||
-        hostname.endsWith(".local")
-      ) {
+        hostname.endsWith(".local");
+      // Allow internal/private when the target resolves to the configured
+      // Sygen server itself — self-test is the expected use case.
+      const baseHost = (() => {
+        try {
+          return new URL(getApiUrl()).hostname.toLowerCase();
+        } catch {
+          return "";
+        }
+      })();
+      if (isInternal && hostname !== baseHost) {
         throw new Error("Cannot test webhooks against internal/private addresses");
       }
     } catch (err) {
@@ -637,14 +678,20 @@ export class SygenAPI {
       }
       throw err;
     }
+
+    const verb = (method || "POST").toUpperCase();
+    const init: RequestInit = {
+      method: verb,
+      headers: { "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(10000),
+      credentials: "omit",
+    };
+    if (verb !== "GET" && verb !== "HEAD") {
+      init.body = JSON.stringify({ test: true, timestamp: new Date().toISOString() });
+    }
+
     try {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ test: true, timestamp: new Date().toISOString() }),
-        signal: AbortSignal.timeout(10000),
-        credentials: "omit",
-      });
+      const res = await fetch(finalUrl, init);
       const text = await res.text();
       return { status: res.status, body: text.slice(0, 500) };
     } catch (err) {
@@ -1309,10 +1356,16 @@ export class SygenAPI {
     });
   }
 
-  static async createFolder(agent: string, name: string): Promise<void> {
+  static async createFolder(agent: string, pathOrName: string): Promise<void> {
+    // If the argument contains a separator, treat it as a nested path under
+    // the agent workspace (`{agent, relative_path}`). Otherwise, treat it as
+    // a bare folder name at the workspace root (`{agent, name}`).
+    const body = pathOrName.includes("/")
+      ? { agent, relative_path: pathOrName }
+      : { agent, name: pathOrName };
     await fetchAPI("/api/files/mkdir", {
       method: "POST",
-      body: JSON.stringify({ agent, name }),
+      body: JSON.stringify(body),
     });
   }
 
@@ -1321,10 +1374,13 @@ export class SygenAPI {
     const token = accessToken || getApiToken();
     const formData = new FormData();
     formData.append("file", file, file.name);
-    if (subPath) formData.append("subpath", subPath);
-    formData.append("agent", agent);
 
-    const res = await fetch(`${getApiUrl()}/upload`, {
+    // Send agent+relative_path as query params so the server routes the
+    // file into the agent's workspace instead of the legacy dated upload dir.
+    const qs = new URLSearchParams({ agent });
+    if (subPath) qs.set("relative_path", subPath);
+
+    const res = await fetch(`${getApiUrl()}/upload?${qs.toString()}`, {
       method: "POST",
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       body: formData,

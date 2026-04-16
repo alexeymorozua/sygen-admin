@@ -8,6 +8,7 @@ import DataTable, { type Column } from "@/components/DataTable";
 import TableSearch from "@/components/TableSearch";
 import StatusBadge from "@/components/StatusBadge";
 import { Select } from "@/components/Select";
+import DetailDrawer from "@/components/DetailDrawer";
 import { LoadingSpinner, ErrorState } from "@/components/LoadingState";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/ConfirmDialog";
@@ -133,29 +134,41 @@ export default function TasksPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const refreshTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const tasksRef = useRef<Task[]>([]);
+  const abortRef = useRef<AbortController | null>(null);
   const { success: toastSuccess, error: toastError } = useToast();
   const { confirm } = useConfirm();
   const { t } = useTranslation();
 
+  useEffect(() => { tasksRef.current = tasks; }, [tasks]);
+
   const loadData = useCallback(async () => {
+    abortRef.current?.abort();
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
     try {
       const data = await SygenAPI.getTasks();
+      if (ctrl.signal.aborted) return;
       setTasks(data);
+      setError("");
     } catch (err) {
-      if (tasks.length === 0) {
+      if (ctrl.signal.aborted) return;
+      if ((err as { name?: string } | null)?.name === "AbortError") return;
+      if (tasksRef.current.length === 0) {
         setError(err instanceof Error ? err.message : "Failed to load tasks");
       }
     } finally {
-      setLoading(false);
+      if (!ctrl.signal.aborted) setLoading(false);
     }
-  }, [tasks.length]);
+  }, []);
 
   // Initial load
   useEffect(() => {
     setLoading(true);
     loadData();
     SygenAPI.getAgents().then(setAgents).catch(() => {});
-  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
+    return () => abortRef.current?.abort();
+  }, [loadData]);
 
   // Auto-refresh when there are running tasks
   useEffect(() => {
@@ -179,7 +192,9 @@ export default function TasksPage() {
         prev.map((t) => (t.id === task.id ? { ...t, status: "cancelled" as const } : t))
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to cancel task");
+      const msg = err instanceof Error ? err.message : "Failed to cancel task";
+      toastError(msg);
+      setError(msg);
     }
   };
 
@@ -324,13 +339,12 @@ export default function TasksPage() {
 
       {/* Detail Panel */}
       {selected && (
-        <div className="w-96 bg-bg-card border border-border rounded-xl p-5 shrink-0 hidden xl:block h-fit sticky top-8 max-h-[calc(100vh-6rem)] overflow-y-auto">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold">{t('tasks.details')}</h3>
-            <button type="button" onClick={() => clearSelection()} className="p-1 hover:bg-bg-primary rounded-lg" aria-label="Close details">
-              <X size={16} className="text-text-secondary" />
-            </button>
-          </div>
+        <DetailDrawer
+          open={true}
+          title={t('tasks.details')}
+          onClose={clearSelection}
+          width="w-96"
+        >
           <div className="space-y-4">
             <div>
               <p className="text-sm text-text-secondary mb-1">{t('common.name')}</p>
@@ -408,7 +422,7 @@ export default function TasksPage() {
               </div>
             )}
           </div>
-        </div>
+        </DetailDrawer>
       )}
 
       {/* Create Task Dialog */}

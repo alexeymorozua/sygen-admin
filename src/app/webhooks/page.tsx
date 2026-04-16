@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Plus, X, Trash2, Edit2, Save, Play } from "lucide-react";
 import DataTable, { type Column } from "@/components/DataTable";
 import TableSearch from "@/components/TableSearch";
 import StatusBadge from "@/components/StatusBadge";
 import { Select } from "@/components/Select";
+import DetailDrawer from "@/components/DetailDrawer";
 import { LoadingSpinner, ErrorState } from "@/components/LoadingState";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/ConfirmDialog";
@@ -13,7 +14,7 @@ import { useTranslation } from "@/lib/i18n";
 import { SygenAPI } from "@/lib/api";
 import { formatDateTime } from "@/lib/utils";
 import { useUrlSelection } from "@/hooks/useUrlSelection";
-import type { Webhook } from "@/lib/mock-data";
+import type { Webhook, Agent } from "@/lib/mock-data";
 
 type Filter = "all" | "active" | "paused" | "error";
 
@@ -25,18 +26,23 @@ interface WebhookFormData {
   agent: string;
   description: string;
   secret: string;
+  clearSecret: boolean;
 }
 
-const EMPTY_FORM: WebhookFormData = { id: "", name: "", url: "", method: "POST", agent: "main", description: "", secret: "" };
+const EMPTY_FORM: WebhookFormData = { id: "", name: "", url: "", method: "POST", agent: "main", description: "", secret: "", clearSecret: false };
 
 function WebhookFormDialog({
   initial,
   isEdit,
+  hasExistingSecret,
+  agents,
   onSave,
   onCancel,
 }: {
   initial: WebhookFormData;
   isEdit: boolean;
+  hasExistingSecret: boolean;
+  agents: Agent[];
   onSave: (data: WebhookFormData) => Promise<void>;
   onCancel: () => void;
 }) {
@@ -60,6 +66,10 @@ function WebhookFormDialog({
       setSaving(false);
     }
   };
+
+  const agentOptions = agents.length > 0
+    ? agents
+    : [{ id: "main", name: "main", displayName: "Main" } as Agent];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onCancel}>
@@ -123,13 +133,15 @@ function WebhookFormDialog({
 
           <div>
             <label className="block text-sm text-text-secondary mb-1.5">{t('common.agent')}</label>
-            <input
-              type="text"
+            <Select
               value={form.agent}
               onChange={(e) => setForm({ ...form, agent: e.target.value })}
-              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent"
-              placeholder="main"
-            />
+              className="w-full"
+            >
+              {agentOptions.map((a) => (
+                <option key={a.id || a.name} value={a.name}>{a.displayName || a.name}</option>
+              ))}
+            </Select>
           </div>
 
           <div>
@@ -150,11 +162,23 @@ function WebhookFormDialog({
             <input
               type="password"
               value={form.secret}
-              onChange={(e) => setForm({ ...form, secret: e.target.value })}
-              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-accent"
-              placeholder="HMAC signing secret"
+              onChange={(e) => setForm({ ...form, secret: e.target.value, clearSecret: false })}
+              disabled={form.clearSecret}
+              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-accent disabled:opacity-50"
+              placeholder={isEdit && hasExistingSecret ? "•••••• (unchanged)" : "HMAC signing secret"}
               autoComplete="off"
             />
+            {isEdit && hasExistingSecret && (
+              <label className="flex items-center gap-2 mt-2 text-xs text-text-secondary cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.clearSecret}
+                  onChange={(e) => setForm({ ...form, clearSecret: e.target.checked, secret: e.target.checked ? "" : form.secret })}
+                  className="rounded border-border"
+                />
+                {t('webhooks.clearSecret') || "Clear secret"}
+              </label>
+            )}
             <p className="text-xs text-text-secondary/60 mt-1">
               {t('webhooks.signatureHeader') || "Signature header"}: <code className="text-brand-400">X-Sygen-Signature</code>
             </p>
@@ -181,6 +205,7 @@ function WebhookFormDialog({
 
 export default function WebhooksPage() {
   const [webhooks, setWebhooks] = useState<Webhook[]>([]);
+  const [agents, setAgents] = useState<Agent[]>([]);
   const [filter, setFilter] = useState<Filter>("all");
   const { selected, select, clear: clearSelection } = useUrlSelection<Webhook>(
     "id",
@@ -194,24 +219,36 @@ export default function WebhooksPage() {
   const { success, error: toastError } = useToast();
   const { confirm } = useConfirm();
   const { t } = useTranslation();
+  const abortRef = useRef<AbortController | null>(null);
 
   const loadData = useCallback(async () => {
+    abortRef.current?.abort();
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
     setLoading(true);
-    setError("");
     try {
-      setWebhooks(await SygenAPI.getWebhooks());
+      const next = await SygenAPI.getWebhooks();
+      if (ctrl.signal.aborted) return;
+      setWebhooks(next);
+      setError("");
     } catch (err) {
+      if (ctrl.signal.aborted) return;
+      if ((err as { name?: string } | null)?.name === "AbortError") return;
       setError(err instanceof Error ? err.message : "Failed to load webhooks");
     } finally {
-      setLoading(false);
+      if (!ctrl.signal.aborted) setLoading(false);
     }
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    loadData();
+    SygenAPI.getAgents().then(setAgents).catch(() => {});
+    return () => abortRef.current?.abort();
+  }, [loadData]);
 
   const handleTest = async (wh: Webhook) => {
     try {
-      const result = await SygenAPI.testWebhook(wh.url);
+      const result = await SygenAPI.testWebhook(wh.url, wh.method);
       success(`Test sent to "${wh.name}" — Status: ${result.status}`);
     } catch (err) {
       toastError(err instanceof Error ? err.message : "Test failed");
@@ -256,7 +293,11 @@ export default function WebhooksPage() {
       agent: data.agent,
       description: data.description,
     };
-    if (data.secret) payload.secret = data.secret;
+    if (data.clearSecret) {
+      payload.secret = "";
+    } else if (data.secret) {
+      payload.secret = data.secret;
+    }
     const updated = await SygenAPI.updateWebhook(selected.id, payload);
     setWebhooks((prev) => prev.map((w) => (w.id === selected.id ? updated : w)));
     setShowForm(false);
@@ -334,8 +375,78 @@ export default function WebhooksPage() {
     { label: t('common.error'), value: "error" },
   ];
 
-  if (loading) return <LoadingSpinner />;
+  if (loading && webhooks.length === 0) return <LoadingSpinner />;
   if (error && webhooks.length === 0) return <ErrorState message={error} onRetry={loadData} />;
+
+  const detailBody = selected ? (
+    <div className="space-y-4">
+      <div>
+        <p className="text-sm text-text-secondary mb-1">{t('common.name')}</p>
+        <p className="text-sm font-medium">{selected.name}</p>
+      </div>
+      <div>
+        <p className="text-sm text-text-secondary mb-1">{t('common.id')}</p>
+        <p className="text-sm font-mono text-text-secondary">{selected.id}</p>
+      </div>
+      <div>
+        <p className="text-sm text-text-secondary mb-1">{t('common.status')}</p>
+        <StatusBadge status={selected.status} />
+      </div>
+      <div>
+        <p className="text-sm text-text-secondary mb-1">{t('webhooks.endpoint')}</p>
+        <div className="flex items-center gap-2">
+          <span className="text-xs bg-accent/30 text-brand-400 px-1.5 py-0.5 rounded font-mono">{selected.method}</span>
+          <code className="text-xs break-all">{selected.url}</code>
+        </div>
+      </div>
+      <div>
+        <p className="text-sm text-text-secondary mb-1">{t('common.agent')}</p>
+        <p className="text-sm text-brand-400">{selected.agent}</p>
+      </div>
+      <div>
+        <p className="text-sm text-text-secondary mb-1">{t('common.description')}</p>
+        <p className="text-sm text-text-secondary">{selected.description || "—"}</p>
+      </div>
+      {selected.secret && (
+        <div>
+          <p className="text-sm text-text-secondary mb-1">{t('webhooks.signature') || "Signature"}</p>
+          <p className="text-xs font-mono text-brand-400">X-Sygen-Signature</p>
+          <p className="text-xs text-text-secondary mt-0.5">HMAC-SHA256</p>
+        </div>
+      )}
+      <div>
+        <p className="text-sm text-text-secondary mb-1">{t('webhooks.totalTriggers')}</p>
+        <p className="text-sm">{selected.triggerCount.toLocaleString()}</p>
+      </div>
+      <div>
+        <p className="text-sm text-text-secondary mb-1">{t('webhooks.lastTriggered')}</p>
+        <p className="text-sm">{formatDateTime(selected.lastTriggered)}</p>
+      </div>
+      <div className="pt-2 border-t border-border flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => handleTest(selected)}
+          className="flex-1 py-2 text-sm font-medium rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors"
+        >
+          Test
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowForm("edit")}
+          className="flex-1 py-2 text-sm font-medium rounded-lg bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 transition-colors"
+        >
+          {t('common.edit')}
+        </button>
+        <button
+          type="button"
+          onClick={() => handleDelete(selected)}
+          className="py-2 px-3 text-sm font-medium rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+        >
+          <Trash2 size={12} />
+        </button>
+      </div>
+    </div>
+  ) : null;
 
   return (
     <div className="flex gap-4 md:gap-6">
@@ -356,7 +467,6 @@ export default function WebhooksPage() {
           <div className="mb-4 text-sm text-danger bg-danger/10 rounded-lg px-3 py-2">{error}</div>
         )}
 
-        {/* Filters + Search */}
         <div className="flex items-center gap-2 mb-4 flex-wrap">
           <div className="flex items-center gap-2">
             {filters.map((f) => (
@@ -387,7 +497,6 @@ export default function WebhooksPage() {
           </div>
         </div>
 
-        {/* Table */}
         <div className="bg-bg-card border border-border rounded-xl overflow-hidden">
           <DataTable
             data={filtered}
@@ -399,101 +508,32 @@ export default function WebhooksPage() {
         </div>
       </div>
 
-      {/* Detail Panel */}
-      {selected && (
-        <div className="w-80 bg-bg-card border border-border rounded-xl p-5 shrink-0 hidden xl:block h-fit sticky top-8">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold">{t('webhooks.details')}</h3>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setShowForm("edit")}
-                className="p-1.5 hover:bg-bg-primary rounded-lg transition-colors text-text-secondary"
-                title="Edit"
-              >
-                <Edit2 size={14} />
-              </button>
-              <button type="button" onClick={() => clearSelection()} className="p-1 hover:bg-bg-primary rounded-lg" aria-label="Close details">
-                <X size={16} className="text-text-secondary" />
-              </button>
-            </div>
-          </div>
-          <div className="space-y-4">
-            <div>
-              <p className="text-sm text-text-secondary mb-1">{t('common.name')}</p>
-              <p className="text-sm font-medium">{selected.name}</p>
-            </div>
-            <div>
-              <p className="text-sm text-text-secondary mb-1">{t('common.id')}</p>
-              <p className="text-sm font-mono text-text-secondary">{selected.id}</p>
-            </div>
-            <div>
-              <p className="text-sm text-text-secondary mb-1">{t('common.status')}</p>
-              <StatusBadge status={selected.status} />
-            </div>
-            <div>
-              <p className="text-sm text-text-secondary mb-1">{t('webhooks.endpoint')}</p>
-              <div className="flex items-center gap-2">
-                <span className="text-xs bg-accent/30 text-brand-400 px-1.5 py-0.5 rounded font-mono">{selected.method}</span>
-                <code className="text-xs break-all">{selected.url}</code>
-              </div>
-            </div>
-            <div>
-              <p className="text-sm text-text-secondary mb-1">{t('common.agent')}</p>
-              <p className="text-sm text-brand-400">{selected.agent}</p>
-            </div>
-            <div>
-              <p className="text-sm text-text-secondary mb-1">{t('common.description')}</p>
-              <p className="text-sm text-text-secondary">{selected.description || "—"}</p>
-            </div>
-            {selected.secret && (
-              <div>
-                <p className="text-sm text-text-secondary mb-1">{t('webhooks.signature') || "Signature"}</p>
-                <p className="text-xs font-mono text-brand-400">X-Sygen-Signature</p>
-                <p className="text-xs text-text-secondary mt-0.5">HMAC-SHA256</p>
-              </div>
-            )}
-            <div>
-              <p className="text-sm text-text-secondary mb-1">{t('webhooks.totalTriggers')}</p>
-              <p className="text-sm">{selected.triggerCount.toLocaleString()}</p>
-            </div>
-            <div>
-              <p className="text-sm text-text-secondary mb-1">{t('webhooks.lastTriggered')}</p>
-              <p className="text-sm">{formatDateTime(selected.lastTriggered)}</p>
-            </div>
-            {/* Quick actions */}
-            <div className="pt-2 border-t border-border flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => handleTest(selected)}
-                className="flex-1 py-2 text-sm font-medium rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors"
-              >
-                Test
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowForm("edit")}
-                className="flex-1 py-2 text-sm font-medium rounded-lg bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 transition-colors"
-              >
-                {t('common.edit')}
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDelete(selected)}
-                className="py-2 px-3 text-sm font-medium rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
-              >
-                <Trash2 size={12} />
-              </button>
-            </div>
-          </div>
-        </div>
+      {selected && detailBody && (
+        <DetailDrawer
+          open={true}
+          title={t('webhooks.details')}
+          onClose={clearSelection}
+          actions={
+            <button
+              type="button"
+              onClick={() => setShowForm("edit")}
+              className="p-1.5 hover:bg-bg-primary rounded-lg transition-colors text-text-secondary"
+              title="Edit"
+            >
+              <Edit2 size={14} />
+            </button>
+          }
+        >
+          {detailBody}
+        </DetailDrawer>
       )}
 
-      {/* Create / Edit Dialog */}
       {showForm === "create" && (
         <WebhookFormDialog
           initial={EMPTY_FORM}
           isEdit={false}
+          hasExistingSecret={false}
+          agents={agents}
           onSave={handleCreate}
           onCancel={() => setShowForm(false)}
         />
@@ -508,8 +548,11 @@ export default function WebhooksPage() {
             agent: selected.agent,
             description: selected.description,
             secret: "",
+            clearSecret: false,
           }}
           isEdit={true}
+          hasExistingSecret={Boolean(selected.secret)}
+          agents={agents}
           onSave={handleEdit}
           onCancel={() => setShowForm(false)}
         />

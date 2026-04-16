@@ -26,6 +26,7 @@ import {
 import { useTranslation } from "@/lib/i18n";
 import { LoadingSpinner, ErrorState } from "@/components/LoadingState";
 import { Select } from "@/components/Select";
+import DetailDrawer from "@/components/DetailDrawer";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { SygenAPI } from "@/lib/api";
@@ -262,14 +263,18 @@ export default function FilesPage() {
   };
 
   const handleCreateFolder = async () => {
-    if (!newFolderName.trim()) return;
+    const name = newFolderName.trim();
+    if (!name) return;
+    // Defensive client-side validation — server also enforces this.
+    if (name.includes("/") || name.includes("\\") || name === "." || name === "..") {
+      toastError("Invalid folder name");
+      return;
+    }
     setCreatingFolder(true);
     try {
-      const folderPath = subPath
-        ? `${subPath}/${newFolderName.trim()}`
-        : newFolderName.trim();
+      const folderPath = subPath ? `${subPath}/${name}` : name;
       await SygenAPI.createFolder(selectedAgent, folderPath);
-      toastSuccess(`Folder "${newFolderName.trim()}" created`);
+      toastSuccess(`Folder "${name}" created`);
       setNewFolderName("");
       setShowNewFolder(false);
       loadFiles();
@@ -739,20 +744,13 @@ export default function FilesPage() {
 
       {/* Preview panel */}
       {previewFile && (
-        <div className="w-80 bg-bg-card border border-border rounded-xl shrink-0 hidden xl:flex flex-col h-fit sticky top-8 max-h-[calc(100vh-6rem)]">
-          <div className="flex items-center justify-between p-4 border-b border-border">
-            <h3 className="font-semibold text-sm truncate">
-              {previewFile.name}
-            </h3>
-            <button
-              type="button"
-              onClick={() => clearPreview()}
-              className="p-1 hover:bg-bg-primary rounded-lg"
-            >
-              <X size={14} className="text-text-secondary" />
-            </button>
-          </div>
-          <div className="p-4 space-y-4">
+        <DetailDrawer
+          open={true}
+          title={previewFile.name}
+          onClose={clearPreview}
+          width="w-80"
+        >
+          <div className="space-y-4">
             {isPreviewable(previewFile.mime) && (
               <div className="rounded-lg overflow-hidden bg-bg-primary">
                 <AuthedImage
@@ -801,7 +799,7 @@ export default function FilesPage() {
               </button>
             </div>
           </div>
-        </div>
+        </DetailDrawer>
       )}
     </div>
   );
