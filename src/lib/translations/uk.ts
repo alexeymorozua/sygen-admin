@@ -223,6 +223,7 @@ const uk: Record<string, string> = {
   "common.tryAgain": "Спробувати знову",
   "common.of": "з",
   "common.refresh": "Оновити",
+  "common.lines": "рядків",
 
   // RAG
   "rag.title": "RAG (Retrieval)",
@@ -243,7 +244,6 @@ const uk: Record<string, string> = {
   "rag.recLarge": "Велика база знань ({count} чанків). Увімкніть реранкер для підвищення точності.",
   "rag.recEnableReranker": "Увімкнути реранкер",
   "rag.recEnableRag": "RAG вимкнено. Увімкніть його, щоб збагачувати контекст агента даними з пам'яті та воркспейсу.",
-  "rag.thresholdLabel": "Наступний поріг",
   "rag.untilLarge": "Залишилось {remaining} чанків до порога великої БЗ (500+)",
   "rag.untilMedium": "Залишилось {remaining} чанків до порога середньої БЗ (200+)",
   "rag.atMax": "Ви вище порога великої БЗ — RAG рекомендується у повній конфігурації.",

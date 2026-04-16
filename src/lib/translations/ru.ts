@@ -223,6 +223,7 @@ const ru: Record<string, string> = {
   "common.tryAgain": "Попробовать снова",
   "common.of": "из",
   "common.refresh": "Обновить",
+  "common.lines": "строк",
 
   // RAG
   "rag.title": "RAG (Retrieval)",
@@ -243,7 +244,6 @@ const ru: Record<string, string> = {
   "rag.recLarge": "Большая база знаний ({count} чанков). Включите реранкер для повышения точности.",
   "rag.recEnableReranker": "Включить реранкер",
   "rag.recEnableRag": "RAG выключен. Включите его, чтобы обогащать контекст агента данными из памяти и воркспейса.",
-  "rag.thresholdLabel": "Следующий порог",
   "rag.untilLarge": "Осталось {remaining} чанков до порога большой БЗ (500+)",
   "rag.untilMedium": "Осталось {remaining} чанков до порога средней БЗ (200+)",
   "rag.atMax": "Вы выше порога большой БЗ — RAG рекомендуется в полной конфигурации.",

@@ -9,7 +9,7 @@ Web-based administration interface for the [Sygen](https://github.com/alexeymoro
 - **Cron Jobs** — full CRUD with modal forms, client-side cron expression validation with real-time hints, human-readable schedule descriptions, preset schedule picker, and enabled/disabled toggle
 - **Webhooks** — full CRUD management via modal forms with test button (sends POST, shows status/response in toast)
 - **Background Tasks** — monitor running tasks with auto-refresh every 5 seconds, create tasks from UI, expandable result/output view, running task count indicator with pulse animation
-- **Memory Editor** — view and edit all memory modules with content loading on selection and path traversal protection. Each module shows current line count against the soft limit (`N / 80`), colored by usage (green → yellow → orange → red) so you can see at a glance which modules are near the cron cleanup threshold
+- **Memory Editor** — view and edit all memory modules with content loading on selection and path traversal protection. Root files (MAINMEMORY/SHAREDMEMORY) show a plain line count; nested modules under `modules/` show a colored `N / 80` pill (green → yellow → orange → red) so you can see at a glance which modules are near the cron cleanup threshold
 - **RAG Management** — dedicated block in Settings showing enable toggle, indexed chunk count, vector DB size, embedding model, top-K values, and sub-toggles for memory/workspace indexing and reranker (changes take effect after bot restart)
 - **Agents** — detail panel on card click (model, provider, sessions, allowed users), logs viewer tab (last 200 lines), online/total count in header, and "Open Chat" quick action
 - **URL-based Detail Selection** — notifications, memory modules, cron jobs, webhooks, tasks, agents, and files all use `?id=…` / `?module=…` query params, so selected items survive page reloads and are linkable/shareable
@@ -389,7 +389,7 @@ All endpoints require `Authorization: Bearer <token>` header unless noted.
 |--------|----------|-------------|
 | `GET` | `/api/memory` | Get main memory content |
 | `PUT` | `/api/memory` | Update memory content |
-| `GET` | `/api/memory/modules` | List memory modules (each module includes `lines`, `size_bytes`, and `mtime` so the admin panel can render N/80 progress against the cron cleanup limit) |
+| `GET` | `/api/memory/modules` | List memory modules. Each module includes `lines` (number) and `size` (human-readable), so the admin panel can render the N/80 pill against the cron cleanup limit |
 | `GET` | `/api/memory/modules/{filename}` | Read a specific memory module |
 | `PUT` | `/api/memory/modules/{filename}` | Update a specific memory module |
 

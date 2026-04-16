@@ -249,7 +249,7 @@ export default function MemoryPage() {
                     <div className="flex items-center gap-2 mt-1">
                       {typeof mod.lines === "number" && (
                         <span className="text-xs tabular-nums text-text-secondary">
-                          {mod.lines} {mod.lines === 1 ? "line" : "lines"}
+                          {mod.lines} {t("common.lines")}
                         </span>
                       )}
                       <span className="text-[10px] text-text-secondary">{mod.size}</span>

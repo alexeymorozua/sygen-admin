@@ -223,6 +223,7 @@ const en: Record<string, string> = {
   "common.tryAgain": "Try again",
   "common.of": "of",
   "common.refresh": "Refresh",
+  "common.lines": "lines",
 
   // RAG
   "rag.title": "RAG (Retrieval)",
@@ -243,7 +244,6 @@ const en: Record<string, string> = {
   "rag.recLarge": "Large knowledge base ({count} chunks). Enable the reranker for better precision.",
   "rag.recEnableReranker": "Enable reranker",
   "rag.recEnableRag": "RAG is disabled. Enable it to improve agent context with retrieval over your memory and workspace.",
-  "rag.thresholdLabel": "Next threshold",
   "rag.untilLarge": "{remaining} chunks to large-KB threshold (500+)",
   "rag.untilMedium": "{remaining} chunks to medium-KB threshold (200+)",
   "rag.atMax": "You're above the large-KB threshold — RAG is recommended at full strength.",
