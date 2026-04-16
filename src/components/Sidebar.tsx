@@ -30,7 +30,6 @@ import { useTranslation } from "@/lib/i18n";
 import ConnectionStatus from "./ConnectionStatus";
 import ServerSwitcher from "./ServerSwitcher";
 import LanguageSwitcher from "./LanguageSwitcher";
-import NotificationBell from "./NotificationBell";
 import { useNotifications } from "@/context/NotificationContext";
 
 interface NavItem {
@@ -130,7 +129,6 @@ export default function Sidebar() {
           {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
           {theme === "dark" ? "Light Mode" : "Dark Mode"}
         </button>
-        <NotificationBell />
         <LanguageSwitcher />
         <ConnectionStatus />
       </div>
