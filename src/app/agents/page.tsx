@@ -359,7 +359,14 @@ export default function AgentsPage() {
 
       {/* Detail Panel */}
       {selected && (
-        <div className="w-96 bg-bg-card border border-border rounded-xl shrink-0 hidden xl:flex flex-col h-fit sticky top-8 max-h-[calc(100vh-6rem)]">
+        <>
+          {/* Mobile backdrop */}
+          <div
+            className="fixed inset-0 z-40 bg-black/60 xl:hidden"
+            onClick={() => clearSelection()}
+            aria-hidden="true"
+          />
+        <div className="fixed inset-x-0 bottom-0 top-14 z-50 bg-bg-card border border-border rounded-t-xl overflow-y-auto flex flex-col xl:static xl:inset-auto xl:top-auto xl:w-96 xl:shrink-0 xl:rounded-xl xl:h-fit xl:sticky xl:top-8 xl:max-h-[calc(100vh-6rem)] xl:overflow-visible">
           {/* Header */}
           <div className="flex items-center justify-between p-5 pb-3">
             <div className="flex items-center gap-3">
@@ -638,6 +645,7 @@ export default function AgentsPage() {
             )}
           </div>
         </div>
+        </>
       )}
     </div>
   );

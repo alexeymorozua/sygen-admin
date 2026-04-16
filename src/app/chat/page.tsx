@@ -562,8 +562,17 @@ export default function ChatPage() {
             >
               <Menu size={18} />
             </button>
-            <div className="w-8 h-8 rounded-full bg-accent/30 flex items-center justify-center">
-              <Bot size={16} className="text-brand-400" />
+            <div className="w-8 h-8 rounded-full bg-accent/30 flex items-center justify-center overflow-hidden">
+              {agentAvatars.has(selectedAgent) ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={SygenAPI.getAgentAvatarUrl(selectedAgent)}
+                  alt={selectedAgent}
+                  className="w-8 h-8 rounded-full object-cover"
+                />
+              ) : (
+                <Bot size={16} className="text-brand-400" />
+              )}
             </div>
             <div>
               <p className="font-medium text-sm">

@@ -89,6 +89,18 @@ body {
   background: var(--color-text-secondary);
 }
 
+/* Mobile: hide scrollbars for a native app feel */
+@media (max-width: 767px) {
+  ::-webkit-scrollbar {
+    display: none;
+  }
+  html,
+  body,
+  * {
+    scrollbar-width: none;
+  }
+}
+
 /* Toast animation */
 @keyframes slide-in-right {
   from { transform: translateX(100%); opacity: 0; }
