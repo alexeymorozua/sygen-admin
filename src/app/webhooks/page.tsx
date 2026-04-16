@@ -11,6 +11,7 @@ import { useConfirm } from "@/components/ConfirmDialog";
 import { useTranslation } from "@/lib/i18n";
 import { SygenAPI } from "@/lib/api";
 import { formatDateTime } from "@/lib/utils";
+import { useUrlSelection } from "@/hooks/useUrlSelection";
 import type { Webhook } from "@/lib/mock-data";
 
 type Filter = "all" | "active" | "paused" | "error";
@@ -180,7 +181,11 @@ function WebhookFormDialog({
 export default function WebhooksPage() {
   const [webhooks, setWebhooks] = useState<Webhook[]>([]);
   const [filter, setFilter] = useState<Filter>("all");
-  const [selected, setSelected] = useState<Webhook | null>(null);
+  const { selected, select, clear: clearSelection } = useUrlSelection<Webhook>(
+    "id",
+    webhooks,
+    (w) => w.id,
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState<false | "create" | "edit">(false);
@@ -217,7 +222,7 @@ export default function WebhooksPage() {
     try {
       await SygenAPI.deleteWebhook(wh.id);
       setWebhooks((prev) => prev.filter((w) => w.id !== wh.id));
-      if (selected?.id === wh.id) setSelected(null);
+      if (selected?.id === wh.id) clearSelection();
       success(`Webhook "${wh.name}" deleted`);
     } catch (err) {
       toastError(err instanceof Error ? err.message : "Failed to delete webhook");
@@ -253,7 +258,6 @@ export default function WebhooksPage() {
     if (data.secret) payload.secret = data.secret;
     const updated = await SygenAPI.updateWebhook(selected.id, payload);
     setWebhooks((prev) => prev.map((w) => (w.id === selected.id ? updated : w)));
-    setSelected(updated);
     setShowForm(false);
     success(`Webhook "${data.name}" updated`);
   };
@@ -307,7 +311,7 @@ export default function WebhooksPage() {
           </button>
           <button
             type="button"
-            onClick={() => { setSelected(w); setShowForm("edit"); }}
+            onClick={() => { select(w); setShowForm("edit"); }}
             className="p-1.5 hover:bg-bg-primary rounded-lg transition-colors text-text-secondary"
             title="Edit"
             aria-label="Edit webhook"
@@ -388,7 +392,7 @@ export default function WebhooksPage() {
             data={filtered}
             columns={columns}
             keyField="id"
-            onRowClick={(item) => setSelected(item)}
+            onRowClick={(item) => select(item)}
             emptyMessage={t('common.noData')}
           />
         </div>
@@ -408,7 +412,7 @@ export default function WebhooksPage() {
               >
                 <Edit2 size={14} />
               </button>
-              <button type="button" onClick={() => setSelected(null)} className="p-1 hover:bg-bg-primary rounded-lg" aria-label="Close details">
+              <button type="button" onClick={() => clearSelection()} className="p-1 hover:bg-bg-primary rounded-lg" aria-label="Close details">
                 <X size={16} className="text-text-secondary" />
               </button>
             </div>
