@@ -11,6 +11,7 @@ import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { SygenAPI } from "@/lib/api";
 import { formatDateTime } from "@/lib/utils";
+import { useUrlSelection } from "@/hooks/useUrlSelection";
 import type { Task, Agent } from "@/lib/mock-data";
 
 type Filter = "all" | "running" | "completed" | "failed" | "cancelled";
@@ -118,7 +119,11 @@ function TaskFormDialog({
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [filter, setFilter] = useState<Filter>("all");
-  const [selected, setSelected] = useState<Task | null>(null);
+  const { selected, select, clear: clearSelection } = useUrlSelection<Task>(
+    "id",
+    tasks,
+    (t) => t.id,
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showFullOutput, setShowFullOutput] = useState(false);
@@ -134,11 +139,6 @@ export default function TasksPage() {
     try {
       const data = await SygenAPI.getTasks();
       setTasks(data);
-      // Update selected task if it exists
-      if (selected) {
-        const updated = data.find((t) => t.id === selected.id);
-        if (updated) setSelected(updated);
-      }
     } catch (err) {
       if (tasks.length === 0) {
         setError(err instanceof Error ? err.message : "Failed to load tasks");
@@ -146,7 +146,7 @@ export default function TasksPage() {
     } finally {
       setLoading(false);
     }
-  }, [selected, tasks.length]);
+  }, [tasks.length]);
 
   // Initial load
   useEffect(() => {
@@ -176,7 +176,6 @@ export default function TasksPage() {
       setTasks((prev) =>
         prev.map((t) => (t.id === task.id ? { ...t, status: "cancelled" as const } : t))
       );
-      if (selected?.id === task.id) setSelected({ ...task, status: "cancelled" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to cancel task");
     }
@@ -317,7 +316,7 @@ export default function TasksPage() {
             data={filtered}
             columns={columns}
             keyField="id"
-            onRowClick={(item) => { setSelected(item); setShowFullOutput(false); }}
+            onRowClick={(item) => { select(item); setShowFullOutput(false); }}
             emptyMessage={t('common.noData')}
             defaultSort={{ key: "startedAt", dir: "desc" }}
           />
@@ -329,7 +328,7 @@ export default function TasksPage() {
         <div className="w-96 bg-bg-card border border-border rounded-xl p-5 shrink-0 hidden xl:block h-fit sticky top-8 max-h-[calc(100vh-6rem)] overflow-y-auto">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold">{t('tasks.details')}</h3>
-            <button type="button" onClick={() => setSelected(null)} className="p-1 hover:bg-bg-primary rounded-lg" aria-label="Close details">
+            <button type="button" onClick={() => clearSelection()} className="p-1 hover:bg-bg-primary rounded-lg" aria-label="Close details">
               <X size={16} className="text-text-secondary" />
             </button>
           </div>
