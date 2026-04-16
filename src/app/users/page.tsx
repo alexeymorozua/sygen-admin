@@ -3,9 +3,10 @@
 import { useEffect, useState, useCallback } from "react";
 import {
   Users, Plus, Pencil, Trash2, Shield, ShieldCheck, Eye,
-  X, RefreshCw, ClipboardList, ToggleLeft, ToggleRight, KeyRound,
+  X, ClipboardList, ToggleLeft, ToggleRight, KeyRound,
 } from "lucide-react";
 import TableSearch from "@/components/TableSearch";
+import { RefreshButton } from "@/components/RefreshButton";
 import { useAuth } from "@/context/AuthContext";
 import { SygenAPI } from "@/lib/api";
 import type { UserInfo, AuditEntry } from "@/lib/api";
@@ -128,13 +129,10 @@ export default function UsersPage() {
               <Plus size={14} /> {t("users.addUser") || "Add User"}
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => tab === "users" ? loadUsers() : loadAudit()}
-            className="p-2 hover:bg-bg-card rounded-lg transition-colors text-text-secondary"
-          >
-            <RefreshCw size={14} />
-          </button>
+          <RefreshButton
+            loading={loading}
+            onClick={() => (tab === "users" ? loadUsers() : loadAudit())}
+          />
         </div>
       </div>
 

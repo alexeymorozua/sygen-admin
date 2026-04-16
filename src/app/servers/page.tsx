@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Server,
   Plus,
@@ -16,6 +16,7 @@ import {
 import { useServer } from "@/context/ServerContext";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { useTranslation } from "@/lib/i18n";
+import { RefreshButton } from "@/components/RefreshButton";
 import { checkServerHealth, testServerConnection } from "@/lib/servers";
 import type { SygenServer } from "@/lib/servers";
 import { cn } from "@/lib/utils";
@@ -42,10 +43,26 @@ export default function ServersPage() {
   const [statusMap, setStatusMap] = useState<Record<string, ServerStatus>>({});
   const [editing, setEditing] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const checkAll = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const results: Record<string, ServerStatus> = {};
+      await Promise.all(
+        servers.map(async (s) => {
+          results[s.id] = await checkServerHealth(s);
+        })
+      );
+      setStatusMap(results);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [servers]);
 
   useEffect(() => {
     let cancelled = false;
-    async function check() {
+    async function tick() {
       const results: Record<string, ServerStatus> = {};
       await Promise.all(
         servers.map(async (s) => {
@@ -54,8 +71,8 @@ export default function ServersPage() {
       );
       if (!cancelled) setStatusMap(results);
     }
-    check();
-    const interval = setInterval(check, 15000);
+    tick();
+    const interval = setInterval(tick, 15000);
     return () => { cancelled = true; clearInterval(interval); };
   }, [servers]);
 
@@ -73,13 +90,16 @@ export default function ServersPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">{t('servers.title')}</h1>
-        <button
-          onClick={() => { setShowAdd(true); setEditing(null); }}
-          className="flex items-center gap-2 px-4 py-2 bg-danger hover:bg-danger/80 rounded-lg text-sm font-medium transition-colors"
-        >
-          <Plus size={16} />
-          {t('servers.addServer')}
-        </button>
+        <div className="flex items-center gap-2">
+          <RefreshButton loading={refreshing} onClick={checkAll} />
+          <button
+            onClick={() => { setShowAdd(true); setEditing(null); }}
+            className="flex items-center gap-2 px-4 py-2 bg-danger hover:bg-danger/80 rounded-lg text-sm font-medium transition-colors"
+          >
+            <Plus size={16} />
+            {t('servers.addServer')}
+          </button>
+        </div>
       </div>
 
       {/* Server Cards */}

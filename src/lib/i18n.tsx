@@ -29,8 +29,18 @@ export function translate(key: string, locale: Locale = DEFAULT_LOCALE): string 
   return translations[locale]?.[key] ?? translations[DEFAULT_LOCALE]?.[key] ?? key;
 }
 
+type TParams = Record<string, string | number>;
+
+function applyParams(text: string, params?: TParams): string {
+  if (!params) return text;
+  return Object.entries(params).reduce(
+    (acc, [k, v]) => acc.replace(new RegExp(`\\{${k}\\}`, "g"), String(v)),
+    text,
+  );
+}
+
 interface I18nContextValue {
-  t: (key: string) => string;
+  t: (key: string, params?: TParams) => string;
   locale: Locale;
   setLocale: (locale: Locale) => void;
 }
@@ -52,7 +62,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const t = useCallback(
-    (key: string) => translate(key, locale),
+    (key: string, params?: TParams) => applyParams(translate(key, locale), params),
     [locale]
   );
 

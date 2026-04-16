@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { X, Square, RefreshCw, FileText, ChevronDown, ChevronUp, Plus, Save } from "lucide-react";
+import { X, Square, FileText, ChevronDown, ChevronUp, Plus, Save } from "lucide-react";
+import { RefreshButton } from "@/components/RefreshButton";
 import { useTranslation } from "@/lib/i18n";
 import DataTable, { type Column } from "@/components/DataTable";
 import TableSearch from "@/components/TableSearch";
@@ -257,14 +258,11 @@ export default function TasksPage() {
             )}
           </div>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
+            <RefreshButton
+              loading={loading}
               onClick={loadData}
-              className="flex items-center gap-2 px-3 py-2 text-text-secondary hover:text-text-primary text-sm rounded-lg hover:bg-bg-card transition-colors"
-            >
-              <RefreshCw size={14} />
-              {t('dashboard.refresh')}
-            </button>
+              title={t('dashboard.refresh')}
+            />
             <button
               type="button"
               onClick={() => setShowForm(true)}

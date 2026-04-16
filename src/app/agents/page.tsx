@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { X, Bot, Clock, Users, MessageSquare, Cpu, FileText, RefreshCw, Radio, Pause, Play, Activity, AlertTriangle, CheckCircle, Timer, Camera, Trash2 } from "lucide-react";
+import { RefreshButton } from "@/components/RefreshButton";
 import AgentCard from "@/components/AgentCard";
 import StatusBadge from "@/components/StatusBadge";
 import { LoadingSpinner, ErrorState, CardSkeleton } from "@/components/LoadingState";
@@ -335,9 +336,7 @@ export default function AgentsPage() {
             <span className="text-xs text-text-secondary">
               {agents.filter((a) => a.status === "online").length}/{agents.length} {t('agents.online')}
             </span>
-            <button type="button" onClick={loadData} className="p-2 hover:bg-bg-card rounded-lg transition-colors text-text-secondary">
-              <RefreshCw size={14} />
-            </button>
+            <RefreshButton loading={loading} onClick={loadData} />
           </div>
         </div>
 

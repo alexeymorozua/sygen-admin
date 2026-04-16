@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Brain, Save, FileText, Loader2, Users, FolderOpen, ArrowLeft } from "lucide-react";
+import { Brain, Save, FileText, Loader2, Users, FolderOpen, ArrowLeft, Cpu, Circle } from "lucide-react";
 import { Select } from "@/components/Select";
 import { LoadingSpinner } from "@/components/LoadingState";
 import { useToast } from "@/components/Toast";
@@ -202,6 +202,13 @@ export default function MemoryPage() {
                   </option>
                 ))}
             </Select>
+            <AgentStatusBadge
+              agent={
+                agents.find(
+                  (a) => a.name === (selectedAgent || "main"),
+                ) ?? null
+              }
+            />
           </div>
 
           {/* Module count */}
@@ -355,6 +362,35 @@ export default function MemoryPage() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function AgentStatusBadge({ agent }: { agent: Agent | null }) {
+  const { t } = useTranslation();
+  if (!agent) return null;
+  const online = agent.status === "online";
+  const provider = agent.provider || "—";
+  const model = agent.model || "";
+  return (
+    <div className="mt-2 flex items-center gap-2 text-[11px] bg-bg-primary border border-border/60 rounded-md px-2 py-1.5">
+      <Cpu size={12} className="text-text-secondary shrink-0" />
+      <div className="min-w-0 flex-1">
+        <span className="capitalize text-text-primary font-medium">{provider}</span>
+        {model && (
+          <span className="text-text-secondary font-mono ml-1">· {model}</span>
+        )}
+      </div>
+      <span
+        className={cn(
+          "flex items-center gap-1 shrink-0",
+          online ? "text-emerald-400" : "text-text-secondary",
+        )}
+        title={online ? t("agents.online") : t("agents.offline")}
+      >
+        <Circle size={8} className={online ? "fill-emerald-400" : "fill-text-secondary"} />
+        {online ? t("agents.online") : t("agents.offline")}
+      </span>
     </div>
   );
 }

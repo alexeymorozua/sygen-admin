@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { Bot, ListTodo, Clock, Webhook as WebhookIcon, Activity, Cpu, HardDrive, MemoryStick, Server, Circle, RefreshCw, LogIn, Terminal } from "lucide-react";
+import { Bot, ListTodo, Clock, Webhook as WebhookIcon, Activity, Cpu, HardDrive, MemoryStick, Server, Circle, LogIn, Terminal } from "lucide-react";
 import StatusCard from "@/components/StatusCard";
+import { RefreshButton } from "@/components/RefreshButton";
 import StatusBadge from "@/components/StatusBadge";
 import { LoadingSpinner, ErrorState } from "@/components/LoadingState";
 import { SygenAPI } from "@/lib/api";
@@ -59,13 +60,14 @@ export default function DashboardPage() {
   const [webhookCount, setWebhookCount] = useState({ total: 0, active: 0 });
   const [taskCount, setTaskCount] = useState({ total: 0, running: 0 });
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [serverStatuses, setServerStatuses] = useState<Record<string, { online: boolean }>>({});
   const [metricHistory, setMetricHistory] = useState<MetricHistory>({ cpu: [], ram: [], disk: [] });
   const refreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadData = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
+    if (!silent) setRefreshing(true);
     setError("");
     try {
       const [a, e, h, crons, webhooks, tasks] = await Promise.all([
@@ -103,6 +105,7 @@ export default function DashboardPage() {
       if (!silent) setError(err instanceof Error ? err.message : "Failed to load dashboard");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
@@ -146,9 +149,11 @@ export default function DashboardPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">{t('dashboard.title')}</h1>
-        <button type="button" onClick={() => loadData()} className="p-2 hover:bg-bg-card rounded-lg transition-colors text-text-secondary" title={t('dashboard.refresh')}>
-          <RefreshCw size={14} />
-        </button>
+        <RefreshButton
+          loading={refreshing}
+          onClick={() => loadData()}
+          title={t('dashboard.refresh')}
+        />
       </div>
 
       {/* Connected Servers */}

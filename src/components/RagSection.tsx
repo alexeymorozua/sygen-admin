@@ -1,10 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Database, RefreshCw, AlertCircle, FolderOpen, Brain } from "lucide-react";
+import { Database, AlertCircle, FolderOpen, Brain, Lightbulb } from "lucide-react";
 import { SygenAPI, type RagStatus } from "@/lib/api";
 import { useToast } from "@/components/Toast";
 import { useTranslation } from "@/lib/i18n";
+import { RefreshButton } from "@/components/RefreshButton";
+
+const MEDIUM_THRESHOLD = 200;
+const LARGE_THRESHOLD = 500;
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -41,7 +45,7 @@ export default function RagSection() {
     try {
       await SygenAPI.updateRagConfig({ [key]: !status[key] });
       setStatus({ ...status, [key]: !status[key] });
-      success(t("rag.restartHint") || "Saved. Restart required to apply.");
+      success(t("rag.restartHint"));
     } catch (err) {
       toastError(err instanceof Error ? err.message : "Failed to update RAG config");
     } finally {
@@ -54,21 +58,13 @@ export default function RagSection() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold flex items-center gap-2">
           <Database size={18} className="text-brand-400" />
-          {t("rag.title") || "RAG (Retrieval)"}
+          {t("rag.title")}
         </h2>
-        <button
-          type="button"
-          onClick={load}
-          disabled={loading}
-          className="p-1.5 text-text-secondary hover:text-text-primary hover:bg-bg-primary rounded-lg transition-colors disabled:opacity-50"
-          title={t("common.refresh") || "Refresh"}
-        >
-          <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-        </button>
+        <RefreshButton size="sm" iconSize={14} loading={loading} onClick={load} />
       </div>
 
       {loading && (
-        <p className="text-xs text-text-secondary">{t("common.loading") || "Loading…"}</p>
+        <p className="text-xs text-text-secondary">{t("common.loading")}</p>
       )}
 
       {status && (
@@ -76,9 +72,9 @@ export default function RagSection() {
           {/* Enable toggle */}
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium">{t("rag.enabled") || "Enabled"}</p>
+              <p className="text-sm font-medium">{t("rag.enabled")}</p>
               <p className="text-xs text-text-secondary mt-0.5">
-                {t("rag.enabledDesc") || "Hybrid BM25 + vector retrieval for agent context"}
+                {t("rag.enabledDesc")}
               </p>
             </div>
             <button
@@ -98,40 +94,43 @@ export default function RagSection() {
             </button>
           </div>
 
-          {/* Stats grid */}
-          <div className="grid grid-cols-2 gap-3 pt-3 border-t border-border/50">
-            <div className="flex items-start gap-2">
-              <Brain size={14} className="text-text-secondary mt-0.5 shrink-0" />
-              <div className="min-w-0">
-                <p className="text-[10px] uppercase tracking-wider text-text-secondary">
-                  {t("rag.chunks") || "Indexed chunks"}
-                </p>
-                <p className="text-sm font-medium tabular-nums">{status.chunk_count}</p>
+          {/* Stats grid + progress */}
+          <div className="pt-3 border-t border-border/50 space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex items-start gap-2">
+                <Brain size={14} className="text-text-secondary mt-0.5 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-[10px] uppercase tracking-wider text-text-secondary">
+                    {t("rag.chunks")}
+                  </p>
+                  <p className="text-sm font-medium tabular-nums">{status.chunk_count}</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <FolderOpen size={14} className="text-text-secondary mt-0.5 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-[10px] uppercase tracking-wider text-text-secondary">
+                    {t("rag.dbSize")}
+                  </p>
+                  <p className="text-sm font-medium tabular-nums">
+                    {status.vector_db_exists ? formatBytes(status.vector_db_size_bytes) : "—"}
+                  </p>
+                </div>
               </div>
             </div>
-            <div className="flex items-start gap-2">
-              <FolderOpen size={14} className="text-text-secondary mt-0.5 shrink-0" />
-              <div className="min-w-0">
-                <p className="text-[10px] uppercase tracking-wider text-text-secondary">
-                  {t("rag.dbSize") || "Vector DB size"}
-                </p>
-                <p className="text-sm font-medium tabular-nums">
-                  {status.vector_db_exists ? formatBytes(status.vector_db_size_bytes) : "—"}
-                </p>
-              </div>
-            </div>
+            <ChunkProgress count={status.chunk_count} />
           </div>
 
           {/* Model info */}
           <div className="pt-3 border-t border-border/50 space-y-2">
             <div className="flex items-start justify-between gap-4">
-              <span className="text-xs text-text-secondary">{t("rag.embeddingModel") || "Embedding model"}</span>
+              <span className="text-xs text-text-secondary">{t("rag.embeddingModel")}</span>
               <span className="text-xs font-mono text-right break-all max-w-[65%]">
                 {status.embedding_model}
               </span>
             </div>
             <div className="flex items-start justify-between gap-4">
-              <span className="text-xs text-text-secondary">{t("rag.topK") || "Top K (retrieval → final)"}</span>
+              <span className="text-xs text-text-secondary">{t("rag.topK")}</span>
               <span className="text-xs font-mono tabular-nums">
                 {status.top_k_retrieval} → {status.top_k_final}
               </span>
@@ -142,9 +141,9 @@ export default function RagSection() {
           <div className="pt-3 border-t border-border/50 grid grid-cols-1 sm:grid-cols-3 gap-2">
             {(
               [
-                ["index_memory", t("rag.indexMemory") || "Index memory"],
-                ["index_workspace", t("rag.indexWorkspace") || "Index workspace"],
-                ["reranker_enabled", t("rag.reranker") || "Reranker"],
+                ["index_memory", t("rag.indexMemory")],
+                ["index_workspace", t("rag.indexWorkspace")],
+                ["reranker_enabled", t("rag.reranker")],
               ] as const
             ).map(([key, label]) => (
               <label
@@ -163,11 +162,108 @@ export default function RagSection() {
             ))}
           </div>
 
+          <Recommendation status={status} onToggle={toggleField} saving={saving} />
+
           <div className="flex items-start gap-2 pt-3 border-t border-border/50 text-xs text-text-secondary">
             <AlertCircle size={12} className="text-yellow-500 shrink-0 mt-0.5" />
-            <span>{t("rag.restartRequired") || "Changes take effect after bot restart."}</span>
+            <span>{t("rag.restartRequired")}</span>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+function ChunkProgress({ count }: { count: number }) {
+  const { t } = useTranslation();
+  const clamped = Math.min(count, LARGE_THRESHOLD);
+  const pct = (clamped / LARGE_THRESHOLD) * 100;
+  let label: string;
+  if (count >= LARGE_THRESHOLD) {
+    label = t("rag.atMax");
+  } else if (count >= MEDIUM_THRESHOLD) {
+    label = t("rag.untilLarge", { remaining: LARGE_THRESHOLD - count });
+  } else {
+    label = t("rag.untilMedium", { remaining: MEDIUM_THRESHOLD - count });
+  }
+  const barColor =
+    count >= LARGE_THRESHOLD
+      ? "bg-emerald-500"
+      : count >= MEDIUM_THRESHOLD
+        ? "bg-yellow-500"
+        : "bg-brand-500";
+  return (
+    <div className="space-y-1">
+      <div className="h-1.5 w-full bg-bg-primary rounded-full overflow-hidden">
+        <div
+          className={`h-full ${barColor} transition-all`}
+          style={{ width: `${Math.max(pct, 2)}%` }}
+        />
+      </div>
+      <p className="text-[11px] text-text-secondary">{label}</p>
+    </div>
+  );
+}
+
+function Recommendation({
+  status,
+  onToggle,
+  saving,
+}: {
+  status: RagStatus;
+  onToggle: (key: "enabled" | "reranker_enabled") => void;
+  saving: boolean;
+}) {
+  const { t } = useTranslation();
+
+  if (!status.enabled) {
+    return (
+      <div className="flex items-start gap-2 pt-3 border-t border-border/50 text-xs text-text-secondary">
+        <Lightbulb size={12} className="text-brand-400 shrink-0 mt-0.5" />
+        <div className="flex-1">
+          <p className="font-medium text-text-primary mb-1">{t("rag.recommendationTitle")}</p>
+          <p>{t("rag.recEnableRag")}</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => onToggle("enabled")}
+          disabled={saving}
+          className="shrink-0 px-2.5 py-1 bg-brand-500/10 hover:bg-brand-500/20 text-brand-400 rounded-md text-[11px] transition-colors disabled:opacity-50"
+        >
+          {t("rag.enabled")}
+        </button>
+      </div>
+    );
+  }
+
+  const count = status.chunk_count;
+  let message: string;
+  let canEnableReranker = false;
+  if (count >= LARGE_THRESHOLD) {
+    message = t("rag.recLarge", { count });
+    canEnableReranker = !status.reranker_enabled;
+  } else if (count >= MEDIUM_THRESHOLD) {
+    message = t("rag.recMedium", { count });
+  } else {
+    message = t("rag.recSmall", { count });
+  }
+
+  return (
+    <div className="flex items-start gap-2 pt-3 border-t border-border/50 text-xs text-text-secondary">
+      <Lightbulb size={12} className="text-brand-400 shrink-0 mt-0.5" />
+      <div className="flex-1">
+        <p className="font-medium text-text-primary mb-1">{t("rag.recommendationTitle")}</p>
+        <p>{message}</p>
+      </div>
+      {canEnableReranker && (
+        <button
+          type="button"
+          onClick={() => onToggle("reranker_enabled")}
+          disabled={saving}
+          className="shrink-0 px-2.5 py-1 bg-brand-500/10 hover:bg-brand-500/20 text-brand-400 rounded-md text-[11px] transition-colors disabled:opacity-50"
+        >
+          {t("rag.recEnableReranker")}
+        </button>
       )}
     </div>
   );
