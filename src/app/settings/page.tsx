@@ -8,6 +8,7 @@ import type { TwoFactorSetupResponse } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/Toast";
 import { useTranslation } from "@/lib/i18n";
+import { QRCodeSVG } from "qrcode.react";
 
 interface ConfigSection {
   title: string;
@@ -144,6 +145,11 @@ function TwoFactorSection() {
           <p className="text-sm text-text-secondary">
             {t("auth.scanQR") || "Add this secret to your authenticator app:"}
           </p>
+          <div className="flex justify-center py-4">
+            <div className="bg-white p-3 rounded-xl">
+              <QRCodeSVG value={setupData.otpauth_uri} size={180} />
+            </div>
+          </div>
           <div className="bg-bg-primary border border-border rounded-lg p-4">
             <p className="text-xs text-text-secondary mb-2">{t("auth.secretKey") || "Secret Key"}</p>
             <div className="flex items-center gap-2">
@@ -159,9 +165,7 @@ function TwoFactorSection() {
                 {copied ? <Check size={14} className="text-green-400" /> : <Copy size={14} className="text-text-secondary" />}
               </button>
             </div>
-            <p className="text-xs text-text-secondary mt-3 break-all font-mono opacity-60">
-              {setupData.otpauth_uri}
-            </p>
+            {/* otpauth URI hidden — QR code is sufficient */}
           </div>
           <form onSubmit={handleVerify} className="space-y-3">
             <p className="text-sm text-text-secondary">

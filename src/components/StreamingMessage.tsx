@@ -265,7 +265,7 @@ export default function StreamingMessage({
             "rounded-2xl px-4 py-2.5 text-sm leading-relaxed relative",
             isUser
               ? "bg-accent text-accent-foreground rounded-br-md"
-              : "bg-bg-card border border-border text-text-primary rounded-bl-md"
+              : "bg-bg-card border border-border text-text-primary rounded-bl-md pr-8"
           )}
         >
           {isUser ? (

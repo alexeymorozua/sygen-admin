@@ -167,15 +167,7 @@ export default function LoginPage() {
                 </button>
               </form>
 
-              <button
-                type="button"
-                onClick={() => { setMode(mode === "credentials" ? "token" : "credentials"); setError(""); }}
-                className="w-full text-center text-xs text-text-secondary hover:text-text-primary mt-4 transition-colors"
-              >
-                {mode === "credentials"
-                  ? (t("login.useToken") || "Use API token instead")
-                  : (t("login.useCredentials") || "Use username & password")}
-              </button>
+              {/* Token login removed for security — admin is publicly accessible */}
             </>
           ) : (
             <>

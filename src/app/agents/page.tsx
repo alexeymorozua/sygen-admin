@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { X, Bot, Clock, Users, MessageSquare, Cpu, FileText, RefreshCw, Radio, Pause, Play, Activity, AlertTriangle, CheckCircle, Timer } from "lucide-react";
+import { X, Bot, Clock, Users, MessageSquare, Cpu, FileText, RefreshCw, Radio, Pause, Play, Activity, AlertTriangle, CheckCircle, Timer, Camera, Trash2 } from "lucide-react";
 import AgentCard from "@/components/AgentCard";
 import StatusBadge from "@/components/StatusBadge";
 import { LoadingSpinner, ErrorState, CardSkeleton } from "@/components/LoadingState";
@@ -105,6 +105,10 @@ export default function AgentsPage() {
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastTimestampRef = useRef<number>(0);
   const logsEndRef = useRef<HTMLDivElement>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [avatarKey, setAvatarKey] = useState(0);
+  const [avatarError, setAvatarError] = useState<Record<string, boolean>>({});
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const { success, error: toastError } = useToast();
   const { t } = useTranslation();
 
@@ -244,6 +248,46 @@ export default function AgentsPage() {
     loadMetrics(agent.name, metricsPeriod);
   };
 
+  const refreshAgentList = useCallback(async (agentName: string, hasAvatar: boolean) => {
+    setAgents((prev) =>
+      prev.map((a) => (a.name === agentName ? { ...a, hasAvatar } : a))
+    );
+    if (selected?.name === agentName) {
+      setSelected((prev) => prev ? { ...prev, hasAvatar } : prev);
+    }
+  }, [selected]);
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selected) return;
+    e.target.value = "";
+    setUploadingAvatar(true);
+    try {
+      await SygenAPI.uploadAgentAvatar(selected.name, file);
+      setAvatarError((prev) => ({ ...prev, [selected.name]: false }));
+      setAvatarKey((k) => k + 1);
+      refreshAgentList(selected.name, true);
+      success(t("agents.avatarUploaded") || "Avatar uploaded");
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const handleAvatarDelete = async () => {
+    if (!selected) return;
+    try {
+      await SygenAPI.deleteAgentAvatar(selected.name);
+      setAvatarError((prev) => ({ ...prev, [selected.name]: true }));
+      setAvatarKey((k) => k + 1);
+      refreshAgentList(selected.name, false);
+      success(t("agents.avatarDeleted") || "Avatar deleted");
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Delete failed");
+    }
+  };
+
   // Auto-refresh metrics every 30s
   useEffect(() => {
     if (metricsRefreshRef.current) {
@@ -318,9 +362,34 @@ export default function AgentsPage() {
           {/* Header */}
           <div className="flex items-center justify-between p-5 pb-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-accent/30 flex items-center justify-center">
-                <Bot size={20} className="text-brand-400" />
+              <div
+                className="w-10 h-10 rounded-lg bg-accent/30 flex items-center justify-center relative group/avatar cursor-pointer overflow-hidden"
+                onClick={() => avatarInputRef.current?.click()}
+                title={t("agents.changeAvatar") || "Change avatar"}
+              >
+                {(selected.hasAvatar || avatarKey > 0) && !avatarError[selected.name] ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    key={avatarKey}
+                    src={SygenAPI.getAgentAvatarUrl(selected.name) + `?v=${avatarKey}`}
+                    alt={selected.displayName}
+                    className="w-10 h-10 rounded-lg object-cover"
+                    onError={() => setAvatarError((prev) => ({ ...prev, [selected.name]: true }))}
+                  />
+                ) : (
+                  <Bot size={20} className="text-brand-400" />
+                )}
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
+                  <Camera size={14} className="text-white" />
+                </div>
               </div>
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleAvatarUpload}
+              />
               <div>
                 <p className="font-semibold text-sm">{selected.displayName}</p>
                 <p className="text-[10px] text-text-secondary font-mono">{selected.name}</p>
@@ -404,6 +473,29 @@ export default function AgentsPage() {
                     </div>
                   </div>
                 )}
+                <div className="pt-2 border-t border-border">
+                  <p className="text-xs text-text-secondary mb-2 flex items-center gap-1"><Camera size={10} /> {t("agents.avatar") || "Avatar"}</p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => avatarInputRef.current?.click()}
+                      disabled={uploadingAvatar}
+                      className="flex-1 py-1.5 text-center text-xs font-medium rounded-lg bg-bg-primary hover:bg-white/5 transition-colors disabled:opacity-40"
+                    >
+                      {uploadingAvatar ? t("common.loading") || "..." : t("agents.uploadAvatar") || "Upload"}
+                    </button>
+                    {(selected.hasAvatar || avatarKey > 0) && !avatarError[selected.name] && (
+                      <button
+                        type="button"
+                        onClick={handleAvatarDelete}
+                        className="p-1.5 rounded-lg bg-bg-primary hover:bg-danger/20 text-text-secondary hover:text-danger transition-colors"
+                        title={t("agents.deleteAvatar") || "Delete avatar"}
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    )}
+                  </div>
+                </div>
                 <div className="pt-2 border-t border-border">
                   <a href={`/chat?agent=${selected.name}`} className="block w-full py-2 text-center text-xs font-medium rounded-lg bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 transition-colors">
                     {t('agents.openChat')}

@@ -951,7 +951,11 @@ export class SygenAPI {
   }
 
   static getAvatarUrl(path: string): string {
-    return `${getApiUrl()}/files?path=${encodeURIComponent(path)}`;
+    const { accessToken } = getStoredTokens();
+    const token = accessToken || getApiToken();
+    let url = `${getApiUrl()}/files?path=${encodeURIComponent(path)}`;
+    if (token) url += `&token=${encodeURIComponent(token)}`;
+    return url;
   }
 
   // ---- Webhook signature verify ----
@@ -1047,6 +1051,32 @@ export class SygenAPI {
     return () => ws.close();
   }
 
+  static async uploadAgentAvatar(agentName: string, file: File): Promise<void> {
+    const { accessToken } = getStoredTokens();
+    const token = accessToken || getApiToken();
+    const formData = new FormData();
+    formData.append("avatar", file, file.name);
+
+    const res = await fetch(
+      `${getApiUrl()}/api/agents/${encodeURIComponent(agentName)}/avatar`,
+      {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      }
+    );
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      throw new Error(body?.error || "Avatar upload failed");
+    }
+  }
+
+  static async deleteAgentAvatar(agentName: string): Promise<void> {
+    await fetchAPI(`/api/agents/${encodeURIComponent(agentName)}/avatar`, {
+      method: "DELETE",
+    });
+  }
+
   static getAgentAvatarUrl(agentName: string): string {
     return `${getApiUrl()}/api/agents/${encodeURIComponent(agentName)}/avatar`;
   }
@@ -1104,6 +1134,7 @@ function mapAgent(raw: Record<string, unknown>): Agent {
     lastActive: raw.last_active || raw.lastActive ? String(raw.last_active || raw.lastActive) : "-",
     description: String(raw.description || ""),
     allowedUsers: (raw.allowed_users || raw.allowedUsers || []) as string[],
+    hasAvatar: raw.has_avatar === true,
   };
 }
 

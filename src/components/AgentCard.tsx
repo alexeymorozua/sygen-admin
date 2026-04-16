@@ -1,19 +1,33 @@
 "use client";
 
+import { useState } from "react";
 import type { Agent } from "@/lib/mock-data";
 import StatusBadge from "./StatusBadge";
 import { Bot, Clock, Users } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n";
+import { SygenAPI } from "@/lib/api";
 
 export default function AgentCard({ agent }: { agent: Agent }) {
   const { t } = useTranslation();
+  const [imgError, setImgError] = useState(false);
+
   return (
     <div className="bg-bg-card border border-border rounded-xl p-5 hover:border-accent/50 transition-colors">
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-accent/30 flex items-center justify-center">
-            <Bot size={20} className="text-brand-400" />
+          <div className="w-10 h-10 rounded-lg bg-accent/30 flex items-center justify-center overflow-hidden">
+            {agent.hasAvatar && !imgError ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={SygenAPI.getAgentAvatarUrl(agent.name)}
+                alt={agent.displayName}
+                className="w-10 h-10 rounded-lg object-cover"
+                onError={() => setImgError(true)}
+              />
+            ) : (
+              <Bot size={20} className="text-brand-400" />
+            )}
           </div>
           <div>
             <h3 className="font-semibold text-text-primary">{agent.displayName}</h3>

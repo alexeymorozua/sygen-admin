@@ -9,6 +9,7 @@ export interface Agent {
   lastActive: string;
   description: string;
   allowedUsers: string[];
+  hasAvatar?: boolean;
 }
 
 export interface CronJob {

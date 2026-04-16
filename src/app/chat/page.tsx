@@ -105,6 +105,14 @@ export default function ChatPage() {
     }
   }, [searchParams, setSelectedAgent]);
 
+  // Track which agents have avatars (to avoid 404 requests)
+  const [agentAvatars, setAgentAvatars] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    SygenAPI.getAgents().then((list) => {
+      setAgentAvatars(new Set(list.filter((a) => a.hasAvatar).map((a) => a.name)));
+    }).catch(() => {});
+  }, []);
+
   // Local UI state (page-specific, doesn't need to persist)
   const [input, setInput] = useState("");
   const [showInfo, setShowInfo] = useState(false);
@@ -399,7 +407,7 @@ export default function ChatPage() {
             <select
               value={selectedAgent}
               onChange={(e) => setSelectedAgent(e.target.value)}
-              className="flex-1 bg-bg-card border border-border rounded-lg px-2 py-1.5 text-sm"
+              className="flex-1 bg-bg-card border border-border rounded-lg pl-3 pr-8 py-1.5 text-sm appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23888%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:12px] bg-[right_10px_center] bg-no-repeat"
             >
               {agents.map((a) => (
                 <option key={a} value={a}>
@@ -592,7 +600,7 @@ export default function ChatPage() {
               serverUrl={activeServer.url}
               token={getStoredAccessToken() || activeServer.token}
               agentAvatarUrl={
-                msg.sender === "agent" && msg.agentName
+                msg.sender === "agent" && msg.agentName && agentAvatars.has(msg.agentName)
                   ? `${activeServer.url}/api/agents/${encodeURIComponent(msg.agentName)}/avatar`
                   : undefined
               }
@@ -633,7 +641,7 @@ export default function ChatPage() {
             <select
               value={selectedAgent}
               onChange={(e) => setSelectedAgent(e.target.value)}
-              className="flex-1 bg-bg-card border border-border rounded-lg px-2 py-1.5 text-sm"
+              className="flex-1 bg-bg-card border border-border rounded-lg pl-3 pr-8 py-1.5 text-sm appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23888%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:12px] bg-[right_10px_center] bg-no-repeat"
             >
               {agents.map((a) => (
                 <option key={a} value={a}>
