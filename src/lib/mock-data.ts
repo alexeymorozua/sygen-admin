@@ -65,6 +65,7 @@ export interface MemoryModule {
   type: "main" | "shared" | "agent";
   lastModified: string;
   size: string;
+  lines?: number;
   content: string;
 }
 

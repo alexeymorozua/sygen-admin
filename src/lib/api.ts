@@ -627,7 +627,7 @@ export class SygenAPI {
   static async getMemoryModules(agent?: string): Promise<MemoryModule[]> {
     if (USE_MOCK) return mockMemoryModules;
     const qs = agent ? `?agent=${encodeURIComponent(agent)}` : "";
-    const data = await fetchAPI<{ name: string; filename: string; size: number }[]>(`/api/memory/modules${qs}`);
+    const data = await fetchAPI<{ name: string; filename: string; size: number; lines?: number }[]>(`/api/memory/modules${qs}`);
     return data.map((m, i) => ({
       id: `mem-${i}`,
       name: m.name,
@@ -637,6 +637,7 @@ export class SygenAPI {
         : "agent" as const,
       lastModified: new Date().toISOString(),
       size: formatSize(m.size),
+      lines: m.lines,
       content: "",
     }));
   }

@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Brain, Save, FileText, Loader2, Users, FolderOpen, ArrowLeft } from "lucide-react";
-import StatusBadge from "@/components/StatusBadge";
 import { Select } from "@/components/Select";
 import { LoadingSpinner } from "@/components/LoadingState";
 import { useToast } from "@/components/Toast";
@@ -128,11 +127,17 @@ export default function MemoryPage() {
     }
   };
 
-  const typeColors: Record<string, string> = {
-    main: "active",
-    shared: "running",
-    agent: "paused",
-  } as const;
+  // Soft line limit enforced by the memory observer on modules/ files
+  // (sygen_bot.config.MemoryConfig.module_line_limit default 80).
+  const MODULE_LINE_LIMIT = 80;
+
+  const lineBadgeColor = (lines: number, limit: number): string => {
+    const ratio = lines / limit;
+    if (ratio >= 1) return "bg-red-500/20 text-red-400 border-red-500/40";
+    if (ratio >= 0.8) return "bg-orange-500/20 text-orange-400 border-orange-500/40";
+    if (ratio >= 0.5) return "bg-yellow-500/20 text-yellow-400 border-yellow-500/40";
+    return "bg-emerald-500/20 text-emerald-400 border-emerald-500/40";
+  };
 
   // Group modules: root-level vs nested (modules/ subfolder)
   const rootModules = modules.filter((m) => !m.filename.includes("/"));
@@ -235,8 +240,12 @@ export default function MemoryPage() {
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">{mod.name}</p>
                     <div className="flex items-center gap-2 mt-1">
-                      <StatusBadge status={typeColors[mod.type] as "active" | "running" | "paused"} />
-                      <span className="text-xs text-text-secondary">{mod.size}</span>
+                      {typeof mod.lines === "number" && (
+                        <span className="text-xs tabular-nums text-text-secondary">
+                          {mod.lines} {mod.lines === 1 ? "line" : "lines"}
+                        </span>
+                      )}
+                      <span className="text-[10px] text-text-secondary">{mod.size}</span>
                     </div>
                   </div>
                 </button>
@@ -266,7 +275,20 @@ export default function MemoryPage() {
                     <FileText size={14} className="text-text-secondary mt-0.5 shrink-0" />
                     <div className="min-w-0">
                       <p className="text-sm truncate">{mod.name}</p>
-                      <span className="text-[10px] text-text-secondary">{mod.size}</span>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        {typeof mod.lines === "number" && (
+                          <span
+                            className={cn(
+                              "inline-flex items-center px-1.5 py-0.5 rounded border text-[10px] tabular-nums font-medium",
+                              lineBadgeColor(mod.lines, MODULE_LINE_LIMIT),
+                            )}
+                            title={`Soft limit: ${MODULE_LINE_LIMIT} lines`}
+                          >
+                            {mod.lines} / {MODULE_LINE_LIMIT}
+                          </span>
+                        )}
+                        <span className="text-[10px] text-text-secondary">{mod.size}</span>
+                      </div>
                     </div>
                   </button>
                 ))}
