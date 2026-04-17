@@ -5,7 +5,9 @@ import React from "react";
 
 afterEach(() => {
   cleanup();
-  localStorage.clear();
+  if (typeof localStorage !== "undefined" && typeof localStorage.clear === "function") {
+    localStorage.clear();
+  }
   vi.restoreAllMocks();
 });
 

@@ -78,10 +78,11 @@ export default function AudioPlayer({ src, token, filePath, className }: AudioPl
       })
       .then((blob) => {
         if (cancelled) return;
-        const typed =
-          blob.type && blob.type !== "application/octet-stream"
-            ? blob
-            : new Blob([blob], { type: guessMimeFromUrl(src) });
+        // Always normalize MIME from the filename extension. The backend
+        // can return `video/mp4` for MP4/AAC voice files (container-based
+        // detection via python-magic), which makes iOS Safari <audio>
+        // refuse playback and fire onError.
+        const typed = new Blob([blob], { type: guessMimeFromUrl(src) });
         const url = URL.createObjectURL(typed);
         createdUrl = url;
         blobUrlRef.current = url;
@@ -163,6 +164,33 @@ export default function AudioPlayer({ src, token, filePath, className }: AudioPl
       className="hidden"
     />
   );
+
+  if (!blobUrl && !hasError) {
+    return (
+      <div
+        className={cn(
+          "flex items-center gap-2.5 min-w-[200px] max-w-[280px]",
+          className
+        )}
+        data-testid="audio-player"
+      >
+        <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center shrink-0">
+          <Loader2 size={14} className="text-text-secondary animate-spin" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="h-1.5 bg-white/10 rounded-full" />
+          <div className="flex justify-between mt-0.5">
+            <span className="text-[10px] text-text-secondary tabular-nums">
+              0:00
+            </span>
+            <span className="text-[10px] text-text-secondary tabular-nums">
+              0:00
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (hasError) {
     return (
