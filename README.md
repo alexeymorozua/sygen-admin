@@ -12,7 +12,7 @@ Web-based administration interface for the [Sygen](https://github.com/alexeymoro
 - **Memory Editor** — view and edit all memory modules with content loading on selection and path traversal protection. Root files (MAINMEMORY/SHAREDMEMORY) show a plain line count; nested modules under `modules/` show a colored `N / 80` pill (green → yellow → orange → red) so you can see at a glance which modules are near the cron cleanup threshold
 - **RAG Management** — dedicated block in Settings showing enable toggle, memory-fact count (primary — drives 200/500 recommendation thresholds) alongside the raw indexed chunk count (technical counter), vector DB size, embedding model, top-K values, and sub-toggles for memory/workspace indexing and reranker (changes take effect after bot restart). Thresholds match the monthly-memory-review cron task and Telegram recommendations so all three surfaces agree on what "large knowledge base" means
 - **Agents** — detail panel on card click (model, provider, sessions, allowed users), logs viewer tab (last 200 lines), online/total count in header, and "Open Chat" quick action. Provider is shown for every agent even if the field is missing from `agents.json` — it's derived from the model via `ModelRegistry.provider_for()` on the backend
-- **Skills** — per-agent skill management (list / create / edit / delete Markdown skills inside `workspace/skills/`). Agent selector at the top, list in the left pane, editor on the right, responsive drawer on mobile
+- **Skills** — skill management with global and per-agent scopes. Global skills live in `~/.sygen/skills/` (shared across all agents); per-agent skills in `~/.sygen/workspace/skills/` (main) or `~/.sygen/agents/{name}/workspace/skills/` (sub-agents) — a per-agent skill with the same name overrides the global. Scope filter (`Все` / `Общие` / `Только агента`), badges (`🌐 Общий`, `👤 Агента`, `🌐 ← 👤 Перекрывает общий`), agent selector, list + editor with responsive mobile drawer
 - **Files** — file browser with breadcrumb navigation (URL-driven via `?path=…`), upload / download / delete / mkdir
 - **URL-based Detail Selection** — notifications, memory modules, cron jobs, webhooks, tasks, agents, files, and skills all use `?id=…` / `?module=…` / `?skill=…` / `?path=…` query params, so selected items survive page reloads and are linkable/shareable
 - **Settings** — configuration viewer with sanitized secrets (masked as `***`)
@@ -314,11 +314,11 @@ All endpoints require `Authorization: Bearer <token>` header unless noted.
 | `GET` | `/api/agents` | List agents (filtered by user's `allowed_agents`; `provider` is derived from `model` when missing from `agents.json`) |
 | `GET` | `/api/agents/{name}` | Get agent details (same provider-derivation fallback) |
 | `GET` | `/api/agents/{name}/avatar` | Get agent avatar image |
-| `GET` | `/api/agents/{agent}/skills` | List skills available to an agent |
-| `POST` | `/api/agents/{agent}/skills` | Create a new skill (`{name, content}`) |
-| `GET` | `/api/agents/{agent}/skills/{skill}` | Read a skill's main doc |
-| `PUT` | `/api/agents/{agent}/skills/{skill}` | Update a skill's main doc |
-| `DELETE` | `/api/agents/{agent}/skills/{skill}` | Delete a skill |
+| `GET` | `/api/agents/{agent}/skills?scope=merged\|own\|global` | List skills for an agent. `scope=merged` (default) returns global + per-agent with `overrides: true` for shadowed globals; `own` = per-agent only; `global` = global only |
+| `POST` | `/api/agents/{agent}/skills` | Create a new per-agent skill (`{name, content}`) |
+| `GET` | `/api/agents/{agent}/skills/{skill}` | Read a skill's main doc (falls back to the global copy if not present per-agent) |
+| `PUT` | `/api/agents/{agent}/skills/{skill}` | Update a per-agent skill's main doc |
+| `DELETE` | `/api/agents/{agent}/skills/{skill}` | Delete a per-agent skill |
 
 ### Chat
 
