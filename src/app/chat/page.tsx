@@ -576,17 +576,17 @@ export default function ChatPage() {
         )}
 
         {/* Header */}
-        <div className="flex items-center justify-between px-4 md:px-6 py-3 border-b border-border bg-bg-card/50">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between gap-2 px-4 md:px-6 py-3 border-b border-border bg-bg-card/50">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
             {/* Mobile menu button */}
             <button
               type="button"
               onClick={() => setShowSidebar(true)}
-              className="p-1.5 hover:bg-white/10 rounded md:hidden"
+              className="p-1.5 hover:bg-white/10 rounded md:hidden shrink-0"
             >
               <Menu size={18} />
             </button>
-            <div className="w-8 h-8 rounded-full bg-accent/30 flex items-center justify-center overflow-hidden">
+            <div className="w-8 h-8 rounded-full bg-accent/30 flex items-center justify-center overflow-hidden shrink-0">
               <HeaderAgentAvatar
                 apiUrl={
                   agentAvatars.has(selectedAgent)
@@ -596,13 +596,13 @@ export default function ChatPage() {
                 alt={selectedAgent}
               />
             </div>
-            <div>
-              <p className="font-medium text-sm">
+            <div className="min-w-0">
+              <p className="font-medium text-sm truncate">
                 {activeSession ? activeSession.title : selectedAgent}
               </p>
               <div className="flex items-center gap-1.5 text-xs text-text-secondary">
                 <WsIndicator />
-                <span>
+                <span className="truncate">
                   {wsStatus === "connected"
                     ? agentStatus || t('chat.connected')
                     : wsStatus === "connecting"
@@ -612,7 +612,7 @@ export default function ChatPage() {
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             {activeSessionId && (
               <ProviderSwitcher
                 sessionId={activeSessionId}

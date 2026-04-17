@@ -127,7 +127,7 @@ export function ProviderSwitcher({
         ) : (
           <Cpu size={12} />
         )}
-        <span className="max-w-[160px] truncate">{summary}</span>
+        <span className="max-w-[90px] sm:max-w-[160px] truncate">{summary}</span>
         {hasOverride && (
           <span className="px-1 py-0 rounded bg-brand-500/20 text-brand-300 uppercase tracking-wide text-[9px] font-semibold">
             override
