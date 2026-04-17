@@ -12,6 +12,7 @@ import { I18nProvider } from "@/lib/i18n";
 import AppShell from "@/components/AppShell";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import InstallPWA from "@/components/InstallPWA";
+import PwaTopBar from "@/components/PwaTopBar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -108,6 +109,7 @@ export default function RootLayout({
                 <ToastProvider>
                   <ConfirmProvider>
                     <ServiceWorkerRegister />
+                    <PwaTopBar />
                     <AppShell>{children}</AppShell>
                     <InstallPWA />
                   </ConfirmProvider>
