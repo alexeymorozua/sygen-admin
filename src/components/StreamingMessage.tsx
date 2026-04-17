@@ -63,7 +63,7 @@ function isAudioFile(name: string): boolean {
 }
 
 function isVoiceMessage(name: string): boolean {
-  return /^voice_\d+\.(webm|ogg|m4a)$/i.test(name);
+  return /^voice_\d+\.(webm|ogg|m4a|mp3|mp4)$/i.test(name);
 }
 
 function getFileIcon(name: string) {

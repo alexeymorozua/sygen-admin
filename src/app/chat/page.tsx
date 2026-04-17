@@ -258,7 +258,7 @@ export default function ChatPage() {
           const result = await uploadFile(files[i]);
 
           if (result) {
-            const isVoice = /^voice_\d+\.(webm|ogg)$/i.test(result.name);
+            const isVoice = /^voice_\d+\.(webm|ogg|m4a|mp3|mp4)$/i.test(result.name);
             sendFileMessage(
               sessionId,
               { path: result.path, name: result.name, size: files[i].size, mime: files[i].type },
@@ -753,6 +753,13 @@ export default function ChatPage() {
               placeholder={`${t('chat.message')} ${selectedAgent}...`}
               disabled={wsStatus !== "connected"}
               rows={1}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
+              data-gramm="false"
+              data-gramm_editor="false"
+              data-enable-grammarly="false"
               className="chat-textarea flex-1 bg-bg-card border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:border-accent disabled:opacity-50 resize-none overflow-y-auto max-h-[150px] leading-relaxed"
             />
 
