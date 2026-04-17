@@ -58,6 +58,7 @@ export interface UserInfo {
   role: "admin" | "operator" | "viewer";
   display_name: string;
   allowed_agents: string[];
+  telegram_user_ids?: number[];
   active?: boolean;
   created_at?: number;
   totp_enabled?: boolean;
@@ -1155,6 +1156,7 @@ export class SygenAPI {
     role: string;
     display_name?: string;
     allowed_agents?: string[];
+    telegram_user_ids?: number[];
   }): Promise<UserInfo> {
     return fetchAPI<UserInfo>("/api/users", {
       method: "POST",
@@ -1168,6 +1170,7 @@ export class SygenAPI {
       role: string;
       display_name: string;
       allowed_agents: string[];
+      telegram_user_ids: number[];
       active: boolean;
       password: string;
     }>,

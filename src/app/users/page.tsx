@@ -375,19 +375,43 @@ function UserFormDialog({
   const [displayName, setDisplayName] = useState(user?.display_name || "");
   const [role, setRole] = useState<string>(user?.role || "viewer");
   const [allowedAgents, setAllowedAgents] = useState<string[]>(user?.allowed_agents || []);
+  const [telegramUserIdsText, setTelegramUserIdsText] = useState<string>(
+    (user?.telegram_user_ids || []).join(", "),
+  );
   const [saving, setSaving] = useState(false);
 
   const MIN_PASSWORD_LENGTH = 8;
+
+  // Parse the comma/space-separated text into positive integers. Returns null on invalid input.
+  const parseTelegramUserIds = (text: string): number[] | null => {
+    const tokens = text.split(/[,\s]+/).map((s) => s.trim()).filter(Boolean);
+    const ids: number[] = [];
+    for (const token of tokens) {
+      if (!/^\d+$/.test(token)) return null;
+      const n = Number(token);
+      if (!Number.isInteger(n) || n <= 0) return null;
+      ids.push(n);
+    }
+    return ids;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
+      const telegramUserIds = parseTelegramUserIds(telegramUserIdsText);
+      if (telegramUserIds === null) {
+        toast.error(t("users.telegramUserIdsInvalid"));
+        setSaving(false);
+        return;
+      }
+
       if (isEdit) {
         const updates: Record<string, unknown> = {
           role,
           display_name: displayName,
           allowed_agents: allowedAgents,
+          telegram_user_ids: telegramUserIds,
         };
         if (password) {
           if (password.length < MIN_PASSWORD_LENGTH) {
@@ -416,6 +440,7 @@ function UserFormDialog({
           role,
           display_name: displayName || username.trim(),
           allowed_agents: allowedAgents,
+          telegram_user_ids: telegramUserIds,
         });
         toast.success(t("toast.created"));
       }
@@ -529,6 +554,25 @@ function UserFormDialog({
               </div>
             </div>
           )}
+
+          {/* Telegram user IDs */}
+          <div>
+            <label className="block text-sm text-text-secondary mb-1">
+              {t("users.telegramUserIds") || "Telegram user IDs"}
+            </label>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={telegramUserIdsText}
+              onChange={(e) => setTelegramUserIdsText(e.target.value)}
+              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm font-mono"
+              placeholder="303781012, 987654321"
+            />
+            <p className="text-xs text-text-secondary mt-1">
+              {t("users.telegramUserIdsHint")
+                || "Comma- or space-separated numeric Telegram IDs. Messages from these IDs are mapped to this user's role."}
+            </p>
+          </div>
 
           <div className="flex justify-end gap-2 pt-2">
             <button
