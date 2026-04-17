@@ -89,7 +89,8 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-title" content="Sygen" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-180.png" />
+        <link rel="apple-touch-icon" sizes="192x192" href="/apple-touch-icon-192.png" />
         {splashScreens.map((s) => (
           <link
             key={s.href}
