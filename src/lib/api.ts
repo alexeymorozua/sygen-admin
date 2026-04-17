@@ -78,6 +78,8 @@ export interface TwoFactorSetupResponse {
   qr_data: string;
 }
 
+export type NotificationSeverity = "critical" | "warning" | "info" | "silent";
+
 export interface SygenNotification {
   id: string;
   type: "cron" | "webhook" | "task" | "system";
@@ -86,6 +88,7 @@ export interface SygenNotification {
   body: string;
   status: string;
   source_id: string;
+  severity?: NotificationSeverity;
   created_at: number;
   read: boolean;
 }
@@ -1183,11 +1186,18 @@ export class SygenAPI {
 
   // ---- Notifications ----
 
-  static async getNotifications(limit = 50, unreadOnly = false): Promise<SygenNotification[]> {
+  static async getNotifications(
+    limit = 50,
+    unreadOnly = false,
+    severities?: NotificationSeverity[],
+  ): Promise<SygenNotification[]> {
     if (USE_MOCK) return [];
     const params = new URLSearchParams();
     params.set("limit", String(limit));
     if (unreadOnly) params.set("unread_only", "true");
+    if (severities && severities.length > 0) {
+      params.set("severity", severities.join(","));
+    }
     return fetchAPI<SygenNotification[]>(`/api/notifications?${params.toString()}`);
   }
 

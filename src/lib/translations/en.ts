@@ -392,6 +392,10 @@ const en: Record<string, string> = {
   "notifications.typeWebhook": "Webhook",
   "notifications.typeTask": "Task",
   "notifications.typeSystem": "System",
+  "notifications.severity.critical": "Critical",
+  "notifications.severity.warning": "Warning",
+  "notifications.severity.info": "Info",
+  "notifications.severity.silent": "Silent",
 
   // Connection
   "connection.manageServers": "Manage Servers",

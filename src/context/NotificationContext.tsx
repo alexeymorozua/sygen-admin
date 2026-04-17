@@ -9,8 +9,43 @@ import {
   useRef,
   useState,
 } from "react";
-import { SygenAPI, type SygenNotification } from "@/lib/api";
+import { SygenAPI, type NotificationSeverity, type SygenNotification } from "@/lib/api";
 import { useChat } from "@/context/ChatContext";
+
+// ---------------------------------------------------------------------------
+// Severity helpers
+// ---------------------------------------------------------------------------
+
+const ALL_SEVERITIES: NotificationSeverity[] = ["critical", "warning", "info", "silent"];
+const DEFAULT_SEVERITIES: NotificationSeverity[] = ["critical", "warning", "info"];
+const STORAGE_KEY = "sygen.notif.severities.v1";
+const UNREAD_SEVERITIES = new Set<NotificationSeverity>(["critical", "warning", "info"]);
+
+function loadStoredSeverities(): NotificationSeverity[] {
+  if (typeof window === "undefined") return DEFAULT_SEVERITIES;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return DEFAULT_SEVERITIES;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return DEFAULT_SEVERITIES;
+    const filtered = parsed.filter(
+      (s): s is NotificationSeverity =>
+        typeof s === "string" && (ALL_SEVERITIES as string[]).includes(s),
+    );
+    return filtered.length > 0 ? filtered : DEFAULT_SEVERITIES;
+  } catch {
+    return DEFAULT_SEVERITIES;
+  }
+}
+
+function persistSeverities(severities: NotificationSeverity[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(severities));
+  } catch {
+    // localStorage disabled — silently ignore.
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Context interface
@@ -22,6 +57,8 @@ interface NotificationContextValue {
   markRead: (id: string) => Promise<void>;
   markAllRead: () => Promise<void>;
   loading: boolean;
+  enabledSeverities: NotificationSeverity[];
+  toggleSeverity: (sev: NotificationSeverity) => void;
 }
 
 const NotificationContext = createContext<NotificationContextValue | null>(null);
@@ -36,13 +73,20 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const [notifications, setNotifications] = useState<SygenNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [enabledSeverities, setEnabledSeverities] =
+    useState<NotificationSeverity[]>(DEFAULT_SEVERITIES);
   const initializedRef = useRef(false);
+
+  // Hydrate severity selection from localStorage (client-only).
+  useEffect(() => {
+    setEnabledSeverities(loadStoredSeverities());
+  }, []);
 
   // Load notifications from server
   const loadNotifications = useCallback(async () => {
     try {
       const [notifs, count] = await Promise.all([
-        SygenAPI.getNotifications(50),
+        SygenAPI.getNotifications(50, false, enabledSeverities),
         SygenAPI.getUnreadCount(),
       ]);
       setNotifications(notifs);
@@ -52,7 +96,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [enabledSeverities]);
 
   // Initial load when WS connects
   useEffect(() => {
@@ -61,6 +105,12 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     initializedRef.current = true;
     loadNotifications();
   }, [wsStatus, loadNotifications]);
+
+  // Re-fetch list whenever the severity filter changes (after initial load).
+  useEffect(() => {
+    if (!initializedRef.current) return;
+    loadNotifications();
+  }, [enabledSeverities, loadNotifications]);
 
   // Reset on disconnect
   useEffect(() => {
@@ -72,13 +122,19 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   // Register WS notification callback
   useEffect(() => {
     setNotificationCallback((notification: SygenNotification) => {
-      setNotifications((prev) => [notification, ...prev]);
-      if (!notification.read) {
+      const sev: NotificationSeverity = notification.severity ?? "info";
+      // Only insert into the list if the severity is currently enabled.
+      if (enabledSeverities.includes(sev)) {
+        setNotifications((prev) => [notification, ...prev]);
+      }
+      // Unread badge: only increment for non-silent severities and when unread.
+      if (!notification.read && UNREAD_SEVERITIES.has(sev)) {
         setUnreadCount((prev) => prev + 1);
       }
 
-      // Browser notification when tab is not focused
+      // Browser notification when tab is not focused — skip silent.
       if (
+        sev !== "silent" &&
         typeof window !== "undefined" &&
         "Notification" in window &&
         Notification.permission === "granted" &&
@@ -92,7 +148,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     });
 
     return () => setNotificationCallback(null);
-  }, [setNotificationCallback]);
+  }, [setNotificationCallback, enabledSeverities]);
 
   // Mark single notification as read
   const markRead = useCallback(async (id: string) => {
@@ -128,6 +184,17 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     }
   }, [loadNotifications]);
 
+  const toggleSeverity = useCallback((sev: NotificationSeverity) => {
+    setEnabledSeverities((prev) => {
+      const next = prev.includes(sev)
+        ? prev.filter((s) => s !== sev)
+        : [...prev, sev];
+      const ordered = ALL_SEVERITIES.filter((s) => next.includes(s));
+      persistSeverities(ordered);
+      return ordered;
+    });
+  }, []);
+
   const value = useMemo(
     () => ({
       notifications,
@@ -135,8 +202,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       markRead,
       markAllRead,
       loading,
+      enabledSeverities,
+      toggleSeverity,
     }),
-    [notifications, unreadCount, markRead, markAllRead, loading]
+    [notifications, unreadCount, markRead, markAllRead, loading, enabledSeverities, toggleSeverity]
   );
 
   return (

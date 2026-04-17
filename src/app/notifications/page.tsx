@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { Bell, Clock, Webhook, Cpu, Bot, Check, Reply, Filter, CheckCheck, ChevronDown } from "lucide-react";
+import { Bell, Clock, Webhook, Cpu, Bot, Check, Reply, Filter, CheckCheck, ChevronDown, AlertTriangle, AlertCircle, Info, MinusCircle } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
 import { useNotifications } from "@/context/NotificationContext";
 import { cn } from "@/lib/utils";
 import { SygenAPI } from "@/lib/api";
-import type { SygenNotification } from "@/lib/api";
+import type { NotificationSeverity, SygenNotification } from "@/lib/api";
 import type { Agent } from "@/lib/mock-data";
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
@@ -110,6 +110,54 @@ function getNotificationIcon(type: SygenNotification["type"], size = 14) {
   }
 }
 
+const ALL_SEVERITIES: NotificationSeverity[] = ["critical", "warning", "info", "silent"];
+
+function getSeverity(n: SygenNotification): NotificationSeverity {
+  return n.severity ?? "info";
+}
+
+function getSeverityIcon(sev: NotificationSeverity, size = 12) {
+  switch (sev) {
+    case "critical":
+      return <AlertCircle size={size} className="text-danger shrink-0" />;
+    case "warning":
+      return <AlertTriangle size={size} className="text-yellow-400 shrink-0" />;
+    case "info":
+      return <Info size={size} className="text-text-secondary shrink-0" />;
+    case "silent":
+    default:
+      return <MinusCircle size={size} className="text-text-secondary/60 shrink-0" />;
+  }
+}
+
+function severityRowClass(sev: NotificationSeverity): string {
+  switch (sev) {
+    case "critical":
+      return "border-l-2 border-l-danger";
+    case "warning":
+      return "border-l-2 border-l-yellow-400";
+    case "silent":
+      return "opacity-60 text-xs";
+    case "info":
+    default:
+      return "";
+  }
+}
+
+function severityTitleClass(sev: NotificationSeverity): string {
+  switch (sev) {
+    case "critical":
+      return "font-bold text-danger";
+    case "warning":
+      return "font-semibold text-yellow-300";
+    case "silent":
+      return "font-normal";
+    case "info":
+    default:
+      return "";
+  }
+}
+
 function getTypeLabel(type: SygenNotification["type"], t: (key: string) => string): string {
   switch (type) {
     case "cron": return t("notifications.typeCron");
@@ -122,7 +170,10 @@ function getTypeLabel(type: SygenNotification["type"], t: (key: string) => strin
 
 export default function NotificationsPage() {
   const { t } = useTranslation();
-  const { notifications, unreadCount, markRead, markAllRead, loading } = useNotifications();
+  const {
+    notifications, unreadCount, markRead, markAllRead, loading,
+    enabledSeverities, toggleSeverity,
+  } = useNotifications();
   const [filter, setFilter] = useState<NotificationFilter>("all");
   const [agents, setAgents] = useState<Agent[]>([]);
 
@@ -183,22 +234,47 @@ export default function NotificationsPage() {
         </div>
 
         {/* Filters */}
-        <div className="flex items-center gap-1 mb-4 bg-bg-card rounded-lg p-1 border border-border w-fit">
-          {filters.map((f) => (
-            <button
-              key={f.key}
-              type="button"
-              onClick={() => { setFilter(f.key); clearSelection(); }}
-              className={cn(
-                "px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
-                filter === f.key
-                  ? "bg-brand-500/20 text-brand-400"
-                  : "text-text-secondary hover:text-text-primary"
-              )}
-            >
-              {t(f.labelKey)}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <div className="flex items-center gap-1 bg-bg-card rounded-lg p-1 border border-border w-fit">
+            {filters.map((f) => (
+              <button
+                key={f.key}
+                type="button"
+                onClick={() => { setFilter(f.key); clearSelection(); }}
+                className={cn(
+                  "px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
+                  filter === f.key
+                    ? "bg-brand-500/20 text-brand-400"
+                    : "text-text-secondary hover:text-text-primary"
+                )}
+              >
+                {t(f.labelKey)}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-1 bg-bg-card rounded-lg p-1 border border-border w-fit">
+            {ALL_SEVERITIES.map((sev) => {
+              const active = enabledSeverities.includes(sev);
+              return (
+                <button
+                  key={sev}
+                  type="button"
+                  onClick={() => toggleSeverity(sev)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors",
+                    active
+                      ? "bg-brand-500/20 text-brand-400"
+                      : "text-text-secondary/60 hover:text-text-primary"
+                  )}
+                  aria-pressed={active}
+                  title={t(`notifications.severity.${sev}`)}
+                >
+                  {getSeverityIcon(sev, 12)}
+                  {t(`notifications.severity.${sev}`)}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* List */}
@@ -215,7 +291,9 @@ export default function NotificationsPage() {
               <p className="text-sm">{t("notifications.empty")}</p>
             </div>
           ) : (
-            filtered.map((n) => (
+            filtered.map((n) => {
+              const sev = getSeverity(n);
+              return (
               <button
                 key={n.id}
                 type="button"
@@ -226,19 +304,22 @@ export default function NotificationsPage() {
                     ? "bg-brand-500/10 border border-brand-500/30"
                     : n.read
                       ? "bg-bg-card/50 border border-transparent hover:bg-bg-card"
-                      : "bg-bg-card border border-border hover:bg-bg-card/80"
+                      : "bg-bg-card border border-border hover:bg-bg-card/80",
+                  severityRowClass(sev)
                 )}
               >
                 <div className="mt-0.5">{getNotificationIcon(n.type)}</div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
+                    {getSeverityIcon(sev, 12)}
                     <p className={cn(
                       "text-sm truncate",
-                      n.read ? "text-text-secondary" : "text-text-primary font-medium"
+                      n.read ? "text-text-secondary" : "text-text-primary font-medium",
+                      severityTitleClass(sev)
                     )}>
                       {n.title}
                     </p>
-                    {!n.read && (
+                    {!n.read && sev !== "silent" && (
                       <span className="w-2 h-2 rounded-full bg-brand-400 shrink-0" />
                     )}
                   </div>
@@ -255,7 +336,8 @@ export default function NotificationsPage() {
                   </div>
                 </div>
               </button>
-            ))
+              );
+            })
           )}
         </div>
       </div>

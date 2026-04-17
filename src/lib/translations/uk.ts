@@ -392,6 +392,10 @@ const uk: Record<string, string> = {
   "notifications.typeWebhook": "Webhook",
   "notifications.typeTask": "Задача",
   "notifications.typeSystem": "Система",
+  "notifications.severity.critical": "Критич.",
+  "notifications.severity.warning": "Увага",
+  "notifications.severity.info": "Інфо",
+  "notifications.severity.silent": "Тихі",
 
   // Connection
   "connection.manageServers": "Керувати серверами",
