@@ -134,18 +134,41 @@ export default function AudioPlayer({ src, token, filePath, className }: AudioPl
 
   if (hasError) {
     return (
-      <div
-        className={cn(
-          "flex items-center gap-2.5 min-w-[200px] max-w-[280px]",
-          className
-        )}
-        data-testid="audio-player"
-      >
-        <div className="w-8 h-8 rounded-full bg-danger/20 flex items-center justify-center shrink-0">
-          <AlertCircle size={14} className="text-danger" />
+      <>
+        <div
+          className={cn(
+            "flex items-center gap-2.5 min-w-[200px] max-w-[280px]",
+            className
+          )}
+          data-testid="audio-player"
+        >
+          <div className="w-8 h-8 rounded-full bg-danger/20 flex items-center justify-center shrink-0">
+            <AlertCircle size={14} className="text-danger" />
+          </div>
+          <span className="text-xs text-text-secondary flex-1">
+            {t("chat.audioUnsupported") || t("common.error")}
+          </span>
+          {filePath && !transcript && (
+            <button
+              type="button"
+              onClick={handleTranscribe}
+              disabled={transcribing}
+              className="w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center shrink-0 transition-colors disabled:opacity-40"
+              aria-label={t("chat.transcribe")}
+              title={t("chat.transcribe")}
+            >
+              {transcribing ? (
+                <Loader2 size={13} className="text-text-secondary animate-spin" />
+              ) : (
+                <Languages size={13} className="text-text-secondary" />
+              )}
+            </button>
+          )}
         </div>
-        <span className="text-xs text-text-secondary">{t("common.error")}</span>
-      </div>
+        {transcript && (
+          <p className="mt-1 text-xs text-text-secondary leading-relaxed italic">{transcript}</p>
+        )}
+      </>
     );
   }
 

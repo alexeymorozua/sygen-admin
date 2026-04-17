@@ -68,17 +68,21 @@ export default function VoiceRecorder({
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
-      // Prefer ogg/opus (same as Telegram — best whisper compatibility),
-      // fall back to webm/opus, then whatever the browser supports
-      const mimeType = MediaRecorder.isTypeSupported("audio/ogg;codecs=opus")
-        ? "audio/ogg;codecs=opus"
-        : MediaRecorder.isTypeSupported("audio/ogg")
-          ? "audio/ogg"
+      // Prefer MP4/AAC first — iOS Safari plays MP4 natively, Chrome/Edge/
+      // Firefox also do. Ogg/Opus plays fine in Chrome/Firefox but NOT on
+      // iOS Safari, which is why previous recordings showed "Error" on
+      // iPhone. Whisper accepts all of these.
+      const mimeType = MediaRecorder.isTypeSupported("audio/mp4;codecs=mp4a.40.2")
+        ? "audio/mp4;codecs=mp4a.40.2"
+        : MediaRecorder.isTypeSupported("audio/mp4")
+          ? "audio/mp4"
           : MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
             ? "audio/webm;codecs=opus"
             : MediaRecorder.isTypeSupported("audio/webm")
               ? "audio/webm"
-              : "";
+              : MediaRecorder.isTypeSupported("audio/ogg;codecs=opus")
+                ? "audio/ogg;codecs=opus"
+                : "";
 
       setIsActivating(false);
 
@@ -103,8 +107,12 @@ export default function VoiceRecorder({
         const chunks = chunksRef.current;
         const recordedDuration = durationRef.current;
         if (chunks.length > 0 && recordedDuration >= 1) {
-          const actualMime = recorder.mimeType || mimeType || "audio/ogg";
-          const ext = actualMime.includes("ogg") ? "ogg" : "webm";
+          const actualMime = recorder.mimeType || mimeType || "audio/webm";
+          const ext = actualMime.includes("mp4")
+            ? "m4a"
+            : actualMime.includes("ogg")
+              ? "ogg"
+              : "webm";
           const blob = new Blob(chunks, { type: actualMime });
           if (blob.size > 1024) {
             const filename = `voice_${Date.now()}.${ext}`;

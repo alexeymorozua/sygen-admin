@@ -1,5 +1,5 @@
 /* Sygen Admin Service Worker */
-const VERSION = 'v13';
+const VERSION = 'v14';
 const STATIC_CACHE = `sygen-admin-static-${VERSION}`;
 const PAGES_CACHE = `sygen-admin-pages-${VERSION}`;
 const KNOWN_CACHES = new Set([STATIC_CACHE, PAGES_CACHE]);

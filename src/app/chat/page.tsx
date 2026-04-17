@@ -110,6 +110,7 @@ export default function ChatPage() {
     setActiveSessionId,
     loadingSessions,
     loadSessions,
+    loadSessionHistory,
     messages,
     sendMessage: chatSendMessage,
     sendFileMessage,
@@ -139,6 +140,7 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [showInfo, setShowInfo] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
+  const [refreshingChat, setRefreshingChat] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<
     { file: File; uploading: boolean; name: string }[]
@@ -344,6 +346,19 @@ export default function ChatPage() {
     setInput("");
   }, []);
 
+  const handleRefreshChat = useCallback(async () => {
+    setRefreshingChat(true);
+    try {
+      if (activeSessionId) {
+        await loadSessionHistory(activeSessionId);
+      } else {
+        await loadSessions(selectedAgent);
+      }
+    } finally {
+      setRefreshingChat(false);
+    }
+  }, [activeSessionId, loadSessionHistory, loadSessions, selectedAgent]);
+
   const handleRenameSession = useCallback(
     async (sessionId: string) => {
       const trimmed = editingTitle.trim();
@@ -468,21 +483,15 @@ export default function ChatPage() {
           <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
             {t('chat.sessions')}
           </h3>
-          <div className="flex items-center gap-1">
-            <RefreshButton
-              loading={loadingSessions}
-              onClick={() => loadSessions(selectedAgent)}
-            />
-            <button
-              type="button"
-              onClick={handleNewChat}
-              className="flex items-center gap-1 px-2 py-1 text-xs hover:bg-white/10 rounded-lg transition-colors text-brand-400"
-              title={t('chat.newChat')}
-            >
-              <Plus size={14} />
-              <span>{t('chat.newChat')}</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleNewChat}
+            className="flex items-center gap-1 px-2 py-1 text-xs hover:bg-white/10 rounded-lg transition-colors text-brand-400"
+            title={t('chat.newChat')}
+          >
+            <Plus size={14} />
+            <span>{t('chat.newChat')}</span>
+          </button>
         </div>
 
         {/* Sessions list */}
@@ -639,6 +648,10 @@ export default function ChatPage() {
               <Plus size={14} />
               <span className="hidden sm:inline">{t('chat.newChat')}</span>
             </button>
+            <RefreshButton
+              loading={refreshingChat}
+              onClick={handleRefreshChat}
+            />
             <button
               type="button"
               onClick={() => setShowInfo(!showInfo)}
