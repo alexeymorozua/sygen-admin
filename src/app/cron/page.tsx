@@ -15,6 +15,7 @@ import { formatDateTime } from "@/lib/utils";
 import { isValidCron, describeCron, CRON_PRESETS } from "@/lib/cron";
 import { useTranslation } from "@/lib/i18n";
 import { useUrlSelection } from "@/hooks/useUrlSelection";
+import { RefreshButton } from "@/components/RefreshButton";
 import type { CronJob, Agent } from "@/lib/mock-data";
 
 type Filter = "all" | "active" | "paused" | "error";
@@ -472,14 +473,17 @@ export default function CronPage() {
       <div className="flex-1 flex flex-col min-w-0 min-h-0">
         <div className="flex items-center justify-between mb-4 md:mb-6">
           <h1 className="text-2xl font-bold">{t('cron.title')}</h1>
-          <button
-            type="button"
-            onClick={() => setShowForm("create")}
-            className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-accent-foreground text-sm font-medium rounded-lg transition-colors"
-          >
-            <Plus size={16} />
-            {t('cron.newJob')}
-          </button>
+          <div className="flex items-center gap-2">
+            <RefreshButton loading={loading} onClick={() => loadData()} />
+            <button
+              type="button"
+              onClick={() => setShowForm("create")}
+              className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-accent-foreground text-sm font-medium rounded-lg transition-colors"
+            >
+              <Plus size={16} />
+              {t('cron.newJob')}
+            </button>
+          </div>
         </div>
 
         {error && (

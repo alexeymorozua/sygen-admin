@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { Bell, Clock, Webhook, Cpu, Bot, Check, Reply, Filter, CheckCheck, ChevronDown, AlertTriangle, AlertCircle, Info, MinusCircle } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
+import { RefreshButton } from "@/components/RefreshButton";
 import { useNotifications } from "@/context/NotificationContext";
 import { cn } from "@/lib/utils";
 import { ALL_SEVERITIES, SygenAPI } from "@/lib/api";
@@ -169,7 +170,7 @@ function getTypeLabel(type: SygenNotification["type"], t: (key: string) => strin
 export default function NotificationsPage() {
   const { t } = useTranslation();
   const {
-    notifications, unreadCount, markRead, markAllRead, loading,
+    notifications, unreadCount, markRead, markAllRead, loading, reload,
     enabledSeverities, toggleSeverity,
   } = useNotifications();
   const [filter, setFilter] = useState<NotificationFilter>("all");
@@ -219,16 +220,19 @@ export default function NotificationsPage() {
               </span>
             )}
           </div>
-          {unreadCount > 0 && (
-            <button
-              type="button"
-              onClick={markAllRead}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 transition-colors"
-            >
-              <CheckCheck size={14} />
-              {t("notifications.markAllRead")}
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            <RefreshButton loading={loading} onClick={() => reload()} />
+            {unreadCount > 0 && (
+              <button
+                type="button"
+                onClick={markAllRead}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 transition-colors"
+              >
+                <CheckCheck size={14} />
+                {t("notifications.markAllRead")}
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Filters */}

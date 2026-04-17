@@ -61,6 +61,7 @@ interface NotificationContextValue {
   markRead: (id: string) => Promise<void>;
   markAllRead: () => Promise<void>;
   loading: boolean;
+  reload: () => Promise<void>;
   enabledSeverities: NotificationSeverity[];
   toggleSeverity: (sev: NotificationSeverity) => void;
 }
@@ -218,10 +219,11 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       markRead,
       markAllRead,
       loading,
+      reload: loadNotifications,
       enabledSeverities,
       toggleSeverity,
     }),
-    [notifications, unreadCount, markRead, markAllRead, loading, enabledSeverities, toggleSeverity]
+    [notifications, unreadCount, markRead, markAllRead, loading, loadNotifications, enabledSeverities, toggleSeverity]
   );
 
   return (

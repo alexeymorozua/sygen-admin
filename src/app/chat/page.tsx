@@ -31,6 +31,7 @@ import { ProviderSwitcher } from "@/components/ProviderSwitcher";
 import VoiceRecorder from "@/components/VoiceRecorder";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { useToast } from "@/components/Toast";
+import { RefreshButton } from "@/components/RefreshButton";
 import { SygenAPI, type ChatSession } from "@/lib/api";
 import { useAuthedImage } from "@/lib/hooks";
 import { useServer } from "@/context/ServerContext";
@@ -108,6 +109,7 @@ export default function ChatPage() {
     activeSessionId,
     setActiveSessionId,
     loadingSessions,
+    loadSessions,
     messages,
     sendMessage: chatSendMessage,
     sendFileMessage,
@@ -466,15 +468,21 @@ export default function ChatPage() {
           <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
             {t('chat.sessions')}
           </h3>
-          <button
-            type="button"
-            onClick={handleNewChat}
-            className="flex items-center gap-1 px-2 py-1 text-xs hover:bg-white/10 rounded-lg transition-colors text-brand-400"
-            title={t('chat.newChat')}
-          >
-            <Plus size={14} />
-            <span>{t('chat.newChat')}</span>
-          </button>
+          <div className="flex items-center gap-1">
+            <RefreshButton
+              loading={loadingSessions}
+              onClick={() => loadSessions(selectedAgent)}
+            />
+            <button
+              type="button"
+              onClick={handleNewChat}
+              className="flex items-center gap-1 px-2 py-1 text-xs hover:bg-white/10 rounded-lg transition-colors text-brand-400"
+              title={t('chat.newChat')}
+            >
+              <Plus size={14} />
+              <span>{t('chat.newChat')}</span>
+            </button>
+          </div>
         </div>
 
         {/* Sessions list */}
@@ -536,7 +544,7 @@ export default function ChatPage() {
                   setEditingSessionId(session.id);
                   setEditingTitle(session.title);
                 }}
-                className="p-1 opacity-0 group-hover:opacity-100 hover:text-brand-400 hover:bg-white/5 rounded transition-all"
+                className="p-1.5 lg:p-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 hover:text-brand-400 hover:bg-white/5 rounded transition-all"
                 title={t('chat.renameSession')}
               >
                 <Pencil size={12} />
@@ -547,7 +555,7 @@ export default function ChatPage() {
                   e.stopPropagation();
                   handleDeleteSession(session.id);
                 }}
-                className="p-1 opacity-0 group-hover:opacity-100 hover:text-red-400 hover:bg-white/5 rounded transition-all"
+                className="p-1.5 lg:p-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 hover:text-red-400 hover:bg-white/5 rounded transition-all"
                 title={t('chat.deleteSession')}
               >
                 <Trash2 size={12} />

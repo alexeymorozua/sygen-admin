@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { SygenAPI } from "@/lib/api";
 import { useAuthedImage } from "@/lib/hooks";
 import { useToast } from "@/components/Toast";
+import { RefreshButton } from "@/components/RefreshButton";
 import { useTranslation } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
@@ -31,8 +32,22 @@ export default function ProfilePage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [saving, setSaving] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const me = await SygenAPI.getMe();
+      refreshUser(me);
+      setDisplayName(me.display_name || "");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to reload profile");
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const avatarApiUrl = user?.avatar ? SygenAPI.getAvatarUrl(user.avatar) : null;
   const avatarUrl = useAuthedImage(avatarApiUrl);
@@ -117,10 +132,13 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-lg">
-      <h1 className="text-2xl font-bold flex items-center gap-2 mb-6">
-        <User size={22} />
-        {t("profile.title")}
-      </h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <User size={22} />
+          {t("profile.title")}
+        </h1>
+        <RefreshButton loading={refreshing} onClick={handleRefresh} />
+      </div>
 
       <form onSubmit={handleSave} className="space-y-6">
         {/* Avatar */}

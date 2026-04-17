@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Brain, Save, FileText, Loader2, Users, FolderOpen, ArrowLeft, Cpu, Circle } from "lucide-react";
 import { Select } from "@/components/Select";
+import { RefreshButton } from "@/components/RefreshButton";
 import { LoadingSpinner } from "@/components/LoadingState";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/ConfirmDialog";
@@ -150,6 +151,7 @@ export default function MemoryPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">{t('memory.title')}</h1>
         <div className="flex items-center gap-3">
+          <RefreshButton loading={loadingModules} onClick={() => loadModules(selectedAgent)} />
           {dirty && (
             <button
               type="button"
