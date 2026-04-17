@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { SygenAPI, getStoredUser, migrateLegacyLocalStorage } from "@/lib/api";
 import type { UserInfo, LoginResponse } from "@/lib/api";
@@ -136,9 +136,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(updated);
   }, []);
 
-  return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading, user, login, login2FA, logout, hasRole, canAccessAgent, refreshUser }}>
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo(
+    () => ({
+      isAuthenticated,
+      isLoading,
+      user,
+      login,
+      login2FA,
+      logout,
+      hasRole,
+      canAccessAgent,
+      refreshUser,
+    }),
+    [isAuthenticated, isLoading, user, login, login2FA, logout, hasRole, canAccessAgent, refreshUser],
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

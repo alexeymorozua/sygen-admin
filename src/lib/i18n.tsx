@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from "react";
 import { en, uk, ru } from "./translations";
 
 export type Locale = "en" | "uk" | "ru";
@@ -66,9 +66,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     [locale]
   );
 
-  return (
-    <I18nContext.Provider value={{ t, locale, setLocale }}>
-      {children}
-    </I18nContext.Provider>
-  );
+  const value = useMemo(() => ({ t, locale, setLocale }), [t, locale, setLocale]);
+
+  return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }

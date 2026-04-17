@@ -5,6 +5,7 @@ import {
   useContext,
   useState,
   useCallback,
+  useMemo,
   useRef,
   useEffect,
   type ReactNode,
@@ -70,9 +71,10 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
   }, [dialog, handleClose]);
 
   const variant = dialog?.variant ?? "danger";
+  const value = useMemo(() => ({ confirm }), [confirm]);
 
   return (
-    <ConfirmContext.Provider value={{ confirm }}>
+    <ConfirmContext.Provider value={value}>
       {children}
 
       {dialog && (
