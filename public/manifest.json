@@ -5,10 +5,11 @@
   "description": "Панель управления многоагентной AI-системой Sygen",
   "start_url": "/",
   "scope": "/",
-  "display": "standalone",
+  "display": "minimal-ui",
+  "display_override": ["minimal-ui", "standalone"],
   "orientation": "any",
   "lang": "ru",
-  "theme_color": "#1380EC",
+  "theme_color": "#0a0a14",
   "background_color": "#0a0a14",
   "categories": ["productivity", "utilities"],
   "icons": [
