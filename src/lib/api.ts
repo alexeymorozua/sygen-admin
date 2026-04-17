@@ -80,6 +80,13 @@ export interface TwoFactorSetupResponse {
 
 export type NotificationSeverity = "critical" | "warning" | "info" | "silent";
 
+export const ALL_SEVERITIES: readonly NotificationSeverity[] = [
+  "critical",
+  "warning",
+  "info",
+  "silent",
+];
+
 export interface SygenNotification {
   id: string;
   type: "cron" | "webhook" | "task" | "system";

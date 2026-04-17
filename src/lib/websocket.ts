@@ -49,7 +49,7 @@ export type WSEvent =
   | WSSystemStatus;
 
 export interface SygenWSCallbacks {
-  onConnected?: (agents: string[]) => void;
+  onConnected?: (agents: string[], role?: string) => void;
   onDisconnected?: () => void;
   onTextDelta?: (text: string) => void;
   onToolActivity?: (tool: string) => void;
@@ -163,13 +163,18 @@ export class SygenWebSocket {
     const type = typeof data.type === "string" ? data.type : "";
 
     switch (type) {
-      case "auth_ok":
+      case "auth_ok": {
         this.setStatus("connected");
         this.reconnectAttempts = 0;
-        this.callbacks.onConnected?.(
-          Array.isArray(data.agents) ? (data.agents as string[]) : []
-        );
+        const agents = Array.isArray(data.agents) ? (data.agents as string[]) : [];
+        const role = typeof data.role === "string" ? data.role : undefined;
+        if (role !== undefined) {
+          this.callbacks.onConnected?.(agents, role);
+        } else {
+          this.callbacks.onConnected?.(agents);
+        }
         break;
+      }
       case "text_delta":
         if (typeof data.text === "string") {
           this.callbacks.onTextDelta?.(data.text);

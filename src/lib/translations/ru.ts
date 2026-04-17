@@ -396,6 +396,9 @@ const ru: Record<string, string> = {
   "notifications.severity.warning": "Внимание",
   "notifications.severity.info": "Инфо",
   "notifications.severity.silent": "Тихие",
+  "notifications.severityFilter": "Фильтр по важности",
+  "notifications.allSeveritiesDisabled":
+    "Все уровни важности выключены. Включите хотя бы один в фильтре выше, чтобы видеть уведомления.",
 
   // Connection
   "connection.manageServers": "Управление серверами",

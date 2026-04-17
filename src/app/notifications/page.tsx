@@ -5,7 +5,7 @@ import { Bell, Clock, Webhook, Cpu, Bot, Check, Reply, Filter, CheckCheck, Chevr
 import { useTranslation } from "@/lib/i18n";
 import { useNotifications } from "@/context/NotificationContext";
 import { cn } from "@/lib/utils";
-import { SygenAPI } from "@/lib/api";
+import { ALL_SEVERITIES, SygenAPI } from "@/lib/api";
 import type { NotificationSeverity, SygenNotification } from "@/lib/api";
 import type { Agent } from "@/lib/mock-data";
 import ReactMarkdown from "react-markdown";
@@ -109,8 +109,6 @@ function getNotificationIcon(type: SygenNotification["type"], size = 14) {
       return <Bot size={size} className="text-text-secondary shrink-0" />;
   }
 }
-
-const ALL_SEVERITIES: NotificationSeverity[] = ["critical", "warning", "info", "silent"];
 
 function getSeverity(n: SygenNotification): NotificationSeverity {
   return n.severity ?? "info";
@@ -252,9 +250,14 @@ export default function NotificationsPage() {
               </button>
             ))}
           </div>
-          <div className="flex items-center gap-1 bg-bg-card rounded-lg p-1 border border-border w-fit">
+          <div
+            role="group"
+            aria-label={t("notifications.severityFilter")}
+            className="flex items-center gap-1 bg-bg-card rounded-lg p-1 border border-border w-fit"
+          >
             {ALL_SEVERITIES.map((sev) => {
               const active = enabledSeverities.includes(sev);
+              const label = t(`notifications.severity.${sev}`);
               return (
                 <button
                   key={sev}
@@ -267,10 +270,13 @@ export default function NotificationsPage() {
                       : "text-text-secondary/60 hover:text-text-primary"
                   )}
                   aria-pressed={active}
-                  title={t(`notifications.severity.${sev}`)}
+                  aria-label={label}
+                  title={label}
                 >
-                  {getSeverityIcon(sev, 12)}
-                  {t(`notifications.severity.${sev}`)}
+                  <span aria-hidden="true" className="flex items-center">
+                    {getSeverityIcon(sev, 12)}
+                  </span>
+                  {label}
                 </button>
               );
             })}
@@ -285,9 +291,16 @@ export default function NotificationsPage() {
                 <div key={i} className="h-16 bg-bg-card rounded-lg animate-pulse" />
               ))}
             </div>
+          ) : enabledSeverities.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-text-secondary">
+              <Bell size={32} className="mb-3 opacity-40" aria-hidden="true" />
+              <p className="text-sm text-center max-w-sm">
+                {t("notifications.allSeveritiesDisabled")}
+              </p>
+            </div>
           ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-text-secondary">
-              <Bell size={32} className="mb-3 opacity-40" />
+              <Bell size={32} className="mb-3 opacity-40" aria-hidden="true" />
               <p className="text-sm">{t("notifications.empty")}</p>
             </div>
           ) : (

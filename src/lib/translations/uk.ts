@@ -396,6 +396,9 @@ const uk: Record<string, string> = {
   "notifications.severity.warning": "Увага",
   "notifications.severity.info": "Інфо",
   "notifications.severity.silent": "Тихі",
+  "notifications.severityFilter": "Фільтр за важливістю",
+  "notifications.allSeveritiesDisabled":
+    "Усі рівні важливості вимкнено. Увімкніть хоча б один у фільтрі вище, щоб бачити сповіщення.",
 
   // Connection
   "connection.manageServers": "Керувати серверами",

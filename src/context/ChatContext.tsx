@@ -10,9 +10,10 @@ import {
   useState,
 } from "react";
 import { SygenWebSocket, type WSStatus } from "@/lib/websocket";
-import { SygenAPI, type ChatSession, type ChatSessionMessage, type SygenNotification } from "@/lib/api";
+import { SygenAPI, type ChatSession, type ChatSessionMessage, type SygenNotification, type UserInfo } from "@/lib/api";
 import type { StreamingMessageProps, FileAttachment } from "@/components/StreamingMessage";
 import { useServer } from "@/context/ServerContext";
+import { useAuth } from "@/context/AuthContext";
 
 type ChatMsg = StreamingMessageProps;
 
@@ -87,6 +88,14 @@ const ChatContext = createContext<ChatContextValue | null>(null);
 
 export function ChatProvider({ children }: { children: React.ReactNode }) {
   const { activeServer } = useServer();
+  const { user, refreshUser } = useAuth();
+
+  // Stable refs so WS callbacks always see the latest auth state without
+  // forcing the whole WebSocket to reconnect on every user/role change.
+  const userRef = useRef(user);
+  userRef.current = user;
+  const refreshUserRef = useRef(refreshUser);
+  refreshUserRef.current = refreshUser;
 
   // Connection state
   const [wsStatus, setWsStatus] = useState<WSStatus>("disconnected");
@@ -143,12 +152,20 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const ws = new SygenWebSocket(
       {
-        onConnected: (agentList: string[]) => {
+        onConnected: (agentList: string[], role?: string) => {
           setAgents(agentList);
           if (agentList.length > 0) {
             setSelectedAgent((prev) =>
               agentList.includes(prev) ? prev : agentList[0]
             );
+          }
+          // Apply role changes without a page reload. The server may have
+          // promoted/demoted this user while the previous session was idle.
+          if (role && (role === "admin" || role === "operator" || role === "viewer")) {
+            const current = userRef.current;
+            if (current && current.role !== role) {
+              refreshUserRef.current({ ...current, role: role as UserInfo["role"] });
+            }
           }
         },
         onDisconnected: () => {

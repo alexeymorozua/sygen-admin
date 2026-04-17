@@ -9,14 +9,18 @@ import {
   useRef,
   useState,
 } from "react";
-import { SygenAPI, type NotificationSeverity, type SygenNotification } from "@/lib/api";
+import {
+  ALL_SEVERITIES,
+  SygenAPI,
+  type NotificationSeverity,
+  type SygenNotification,
+} from "@/lib/api";
 import { useChat } from "@/context/ChatContext";
 
 // ---------------------------------------------------------------------------
 // Severity helpers
 // ---------------------------------------------------------------------------
 
-const ALL_SEVERITIES: NotificationSeverity[] = ["critical", "warning", "info", "silent"];
 const DEFAULT_SEVERITIES: NotificationSeverity[] = ["critical", "warning", "info"];
 const STORAGE_KEY = "sygen.notif.severities.v1";
 const UNREAD_SEVERITIES = new Set<NotificationSeverity>(["critical", "warning", "info"]);
@@ -30,7 +34,7 @@ function loadStoredSeverities(): NotificationSeverity[] {
     if (!Array.isArray(parsed)) return DEFAULT_SEVERITIES;
     const filtered = parsed.filter(
       (s): s is NotificationSeverity =>
-        typeof s === "string" && (ALL_SEVERITIES as string[]).includes(s),
+        typeof s === "string" && (ALL_SEVERITIES as readonly string[]).includes(s),
     );
     return filtered.length > 0 ? filtered : DEFAULT_SEVERITIES;
   } catch {
@@ -80,6 +84,18 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   // Hydrate severity selection from localStorage (client-only).
   useEffect(() => {
     setEnabledSeverities(loadStoredSeverities());
+  }, []);
+
+  // Cross-tab sync: pick up filter changes made in another tab so the UI
+  // stays consistent across the user's open admin windows.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = (event: StorageEvent) => {
+      if (event.key !== STORAGE_KEY) return;
+      setEnabledSeverities(loadStoredSeverities());
+    };
+    window.addEventListener("storage", handler);
+    return () => window.removeEventListener("storage", handler);
   }, []);
 
   // Load notifications from server

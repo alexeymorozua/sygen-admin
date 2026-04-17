@@ -396,6 +396,9 @@ const en: Record<string, string> = {
   "notifications.severity.warning": "Warning",
   "notifications.severity.info": "Info",
   "notifications.severity.silent": "Silent",
+  "notifications.severityFilter": "Severity filter",
+  "notifications.allSeveritiesDisabled":
+    "All severities are turned off. Enable at least one in the filter above to see notifications.",
 
   // Connection
   "connection.manageServers": "Manage Servers",
