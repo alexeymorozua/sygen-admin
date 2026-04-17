@@ -213,16 +213,25 @@ export default function AgentsPage() {
     }
   }, []);
 
-  // Reset per-agent view state whenever selection changes (via click, swipe-back, or shared link).
+  // Reset per-agent view state whenever selection *identity* changes
+  // (via click, swipe-back, or shared link). Depending on `selected`
+  // itself would wipe the user's in-progress sandbox draft every time
+  // the agents list refreshes after a save.
   useEffect(() => {
     stopLiveTail();
     setDetailTab("info");
     setLogs([]);
     setMetrics(null);
     setMetricsHistory([]);
-    setDirsDraft(selected?.additionalDirectories ?? []);
     setNewDirInput("");
-  }, [selectedId, stopLiveTail, selected]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId, stopLiveTail]);
+
+  // Sync sandbox draft with the latest server state for the selected agent.
+  // Runs on selection change and after a save (when agents list refreshes).
+  useEffect(() => {
+    setDirsDraft(selected?.additionalDirectories ?? []);
+  }, [selectedId, selected?.additionalDirectories]);
 
   const handleShowLogs = (agent: Agent) => {
     setDetailTab("logs");
@@ -539,104 +548,82 @@ export default function AgentsPage() {
                   <p className="text-sm text-text-secondary mb-2 flex items-center gap-1">
                     <Shield size={10} /> {t("agents.sandbox") || "Sandbox"}
                   </p>
-                  {selected.name === "main" ? (
-                    <>
-                      <p className="text-xs text-text-secondary mb-2">
-                        {t("agents.sandboxMainHint") ||
-                          "Main agent uses additional_directories from config.json. Edit there for server-wide changes."}
+                  <p className="text-xs text-text-secondary mb-2">
+                    {selected.name === "main"
+                      ? t("agents.sandboxMainHint") ||
+                        "Main agent paths (config.json). Empty = $HOME by default. Bot restart required after save."
+                      : t("agents.sandboxHint") ||
+                        "Absolute paths outside the agent's workspace that its Claude CLI may access."}
+                  </p>
+                  <div className="space-y-1.5 mb-2">
+                    {dirsDraft.length === 0 ? (
+                      <p className="text-xs text-text-secondary italic">
+                        {selected.name === "main"
+                          ? t("agents.sandboxMainEmpty") ||
+                            "Empty — defaults to $HOME"
+                          : t("agents.sandboxWorkspaceOnly") ||
+                            "Workspace-only (no extra paths)"}
                       </p>
-                      {dirsDraft.length === 0 ? (
-                        <p className="text-xs text-text-secondary italic">
-                          {t("agents.sandboxNone") || "No extra paths granted"}
-                        </p>
-                      ) : (
-                        <div className="flex flex-wrap gap-1">
-                          {dirsDraft.map((p) => (
-                            <span
-                              key={p}
-                              className="text-[11px] font-mono bg-bg-primary px-2 py-0.5 rounded flex items-center gap-1"
-                            >
-                              <Folder size={10} />
-                              {p}
-                            </span>
-                          ))}
+                    ) : (
+                      dirsDraft.map((p) => (
+                        <div
+                          key={p}
+                          className="flex items-center justify-between gap-2 bg-bg-primary rounded-md px-2 py-1"
+                        >
+                          <span className="text-[11px] font-mono flex items-center gap-1 truncate">
+                            <Folder size={10} className="shrink-0 text-text-secondary" />
+                            <span className="truncate">{p}</span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeDraftDir(p)}
+                            className="p-1 rounded hover:bg-danger/20 text-text-secondary hover:text-danger"
+                            aria-label="Remove path"
+                          >
+                            <X size={12} />
+                          </button>
                         </div>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-xs text-text-secondary mb-2">
-                        {t("agents.sandboxHint") ||
-                          "Absolute paths outside the agent's workspace that its Claude CLI may access."}
-                      </p>
-                      <div className="space-y-1.5 mb-2">
-                        {dirsDraft.length === 0 ? (
-                          <p className="text-xs text-text-secondary italic">
-                            {t("agents.sandboxWorkspaceOnly") ||
-                              "Workspace-only (no extra paths)"}
-                          </p>
-                        ) : (
-                          dirsDraft.map((p) => (
-                            <div
-                              key={p}
-                              className="flex items-center justify-between gap-2 bg-bg-primary rounded-md px-2 py-1"
-                            >
-                              <span className="text-[11px] font-mono flex items-center gap-1 truncate">
-                                <Folder size={10} className="shrink-0 text-text-secondary" />
-                                <span className="truncate">{p}</span>
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => removeDraftDir(p)}
-                                className="p-1 rounded hover:bg-danger/20 text-text-secondary hover:text-danger"
-                                aria-label="Remove path"
-                              >
-                                <X size={12} />
-                              </button>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="text"
-                          value={newDirInput}
-                          onChange={(e) => setNewDirInput(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              addDraftDir();
-                            }
-                          }}
-                          placeholder="/absolute/path"
-                          className="flex-1 text-xs font-mono bg-bg-primary rounded-md px-2 py-1 border border-border focus:outline-none focus:border-brand-400"
-                          spellCheck={false}
-                          autoCapitalize="off"
-                        />
-                        <button
-                          type="button"
-                          onClick={addDraftDir}
-                          disabled={!newDirInput.trim()}
-                          className="p-1.5 rounded-md bg-bg-primary hover:bg-white/5 disabled:opacity-40 text-text-secondary"
-                          title={t("agents.sandboxAdd") || "Add path"}
-                        >
-                          <Plus size={12} />
-                        </button>
-                      </div>
-                      {dirsDirty && (
-                        <button
-                          type="button"
-                          onClick={saveDirs}
-                          disabled={savingDirs}
-                          className="mt-2 w-full py-1.5 text-center text-sm font-medium rounded-lg bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 transition-colors disabled:opacity-40 flex items-center justify-center gap-1"
-                        >
-                          <Save size={12} />
-                          {savingDirs
-                            ? t("common.loading") || "..."
-                            : t("agents.sandboxSave") || "Save sandbox paths"}
-                        </button>
-                      )}
-                    </>
+                      ))
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="text"
+                      value={newDirInput}
+                      onChange={(e) => setNewDirInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          addDraftDir();
+                        }
+                      }}
+                      placeholder="/absolute/path"
+                      className="flex-1 text-xs font-mono bg-bg-primary rounded-md px-2 py-1 border border-border focus:outline-none focus:border-brand-400"
+                      spellCheck={false}
+                      autoCapitalize="off"
+                    />
+                    <button
+                      type="button"
+                      onClick={addDraftDir}
+                      disabled={!newDirInput.trim()}
+                      className="p-1.5 rounded-md bg-bg-primary hover:bg-white/5 disabled:opacity-40 text-text-secondary"
+                      title={t("agents.sandboxAdd") || "Add path"}
+                    >
+                      <Plus size={12} />
+                    </button>
+                  </div>
+                  {dirsDirty && (
+                    <button
+                      type="button"
+                      onClick={saveDirs}
+                      disabled={savingDirs}
+                      className="mt-2 w-full py-1.5 text-center text-sm font-medium rounded-lg bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 transition-colors disabled:opacity-40 flex items-center justify-center gap-1"
+                    >
+                      <Save size={12} />
+                      {savingDirs
+                        ? t("common.loading") || "..."
+                        : t("agents.sandboxSave") || "Save sandbox paths"}
+                    </button>
                   )}
                 </div>
                 <div className="pt-2 border-t border-border">
