@@ -639,15 +639,6 @@ export default function ChatPage() {
                 onChange={handleProviderChange}
               />
             )}
-            <button
-              type="button"
-              onClick={handleNewChat}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs hover:bg-white/5 rounded-lg transition-colors text-text-secondary"
-              title={t('chat.newChat')}
-            >
-              <Plus size={14} />
-              <span className="hidden sm:inline">{t('chat.newChat')}</span>
-            </button>
             <RefreshButton
               loading={refreshingChat}
               onClick={handleRefreshChat}
@@ -713,21 +704,6 @@ export default function ChatPage() {
 
         {/* Input */}
         <div className="p-3 md:p-4 border-t border-border">
-          {/* Mobile agent selector */}
-          <div className="flex items-center gap-2 mb-2 md:hidden">
-            <Select
-              value={selectedAgent}
-              onChange={(e) => setSelectedAgent(e.target.value)}
-              className="flex-1"
-            >
-              {agents.map((a) => (
-                <option key={a} value={a}>
-                  {a}
-                </option>
-              ))}
-            </Select>
-          </div>
-
           <div className="relative flex items-end gap-2">
             {/* Command menu popup */}
             <CommandMenu

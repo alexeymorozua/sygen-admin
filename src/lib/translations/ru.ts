@@ -98,6 +98,7 @@ const ru: Record<string, string> = {
   "chat.playAudio": "Воспроизвести",
   "chat.pauseAudio": "Пауза",
   "chat.transcribe": "Расшифровать",
+  "chat.audioUnsupported": "Формат не поддерживается",
   "chat.provider": "Провайдер",
   "chat.model": "Модель",
   "chat.providerOverride": "Кастомный провайдер",
