@@ -71,6 +71,20 @@ body {
   background: var(--color-bg-primary);
   color: var(--color-text-primary);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Remove 300ms tap delay on iOS Safari / PWA and prevent double-tap-zoom
+   on interactive elements. Input fields keep default behavior so the user
+   can still pinch-zoom an image inside a textarea etc. */
+button,
+a,
+[role="button"],
+input[type="button"],
+input[type="submit"],
+input[type="checkbox"],
+input[type="radio"] {
+  touch-action: manipulation;
 }
 
 /* Scrollbar */

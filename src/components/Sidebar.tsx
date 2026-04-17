@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -65,7 +65,10 @@ export default function Sidebar() {
   const { hasRole, user } = useAuth();
   const { unreadCount } = useNotifications();
 
-  const visibleNav = navItems.filter((item) => !item.minRole || hasRole(item.minRole));
+  const visibleNav = useMemo(
+    () => navItems.filter((item) => !item.minRole || hasRole(item.minRole)),
+    [hasRole],
+  );
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {

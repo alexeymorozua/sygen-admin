@@ -228,10 +228,13 @@ export default function AgentsPage() {
   }, [selectedId, stopLiveTail]);
 
   // Sync sandbox draft with the latest server state for the selected agent.
-  // Runs on selection change and after a save (when agents list refreshes).
+  // Keyed on content (joined string) so a new array reference with identical
+  // values after a list refresh doesn't retrigger work.
+  const selectedDirsKey = (selected?.additionalDirectories ?? []).join("\u0000");
   useEffect(() => {
     setDirsDraft(selected?.additionalDirectories ?? []);
-  }, [selectedId, selected?.additionalDirectories]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId, selectedDirsKey]);
 
   const handleShowLogs = (agent: Agent) => {
     setDetailTab("logs");
@@ -354,18 +357,19 @@ export default function AgentsPage() {
     }
   };
 
-  // Auto-refresh metrics every 30s
+  // Auto-refresh metrics every 30s. Keyed on selected.name (not the object)
+  // so the interval survives optimistic agent-list mutations.
+  const selectedName = selected?.name ?? null;
   useEffect(() => {
     if (metricsRefreshRef.current) {
       clearInterval(metricsRefreshRef.current);
       metricsRefreshRef.current = null;
     }
 
-    if (detailTab === "metrics" && selected) {
-      const agentName = selected.name;
+    if (detailTab === "metrics" && selectedName) {
       const period = metricsPeriod;
       metricsRefreshRef.current = setInterval(() => {
-        loadMetrics(agentName, period);
+        loadMetrics(selectedName, period);
       }, 30_000);
     }
 
@@ -375,14 +379,14 @@ export default function AgentsPage() {
         metricsRefreshRef.current = null;
       }
     };
-  }, [detailTab, selected, metricsPeriod, loadMetrics]);
+  }, [detailTab, selectedName, metricsPeriod, loadMetrics]);
 
   // Reload metrics when period changes
   useEffect(() => {
-    if (detailTab === "metrics" && selected) {
-      loadMetrics(selected.name, metricsPeriod);
+    if (detailTab === "metrics" && selectedName) {
+      loadMetrics(selectedName, metricsPeriod);
     }
-  }, [metricsPeriod, detailTab, selected, loadMetrics]);
+  }, [metricsPeriod, detailTab, selectedName, loadMetrics]);
 
   const formatDuration = (seconds: number): string => {
     if (seconds < 1) return `${Math.round(seconds * 1000)}ms`;

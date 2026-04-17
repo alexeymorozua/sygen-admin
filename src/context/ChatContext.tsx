@@ -118,8 +118,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const prevAgentRef = useRef(selectedAgent);
   const notificationCallbackRef = useRef<((n: SygenNotification) => void) | null>(null);
 
-  // Derived
-  const messages = activeSessionId ? (messagesBySession[activeSessionId] || []) : [];
+  // Derived — memoize so consumers don't re-render every tick when empty.
+  const messages = useMemo(
+    () => (activeSessionId ? (messagesBySession[activeSessionId] ?? []) : []),
+    [activeSessionId, messagesBySession],
+  );
 
   // ---------------------------------------------------------------------------
   // Core message helpers
