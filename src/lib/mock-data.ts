@@ -10,6 +10,7 @@ export interface Agent {
   description: string;
   allowedUsers: string[];
   hasAvatar?: boolean;
+  additionalDirectories: string[];
 }
 
 export interface CronJob {
@@ -100,6 +101,7 @@ export const mockAgents: Agent[] = [
     lastActive: "2026-04-14T10:30:00Z",
     description: "Primary coordinator agent. Handles user interactions and delegates tasks.",
     allowedUsers: ["alexeymorozua"],
+    additionalDirectories: [],
   },
   {
     id: "prism",
@@ -112,6 +114,7 @@ export const mockAgents: Agent[] = [
     lastActive: "2026-04-14T09:15:00Z",
     description: "Code analysis and refactoring specialist.",
     allowedUsers: ["alexeymorozua"],
+    additionalDirectories: [],
   },
   {
     id: "nexus",
@@ -124,6 +127,7 @@ export const mockAgents: Agent[] = [
     lastActive: "2026-04-14T10:00:00Z",
     description: "Research and deep analysis agent with web access.",
     allowedUsers: ["alexeymorozua"],
+    additionalDirectories: [],
   },
   {
     id: "canvas",
@@ -136,6 +140,7 @@ export const mockAgents: Agent[] = [
     lastActive: "2026-04-13T18:45:00Z",
     description: "Creative content generation and design assistant.",
     allowedUsers: ["alexeymorozua"],
+    additionalDirectories: [],
   },
   {
     id: "clowder",
@@ -148,6 +153,7 @@ export const mockAgents: Agent[] = [
     lastActive: "2026-04-14T08:30:00Z",
     description: "Multi-model orchestration and comparison agent.",
     allowedUsers: ["alexeymorozua"],
+    additionalDirectories: [],
   },
   {
     id: "sonic",
@@ -160,6 +166,7 @@ export const mockAgents: Agent[] = [
     lastActive: "2026-04-14T07:00:00Z",
     description: "Fast response agent for quick lookups and simple tasks.",
     allowedUsers: ["alexeymorozua"],
+    additionalDirectories: [],
   },
 ];
 

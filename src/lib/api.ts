@@ -498,6 +498,18 @@ export class SygenAPI {
     }
   }
 
+  static async updateAgentDirectories(
+    name: string,
+    additionalDirectories: string[],
+  ): Promise<{ name: string; additional_directories: string[] }> {
+    if (USE_MOCK) return { name, additional_directories: additionalDirectories };
+    return fetchAPI(`/api/agents/${encodeURIComponent(name)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ additional_directories: additionalDirectories }),
+    });
+  }
+
   // ---- Agent Metrics ----
 
   static async getAgentMetrics(
@@ -1614,6 +1626,9 @@ function mapAgent(raw: Record<string, unknown>): Agent {
     description: String(raw.description || ""),
     allowedUsers: (raw.allowed_users || raw.allowedUsers || []) as string[],
     hasAvatar: raw.has_avatar === true,
+    additionalDirectories: Array.isArray(raw.additional_directories)
+      ? (raw.additional_directories as string[])
+      : [],
   };
 }
 
