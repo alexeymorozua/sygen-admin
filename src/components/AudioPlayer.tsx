@@ -20,10 +20,32 @@ function formatTime(seconds: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
+function guessMimeFromUrl(url: string): string {
+  const match = url.match(/\.([a-z0-9]+)(?:\?|$)/i);
+  const ext = match?.[1]?.toLowerCase();
+  switch (ext) {
+    case "mp3":
+      return "audio/mpeg";
+    case "m4a":
+    case "mp4":
+      return "audio/mp4";
+    case "ogg":
+    case "opus":
+      return "audio/ogg";
+    case "webm":
+      return "audio/webm";
+    case "wav":
+      return "audio/wav";
+    default:
+      return "audio/mpeg";
+  }
+}
+
 export default function AudioPlayer({ src, token, filePath, className }: AudioPlayerProps) {
   const { t } = useTranslation();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const blobUrlRef = useRef<string | null>(null);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -32,61 +54,48 @@ export default function AudioPlayer({ src, token, filePath, className }: AudioPl
   const [transcribing, setTranscribing] = useState(false);
   const progressRef = useRef<HTMLDivElement>(null);
 
+  // Fetch the audio with auth and hand the blob URL to a real <audio> element
+  // that lives in the DOM. iOS Safari in standalone PWA mode refuses to play
+  // audio elements created via `new Audio()` that are never attached to the
+  // document — using a ref'd <audio> tag fixes the "Format not supported"
+  // error on iPhone.
   useEffect(() => {
-    const audio = new Audio();
-    audioRef.current = audio;
     setHasError(false);
     setIsPlaying(false);
     setCurrentTime(0);
     setDuration(0);
+    setBlobUrl(null);
 
-    const onLoadedMetadata = () => setDuration(audio.duration);
-    const onTimeUpdate = () => setCurrentTime(audio.currentTime);
-    const onEnded = () => {
-      setIsPlaying(false);
-      setCurrentTime(0);
-    };
-    const onDurationChange = () => setDuration(audio.duration);
-    const onError = () => {
-      setHasError(true);
-      setIsPlaying(false);
-    };
-
-    audio.addEventListener("loadedmetadata", onLoadedMetadata);
-    audio.addEventListener("timeupdate", onTimeUpdate);
-    audio.addEventListener("ended", onEnded);
-    audio.addEventListener("durationchange", onDurationChange);
-    audio.addEventListener("error", onError);
-
-    // The primary server uses cookie auth (`credentials: "include"`); remote
-    // servers still pass an explicit Bearer token via props.
     const headers: Record<string, string> = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    let cancelled = false;
+    let createdUrl: string | null = null;
     fetch(src, { credentials: "include", headers })
       .then((res) => {
         if (!res.ok) throw new Error(`${res.status}`);
         return res.blob();
       })
       .then((blob) => {
-        const url = URL.createObjectURL(blob);
+        if (cancelled) return;
+        const typed =
+          blob.type && blob.type !== "application/octet-stream"
+            ? blob
+            : new Blob([blob], { type: guessMimeFromUrl(src) });
+        const url = URL.createObjectURL(typed);
+        createdUrl = url;
         blobUrlRef.current = url;
-        audio.src = url;
+        setBlobUrl(url);
       })
       .catch(() => {
-        setHasError(true);
+        if (!cancelled) setHasError(true);
       });
 
     return () => {
-      audio.removeEventListener("loadedmetadata", onLoadedMetadata);
-      audio.removeEventListener("timeupdate", onTimeUpdate);
-      audio.removeEventListener("ended", onEnded);
-      audio.removeEventListener("durationchange", onDurationChange);
-      audio.removeEventListener("error", onError);
-      audio.pause();
-      audio.src = "";
-      if (blobUrlRef.current) {
-        URL.revokeObjectURL(blobUrlRef.current);
-        blobUrlRef.current = null;
+      cancelled = true;
+      if (createdUrl) {
+        URL.revokeObjectURL(createdUrl);
+        if (blobUrlRef.current === createdUrl) blobUrlRef.current = null;
       }
     };
   }, [src, token]);
@@ -132,9 +141,33 @@ export default function AudioPlayer({ src, token, filePath, className }: AudioPl
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
+  // Hidden audio element. Keeping it in the DOM (not `new Audio()`) is
+  // required for iOS Safari standalone PWA playback.
+  const audioEl = blobUrl && (
+    <audio
+      ref={audioRef}
+      src={blobUrl}
+      preload="metadata"
+      playsInline
+      onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
+      onDurationChange={(e) => setDuration(e.currentTarget.duration)}
+      onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
+      onEnded={() => {
+        setIsPlaying(false);
+        setCurrentTime(0);
+      }}
+      onError={() => {
+        setHasError(true);
+        setIsPlaying(false);
+      }}
+      className="hidden"
+    />
+  );
+
   if (hasError) {
     return (
       <>
+        {audioEl}
         <div
           className={cn(
             "flex items-center gap-2.5 min-w-[200px] max-w-[280px]",
@@ -174,6 +207,7 @@ export default function AudioPlayer({ src, token, filePath, className }: AudioPl
 
   return (
     <>
+    {audioEl}
     <div
       className={cn(
         "flex items-center gap-2.5 min-w-[200px] max-w-[280px]",
