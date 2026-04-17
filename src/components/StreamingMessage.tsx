@@ -93,7 +93,7 @@ function FilePreview({
 
   const handleDownload = async () => {
     try {
-      const res = await fetch(fileUrl, { headers });
+      const res = await fetch(fileUrl, { headers, credentials: "include" });
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
