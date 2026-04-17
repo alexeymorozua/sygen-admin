@@ -15,7 +15,6 @@ import {
   Settings,
   Menu,
   X,
-  Hexagon,
   Server,
   Sun,
   Moon,
@@ -29,6 +28,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useTranslation } from "@/lib/i18n";
 import ConnectionStatus from "./ConnectionStatus";
+import SygenLogo from "./SygenLogo";
 import ServerSwitcher from "./ServerSwitcher";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { useNotifications } from "@/context/NotificationContext";
@@ -89,7 +89,7 @@ export default function Sidebar() {
     <>
       {/* Logo */}
       <div className="flex items-center gap-3 px-5 py-6">
-        <Hexagon size={28} className="text-danger" />
+        <SygenLogo size={28} className="text-danger" />
         <span className="text-xl font-bold tracking-wider">SYGEN</span>
       </div>
 
