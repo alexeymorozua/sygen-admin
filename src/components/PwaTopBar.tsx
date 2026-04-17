@@ -11,23 +11,28 @@ function isStandalone(): boolean {
   return Boolean(nav.standalone);
 }
 
+function isMobile(): boolean {
+  if (typeof window === "undefined") return false;
+  return /iPhone|iPad|iPod|Android/i.test(window.navigator.userAgent);
+}
+
 export default function PwaTopBar() {
   const router = useRouter();
-  const [standalone, setStandalone] = useState(false);
+  const [visible, setVisible] = useState(false);
   const [canGoBack, setCanGoBack] = useState(false);
 
   useEffect(() => {
-    setStandalone(isStandalone());
+    setVisible(isStandalone() && !isMobile());
     setCanGoBack(window.history.length > 1);
     const onPop = () => setCanGoBack(window.history.length > 1);
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
 
-  if (!standalone) return null;
+  if (!visible) return null;
 
   return (
-    <div className="lg:hidden fixed top-0 left-0 right-0 z-[60] h-10 flex items-center gap-1 px-2 bg-bg-sidebar/95 backdrop-blur-sm border-b border-border pl-14">
+    <div className="fixed top-0 left-0 right-0 z-[60] h-10 flex items-center gap-1 px-2 bg-bg-sidebar/95 backdrop-blur-sm border-b border-border pl-14">
       <button
         type="button"
         onClick={() => router.back()}
