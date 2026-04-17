@@ -411,7 +411,7 @@ export default function ChatPage() {
   );
 
   return (
-    <div className="flex h-[calc(100vh-5rem)] gap-0 -m-3 sm:-m-4 md:-m-6 lg:-m-8 mt-0 md:mt-0">
+    <div className="flex-1 flex min-h-0 gap-0 -m-3 sm:-m-4 md:-m-6 lg:-m-8 mt-0 md:mt-0">
       {/* Mobile sidebar overlay */}
       {showSidebar && (
         <div

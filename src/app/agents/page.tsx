@@ -382,8 +382,8 @@ export default function AgentsPage() {
   };
 
   return (
-    <div className="flex gap-4 md:gap-6">
-      <div className="flex-1 min-w-0">
+    <div className="flex-1 flex gap-4 md:gap-6 min-h-0">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0">
         <div className="flex items-center justify-between mb-4 md:mb-6">
           <h1 className="text-2xl font-bold">{t('agents.title')}</h1>
           <div className="flex items-center gap-2">

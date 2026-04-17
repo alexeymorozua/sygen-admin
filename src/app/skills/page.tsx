@@ -258,7 +258,7 @@ export default function SkillsPage() {
     agents.find((a) => a.name === effectiveAgent)?.displayName || effectiveAgent;
 
   return (
-    <div>
+    <div className="flex-1 flex flex-col min-h-0">
       <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
         <h1 className="text-2xl font-bold">{t("skills.title")}</h1>
         <div className="flex items-center gap-2">

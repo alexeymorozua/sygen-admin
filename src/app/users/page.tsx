@@ -113,7 +113,7 @@ export default function UsersPage() {
   if (error) return <ErrorState message={error} onRetry={loadUsers} />;
 
   return (
-    <div>
+    <div className="flex-1 flex flex-col min-h-0">
       <div className="flex items-center justify-between mb-4 md:mb-6">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Users size={22} />
@@ -169,21 +169,23 @@ export default function UsersPage() {
         </div>
       )}
 
-      {tab === "users" ? (
-        <UsersTable
-          users={users.filter((u) => {
-            if (!searchQuery) return true;
-            const q = searchQuery.toLowerCase();
-            return u.username.toLowerCase().includes(q) || u.role.toLowerCase().includes(q) || (u.display_name || "").toLowerCase().includes(q);
-          })}
-          onEdit={(u) => { setEditingUser(u); setShowForm(true); }}
-          onDelete={handleDelete}
-          onToggleActive={handleToggleActive}
-          t={t}
-        />
-      ) : (
-        <AuditTable entries={audit} t={t} />
-      )}
+      <div className="flex-1 min-h-0 flex flex-col">
+        {tab === "users" ? (
+          <UsersTable
+            users={users.filter((u) => {
+              if (!searchQuery) return true;
+              const q = searchQuery.toLowerCase();
+              return u.username.toLowerCase().includes(q) || u.role.toLowerCase().includes(q) || (u.display_name || "").toLowerCase().includes(q);
+            })}
+            onEdit={(u) => { setEditingUser(u); setShowForm(true); }}
+            onDelete={handleDelete}
+            onToggleActive={handleToggleActive}
+            t={t}
+          />
+        ) : (
+          <AuditTable entries={audit} t={t} />
+        )}
+      </div>
 
       {showForm && (
         <UserFormDialog
@@ -216,8 +218,9 @@ function UsersTable({
   t: (key: string) => string;
 }) {
   return (
-    <div className="bg-bg-card border border-border rounded-xl overflow-hidden">
-      <table className="w-full text-sm">
+    <div className="flex-1 min-h-0 bg-bg-card border border-border rounded-xl overflow-hidden flex flex-col">
+      <div className="flex-1 min-h-0 overflow-auto">
+        <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-border text-text-secondary text-left">
             <th className="px-4 py-3 font-medium">{t("common.name") || "Name"}</th>
@@ -296,7 +299,8 @@ function UsersTable({
             </tr>
           )}
         </tbody>
-      </table>
+        </table>
+      </div>
     </div>
   );
 }
@@ -307,8 +311,9 @@ function UsersTable({
 
 function AuditTable({ entries, t }: { entries: AuditEntry[]; t: (key: string) => string }) {
   return (
-    <div className="bg-bg-card border border-border rounded-xl overflow-hidden">
-      <table className="w-full text-sm">
+    <div className="flex-1 min-h-0 bg-bg-card border border-border rounded-xl overflow-hidden flex flex-col">
+      <div className="flex-1 min-h-0 overflow-auto">
+        <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-border text-text-secondary text-left">
             <th className="px-4 py-3 font-medium">{t("users.time") || "Time"}</th>
@@ -346,7 +351,8 @@ function AuditTable({ entries, t }: { entries: AuditEntry[]; t: (key: string) =>
             </tr>
           )}
         </tbody>
-      </table>
+        </table>
+      </div>
     </div>
   );
 }

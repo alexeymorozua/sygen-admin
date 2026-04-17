@@ -57,8 +57,8 @@ export default function DataTable<T>({
   }
 
   return (
-    <div>
-      <div className="overflow-x-auto">
+    <div className="flex flex-col h-full min-h-0">
+      <div className="flex-1 min-h-0 overflow-auto">
         <table className="w-full">
           <thead>
             <tr className="border-b border-border">
@@ -115,7 +115,7 @@ export default function DataTable<T>({
       </div>
 
       {totalPages > 1 && (
-        <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+        <div className="shrink-0 flex items-center justify-between px-4 py-3 border-t border-border">
           <span className="text-xs text-text-secondary">
             {page * pageSize + 1}-{Math.min((page + 1) * pageSize, data.length)} of {data.length}
           </span>
