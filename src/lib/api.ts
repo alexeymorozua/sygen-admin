@@ -340,6 +340,64 @@ async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> 
 }
 
 // ---------------------------------------------------------------------------
+// SSRF helpers
+// ---------------------------------------------------------------------------
+
+function parseIPv4(s: string): number[] | null {
+  const parts = s.split(".");
+  if (parts.length !== 4) return null;
+  const out: number[] = [];
+  for (const p of parts) {
+    if (!/^\d+$/.test(p)) return null;
+    const n = Number(p);
+    if (!Number.isInteger(n) || n < 0 || n > 255) return null;
+    out.push(n);
+  }
+  return out;
+}
+
+function isPrivateIPv4(octets: number[]): boolean {
+  const [a, b] = octets;
+  if (a === 10) return true;               // 10.0.0.0/8
+  if (a === 127) return true;              // 127.0.0.0/8 loopback
+  if (a === 0) return true;                // 0.0.0.0/8
+  if (a === 169 && b === 254) return true; // 169.254.0.0/16 link-local (AWS IMDS etc.)
+  if (a === 172 && b >= 16 && b <= 31) return true; // 172.16.0.0/12
+  if (a === 192 && b === 168) return true; // 192.168.0.0/16
+  if (a >= 100 && a <= 127 && a === 100 && b >= 64 && b <= 127) return true; // 100.64.0.0/10 CGNAT
+  if (a >= 224) return true;               // multicast / reserved
+  return false;
+}
+
+function isPrivateIPv6(addr: string): boolean {
+  const a = addr.toLowerCase();
+  if (a === "::1") return true;
+  if (a === "::") return true;
+  if (a.startsWith("fe80:")) return true;   // fe80::/10 link-local
+  if (/^f[cd][0-9a-f]{2}:/.test(a)) return true; // fc00::/7 ULA
+  if (a.startsWith("ff")) return true;       // multicast
+  // IPv4-mapped IPv6: ::ffff:a.b.c.d
+  const m = a.match(/^::ffff:([0-9.]+)$/);
+  if (m) {
+    const v4 = parseIPv4(m[1]);
+    if (v4 && isPrivateIPv4(v4)) return true;
+  }
+  return false;
+}
+
+function isInternalHost(host: string): boolean {
+  if (!host) return true;
+  if (host === "localhost") return true;
+  if (host.endsWith(".internal")) return true;
+  if (host.endsWith(".local")) return true;
+  if (host.endsWith(".localhost")) return true;
+  const v4 = parseIPv4(host);
+  if (v4) return isPrivateIPv4(v4);
+  if (host.includes(":")) return isPrivateIPv6(host);
+  return false;
+}
+
+// ---------------------------------------------------------------------------
 // API class
 // ---------------------------------------------------------------------------
 
@@ -679,16 +737,10 @@ export class SygenAPI {
         throw new Error("Only HTTP(S) URLs are allowed");
       }
       const hostname = parsed.hostname.toLowerCase();
-      const isInternal =
-        hostname === "localhost" ||
-        hostname === "127.0.0.1" ||
-        hostname === "0.0.0.0" ||
-        hostname.startsWith("10.") ||
-        hostname.startsWith("192.168.") ||
-        hostname.startsWith("172.") ||
-        hostname === "[::1]" ||
-        hostname.endsWith(".internal") ||
-        hostname.endsWith(".local");
+      // Strip IPv6 brackets for comparison.
+      const bare = hostname.startsWith("[") && hostname.endsWith("]")
+        ? hostname.slice(1, -1)
+        : hostname;
       // Allow internal/private when the target resolves to the configured
       // Sygen server itself — self-test is the expected use case.
       const baseHost = (() => {
@@ -698,7 +750,7 @@ export class SygenAPI {
           return "";
         }
       })();
-      if (isInternal && hostname !== baseHost) {
+      if (isInternalHost(bare) && hostname !== baseHost) {
         throw new Error("Cannot test webhooks against internal/private addresses");
       }
     } catch (err) {
@@ -1106,7 +1158,7 @@ export class SygenAPI {
         timestamp: new Date().toISOString(),
       };
     }
-    return fetchAPI<ChatMessage>(`/api/chat/${agentId}`, {
+    return fetchAPI<ChatMessage>(`/api/chat/${encodeURIComponent(agentId)}`, {
       method: "POST",
       body: JSON.stringify({ content }),
     });
@@ -1359,42 +1411,6 @@ export class SygenAPI {
     if (lines) params.set("lines", String(lines));
     const qs = params.toString();
     return fetchAPI(`/api/logs/poll${qs ? `?${qs}` : ""}`);
-  }
-
-  // ---- WebSocket for chat ----
-
-  static connectChat(agentId: string, onMessage: (msg: ChatMessage) => void): () => void {
-    if (USE_MOCK) {
-      const timer = setTimeout(() => {
-        onMessage({
-          id: `msg-ws-${Date.now()}`,
-          sender: "agent",
-          agentId,
-          content: "WebSocket connection simulated. Real-time messaging will be available when the API is connected.",
-          timestamp: new Date().toISOString(),
-        });
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-
-    // The browser sends the sygen_access cookie automatically with WS
-    // handshakes against the same origin. For remote-server flows we still
-    // need the Bearer token in the auth frame.
-    const token = getApiToken();
-    const wsUrl = getApiUrl().replace(/^http/, "ws");
-    const ws = new WebSocket(`${wsUrl}/ws/chat/${agentId}`);
-    ws.onopen = () => {
-      ws.send(JSON.stringify({ type: "auth", token }));
-    };
-    ws.onmessage = (event) => {
-      try {
-        const msg = JSON.parse(event.data) as ChatMessage;
-        onMessage(msg);
-      } catch {
-        // Ignore unparseable frames
-      }
-    };
-    return () => ws.close();
   }
 
   static async uploadAgentAvatar(agentName: string, file: File): Promise<void> {

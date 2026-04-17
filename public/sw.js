@@ -1,5 +1,5 @@
 /* Sygen Admin Service Worker */
-const VERSION = 'v2';
+const VERSION = 'v3';
 const STATIC_CACHE = `sygen-admin-static-${VERSION}`;
 const PAGES_CACHE = `sygen-admin-pages-${VERSION}`;
 const KNOWN_CACHES = new Set([STATIC_CACHE, PAGES_CACHE]);
@@ -60,8 +60,13 @@ function isStaticAsset(url) {
   );
 }
 
+// Must mirror API_PREFIXES in https-proxy.mjs — anything that routes to the
+// Sygen backend should bypass SW caching entirely.
+const API_PREFIXES = ['/api/', '/upload', '/files', '/health', '/ws/'];
+
 function isApiRequest(url) {
-  return url.pathname.startsWith('/api/');
+  return API_PREFIXES.some((p) => url.pathname === p.replace(/\/$/, '') ||
+    url.pathname.startsWith(p));
 }
 
 function isNavigationRequest(request) {

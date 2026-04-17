@@ -103,7 +103,7 @@ function FilePreview({
       URL.revokeObjectURL(url);
     } catch {
       // fallback
-      window.open(fileUrl, "_blank");
+      window.open(fileUrl, "_blank", "noopener,noreferrer");
     }
   };
 
