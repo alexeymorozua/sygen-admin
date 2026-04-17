@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import type { Agent } from "@/lib/mock-data";
 import StatusBadge from "./StatusBadge";
 import { Bot, Clock, Users } from "lucide-react";
@@ -9,7 +9,7 @@ import { useTranslation } from "@/lib/i18n";
 import { SygenAPI } from "@/lib/api";
 import { useAuthedImage } from "@/lib/hooks";
 
-export default function AgentCard({ agent }: { agent: Agent }) {
+function AgentCardInner({ agent }: { agent: Agent }) {
   const { t } = useTranslation();
   const [imgError, setImgError] = useState(false);
   const avatarApiUrl = agent.hasAvatar ? SygenAPI.getAgentAvatarUrl(agent.name) : null;
@@ -57,3 +57,9 @@ export default function AgentCard({ agent }: { agent: Agent }) {
     </div>
   );
 }
+
+// Shallow-compare the agent reference. Parent pages mutate the list in place
+// on avatar/sandbox saves and don't touch other agents' references, so only
+// the actually-changed card re-renders.
+const AgentCard = memo(AgentCardInner);
+export default AgentCard;

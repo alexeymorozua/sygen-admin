@@ -416,9 +416,14 @@ export default function AgentsPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {agents.map((agent) => (
-              <div key={agent.id} onClick={() => select(agent)} className="cursor-pointer">
+              <button
+                key={agent.id}
+                type="button"
+                onClick={() => select(agent)}
+                className="text-left cursor-pointer"
+              >
                 <AgentCard agent={agent} />
-              </div>
+              </button>
             ))}
           </div>
         )}
