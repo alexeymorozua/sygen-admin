@@ -193,6 +193,17 @@ const uk: Record<string, string> = {
   "skills.created": "Навичку створено",
   "skills.saved": "Навичку збережено",
   "skills.noDoc": "SKILL.md або README.md ще немає — почніть писати, щоб створити.",
+  "skills.scope.all": "Усі",
+  "skills.scope.global": "Спільні",
+  "skills.scope.own": "Тільки агента",
+  "skills.badge.global": "🌐 Спільна",
+  "skills.badge.agent": "👤 Агента",
+  "skills.badge.overrides": "🌐 ← 👤 Перекриває спільну",
+  "skills.scopeLabel": "Область",
+  "skills.scopeGlobalOption": "Спільна (для всіх агентів)",
+  "skills.scopeAgentOption": "Для агента {agent}",
+  "skills.deleteGlobalConfirm": "Видалити СПІЛЬНУ навичку «{name}»? Її перестануть бачити УСІ агенти.",
+  "skills.pathLabel": "Шлях",
 
   // Settings
   "settings.title": "Налаштування",

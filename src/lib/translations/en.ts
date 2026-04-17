@@ -193,6 +193,17 @@ const en: Record<string, string> = {
   "skills.created": "Skill created",
   "skills.saved": "Skill saved",
   "skills.noDoc": "No SKILL.md or README.md yet — start writing to create one.",
+  "skills.scope.all": "All",
+  "skills.scope.global": "Global",
+  "skills.scope.own": "Agent only",
+  "skills.badge.global": "🌐 Global",
+  "skills.badge.agent": "👤 Agent",
+  "skills.badge.overrides": "🌐 ← 👤 Overrides global",
+  "skills.scopeLabel": "Scope",
+  "skills.scopeGlobalOption": "Global (all agents)",
+  "skills.scopeAgentOption": "For agent {agent}",
+  "skills.deleteGlobalConfirm": "Delete the GLOBAL skill \"{name}\"? ALL agents will lose access to it.",
+  "skills.pathLabel": "Path",
 
   // Settings
   "settings.title": "Settings",

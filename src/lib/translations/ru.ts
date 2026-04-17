@@ -193,6 +193,17 @@ const ru: Record<string, string> = {
   "skills.created": "Навык создан",
   "skills.saved": "Навык сохранён",
   "skills.noDoc": "SKILL.md или README.md ещё нет — начните писать, чтобы создать.",
+  "skills.scope.all": "Все",
+  "skills.scope.global": "Общие",
+  "skills.scope.own": "Только агента",
+  "skills.badge.global": "🌐 Общий",
+  "skills.badge.agent": "👤 Агента",
+  "skills.badge.overrides": "🌐 ← 👤 Перекрывает общий",
+  "skills.scopeLabel": "Область",
+  "skills.scopeGlobalOption": "Общий (для всех агентов)",
+  "skills.scopeAgentOption": "Для агента {agent}",
+  "skills.deleteGlobalConfirm": "Удалить ОБЩИЙ скил «{name}»? Его перестанут видеть ВСЕ агенты.",
+  "skills.pathLabel": "Путь",
 
   // Settings
   "settings.title": "Настройки",

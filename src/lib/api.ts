@@ -163,6 +163,8 @@ export interface RagStatus {
   memory_fact_count: number | null;
 }
 
+export type SkillScope = "global" | "agent";
+
 export interface Skill {
   name: string;
   description: string;
@@ -171,6 +173,8 @@ export interface Skill {
   size: number;
   has_doc: boolean;
   doc_filename: string | null;
+  scope?: SkillScope;
+  overrides?: boolean;
 }
 
 export interface RagConfigUpdate {
@@ -295,7 +299,8 @@ async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> 
     if (!_refreshPromise) {
       _refreshPromise = refreshAccessToken().finally(() => { _refreshPromise = null; });
     }
-    const refreshed = await _refreshPromise;
+    const pending = _refreshPromise;
+    const refreshed = await pending;
     if (refreshed) {
       const retry = await fetch(`${baseUrl}${endpoint}`, {
         ...options,
@@ -779,17 +784,23 @@ export class SygenAPI {
     });
   }
 
-  // ---- Skills ----
+  // ---- Skills (agent-scoped) ----
 
-  static async getSkills(agent: string): Promise<Skill[]> {
+  static async getSkills(agent: string, scope?: "own" | "global"): Promise<Skill[]> {
     if (USE_MOCK) return [];
-    return fetchAPI<Skill[]>(`/api/agents/${encodeURIComponent(agent)}/skills`);
+    const qs = scope ? `?scope=${scope}` : "";
+    return fetchAPI<Skill[]>(`/api/agents/${encodeURIComponent(agent)}/skills${qs}`);
   }
 
-  static async getSkill(agent: string, skill: string): Promise<{ name: string; filename: string | null; content: string }> {
-    if (USE_MOCK) return { name: skill, filename: "SKILL.md", content: "" };
-    return fetchAPI<{ name: string; filename: string | null; content: string }>(
-      `/api/agents/${encodeURIComponent(agent)}/skills/${encodeURIComponent(skill)}`,
+  static async getSkill(
+    agent: string,
+    skill: string,
+    scope?: SkillScope,
+  ): Promise<{ name: string; filename: string | null; content: string; scope?: SkillScope }> {
+    if (USE_MOCK) return { name: skill, filename: "SKILL.md", content: "", scope };
+    const qs = scope ? `?scope=${scope}` : "";
+    return fetchAPI<{ name: string; filename: string | null; content: string; scope?: SkillScope }>(
+      `/api/agents/${encodeURIComponent(agent)}/skills/${encodeURIComponent(skill)}${qs}`,
     );
   }
 
@@ -811,6 +822,7 @@ export class SygenAPI {
         size: content.length,
         has_doc: true,
         doc_filename: "SKILL.md",
+        scope: "agent",
       };
     }
     return fetchAPI<Skill>(`/api/agents/${encodeURIComponent(agent)}/skills`, {
@@ -822,6 +834,56 @@ export class SygenAPI {
   static async deleteSkill(agent: string, skill: string): Promise<void> {
     if (USE_MOCK) return;
     await fetchAPI(`/api/agents/${encodeURIComponent(agent)}/skills/${encodeURIComponent(skill)}`, {
+      method: "DELETE",
+    });
+  }
+
+  // ---- Skills (global) ----
+
+  static async getGlobalSkills(): Promise<Skill[]> {
+    if (USE_MOCK) return [];
+    return fetchAPI<Skill[]>(`/api/skills`);
+  }
+
+  static async getGlobalSkill(
+    skill: string,
+  ): Promise<{ name: string; filename: string | null; content: string; scope?: SkillScope }> {
+    if (USE_MOCK) return { name: skill, filename: "SKILL.md", content: "", scope: "global" };
+    return fetchAPI<{ name: string; filename: string | null; content: string; scope?: SkillScope }>(
+      `/api/skills/${encodeURIComponent(skill)}`,
+    );
+  }
+
+  static async createGlobalSkill(name: string, content: string): Promise<Skill> {
+    if (USE_MOCK) {
+      return {
+        name,
+        description: "",
+        path: "",
+        mtime: Date.now() / 1000,
+        size: content.length,
+        has_doc: true,
+        doc_filename: "SKILL.md",
+        scope: "global",
+      };
+    }
+    return fetchAPI<Skill>(`/api/skills`, {
+      method: "POST",
+      body: JSON.stringify({ name, content }),
+    });
+  }
+
+  static async updateGlobalSkill(skill: string, content: string): Promise<void> {
+    if (USE_MOCK) return;
+    await fetchAPI(`/api/skills/${encodeURIComponent(skill)}`, {
+      method: "PUT",
+      body: JSON.stringify({ content }),
+    });
+  }
+
+  static async deleteGlobalSkill(skill: string): Promise<void> {
+    if (USE_MOCK) return;
+    await fetchAPI(`/api/skills/${encodeURIComponent(skill)}`, {
       method: "DELETE",
     });
   }
