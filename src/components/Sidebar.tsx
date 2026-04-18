@@ -89,7 +89,7 @@ export default function Sidebar() {
     <>
       {/* Logo */}
       <div className="flex items-center gap-3 px-5 py-6">
-        <SygenLogo size={28} className="text-danger" />
+        <SygenLogo size={28} />
         <span className="text-xl font-bold tracking-wider">SYGEN</span>
       </div>
 
