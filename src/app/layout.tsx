@@ -91,10 +91,26 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-title" content="Sygen" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        {/* Transparent apple-touch-icon — iOS renders it on a black backdrop,
-            which matches the Sygen brand regardless of system theme. */}
+        {/* 180 is transparent — iOS 18 applies Home Screen Appearance overlay
+            (Light/Dark/Tinted) so transparent PNG reads brand color on any
+            system theme. 192 is provided in both dark and light variants
+            with media queries — macOS Safari "Add to Dock" / Chrome PWA
+            pick the matching PNG at install time and Safari re-reads on
+            system theme change. */}
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-180.png" />
-        <link rel="apple-touch-icon" sizes="192x192" href="/apple-touch-icon-192.png" />
+        <link
+          rel="apple-touch-icon"
+          sizes="192x192"
+          href="/apple-touch-icon-192-dark.png"
+          media="(prefers-color-scheme: dark)"
+        />
+        <link
+          rel="apple-touch-icon"
+          sizes="192x192"
+          href="/apple-touch-icon-192-light.png"
+          media="(prefers-color-scheme: light)"
+        />
+        <link rel="apple-touch-icon" sizes="192x192" href="/apple-touch-icon-192-dark.png" />
         {splashScreens.map((s) => (
           <link
             key={s.href}
