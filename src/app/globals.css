@@ -117,18 +117,25 @@ body,
   -ms-overflow-style: none;
 }
 
-/* In standalone PWA mode the document must not scroll — iOS otherwise
-   scrolls the whole window up on keyboard open in addition to our
-   --kb-inset shrink, which stacks into a half-screen gap above the
-   input. Locking html/body forces all scrolling to happen in the
-   internal overflow-y-auto containers. */
-@media (display-mode: standalone) {
-  html, body {
-    height: 100%;
-    overflow: hidden;
-    overscroll-behavior: none;
-  }
+/* html/body scroll lock in standalone is applied from ViewportLock.tsx
+   (needs position:fixed + touch-action:none to stop iOS pan — can't do
+   that in pure CSS without breaking desktop). */
+
+/* iOS Safari auto-zooms inputs whose font-size < 16px on focus, which
+   in PWA standalone triggers extra visualViewport.resize firings and
+   makes layout jitter. Force 16px on mobile, use design size on >=md. */
+.chat-textarea { font-size: 16px; }
+@media (min-width: 768px) { .chat-textarea { font-size: 0.875rem; } }
+
+/* iOS 26 regression FB19889436: after swipe-down keyboard dismiss,
+   visualViewport.offsetTop sticks at a non-zero value until a scroll
+   happens. A tiny opacity animation on :focus forces a repaint that
+   unsticks the layout without any user swipe. */
+@keyframes ios-input-blink {
+  0% { opacity: 0.999; }
+  100% { opacity: 1; }
 }
+.chat-textarea:focus { animation: ios-input-blink 0.02s; }
 
 /* Toast animation */
 @keyframes slide-in-right {
