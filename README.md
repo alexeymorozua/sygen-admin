@@ -337,8 +337,8 @@ All endpoints require `Authorization: Bearer <token>` header unless noted.
 | `PUT` | `/api/chat/sessions/{id}` | Rename chat session (`{title: string}`) |
 | `DELETE` | `/api/chat/sessions/{id}` | Delete chat session and its history |
 | `POST` | `/api/chat/sessions/{id}/provider` | Set or clear per-session provider/model override (`{provider, model}` or `{provider: null, model: null}`) |
-| `GET` | `/api/chat/sessions/{id}/messages` | Get session message history |
-| `PUT` | `/api/chat/sessions/{id}/messages` | Save session messages (`{messages: [...]}`) |
+| `GET` | `/api/chat/sessions/{id}/messages` | Get session message history. Legacy array by default; with `?limit=N` (max 500) returns `{messages, has_more, total}` — add `?before=<id>` to page older. |
+| `PUT` | `/api/chat/sessions/{id}/messages` | Save session messages (`{messages: [...]}`). With `?merge=true` upserts by id so a paginated client cannot wipe history it never loaded. |
 
 ### Providers
 
