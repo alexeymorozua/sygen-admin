@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useMemo, useRef } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 
 export interface UrlSelection<T> {
   selected: T | null;
@@ -10,21 +10,46 @@ export interface UrlSelection<T> {
   clear: () => void;
 }
 
+// Local state is the source of truth — URL is synced via history.replaceState
+// as a shareable bookmark. Earlier the hook derived selection from
+// useSearchParams + router.push, but Next.js 16 (webpack) sometimes skipped
+// re-rendering consumers on same-pathname pushes, leaving the detail panel
+// stuck on the previous item.
 export function useUrlSelection<T>(
   key: string,
   items: T[],
   getId: (item: T) => string,
 ): UrlSelection<T> {
-  const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const selectedId = searchParams.get(key);
 
-  // Call sites usually pass an inline `(a) => a.name` lambda. Treat it as
-  // a ref so neither `selected` nor `select` get a new identity on every
-  // parent render — that was cascading into full list re-renders.
   const getIdRef = useRef(getId);
   getIdRef.current = getId;
+
+  const [selectedId, setSelectedId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return new URLSearchParams(window.location.search).get(key);
+  });
+
+  useEffect(() => {
+    const sync = () => {
+      setSelectedId(new URLSearchParams(window.location.search).get(key));
+    };
+    window.addEventListener("popstate", sync);
+    return () => window.removeEventListener("popstate", sync);
+  }, [key]);
+
+  const writeUrl = useCallback(
+    (id: string | null) => {
+      if (typeof window === "undefined") return;
+      const params = new URLSearchParams(window.location.search);
+      if (id) params.set(key, id);
+      else params.delete(key);
+      const qs = params.toString();
+      const next = qs ? `${pathname}?${qs}` : pathname;
+      window.history.replaceState(null, "", next);
+    },
+    [pathname, key],
+  );
 
   const selected = useMemo(() => {
     if (!selectedId) return null;
@@ -33,20 +58,17 @@ export function useUrlSelection<T>(
 
   const select = useCallback(
     (item: T) => {
-      const params = new URLSearchParams(window.location.search);
-      params.set(key, getIdRef.current(item));
-      const qs = params.toString();
-      router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+      const id = getIdRef.current(item);
+      setSelectedId(id);
+      writeUrl(id);
     },
-    [pathname, router, key],
+    [writeUrl],
   );
 
   const clear = useCallback(() => {
-    const params = new URLSearchParams(window.location.search);
-    params.delete(key);
-    const qs = params.toString();
-    router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-  }, [pathname, router, key]);
+    setSelectedId(null);
+    writeUrl(null);
+  }, [writeUrl]);
 
   return { selected, selectedId, select, clear };
 }
