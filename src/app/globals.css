@@ -117,6 +117,19 @@ body,
   -ms-overflow-style: none;
 }
 
+/* In standalone PWA mode the document must not scroll — iOS otherwise
+   scrolls the whole window up on keyboard open in addition to our
+   --kb-inset shrink, which stacks into a half-screen gap above the
+   input. Locking html/body forces all scrolling to happen in the
+   internal overflow-y-auto containers. */
+@media (display-mode: standalone) {
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+}
+
 /* Toast animation */
 @keyframes slide-in-right {
   from { transform: translateX(100%); opacity: 0; }

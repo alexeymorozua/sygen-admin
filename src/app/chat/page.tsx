@@ -528,6 +528,7 @@ export default function ChatPage() {
           "transition-transform duration-200 md:translate-x-0",
           showSidebar ? "translate-x-0 flex" : "-translate-x-full md:flex hidden md:flex"
         )}
+        style={{ paddingTop: "env(safe-area-inset-top)" }}
       >
         {/* Agent selector header */}
         <div className="p-3 border-b border-border">
