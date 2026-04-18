@@ -50,6 +50,8 @@ interface ChatContextValue {
   // Messages
   messages: ChatMsg[];
   messagesBySession: Record<string, ChatMsg[]>;
+  sessionHasMore: Record<string, boolean>;
+  loadingOlderBySession: Record<string, boolean>;
   addMessage: (sessionId: string, msg: ChatMsg) => void;
   updateStreamingMessage: (
     sessionId: string,
@@ -61,13 +63,14 @@ interface ChatContextValue {
   sendMessage: (text: string) => Promise<void>;
   sendFileMessage: (
     sessionId: string,
-    file: { path: string; name: string; size?: number; mime?: string },
+    files: { path: string; name: string; size?: number; mime?: string }[],
     prompt: string,
-    isVoice?: boolean
+    options?: { caption?: string; isVoice?: boolean }
   ) => void;
   abortStreaming: () => void;
   loadSessions: (agent: string) => Promise<void>;
   loadSessionHistory: (sessionId: string) => Promise<void>;
+  loadOlderMessages: (sessionId: string) => Promise<void>;
   removeSessionData: (sessionId: string) => void;
 
   // Notification bridge
@@ -109,6 +112,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [activeSessionId, setActiveSessionIdRaw] = useState<string | null>(null);
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [messagesBySession, setMessagesBySession] = useState<Record<string, ChatMsg[]>>({});
+  const [sessionHasMore, setSessionHasMore] = useState<Record<string, boolean>>({});
+  const [loadingOlderBySession, setLoadingOlderBySession] = useState<Record<string, boolean>>({});
 
   // Refs
   const wsRef = useRef<SygenWebSocket | null>(null);
@@ -266,11 +271,12 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     if (historyLoadedRef.current.has(sessionId)) return;
     historyLoadedRef.current.add(sessionId);
     try {
-      const data = await SygenAPI.getChatHistory(sessionId);
-      if (data.length > 0) {
+      const page = await SygenAPI.getChatHistoryPage(sessionId, { limit: 50 });
+      setSessionHasMore((prev) => ({ ...prev, [sessionId]: page.has_more }));
+      if (page.messages.length > 0) {
         setMessagesBySession((prev) => ({
           ...prev,
-          [sessionId]: data.map((m) => ({
+          [sessionId]: page.messages.map((m) => ({
             id: m.id,
             sender: m.sender,
             agentName: m.agentName,
@@ -281,9 +287,46 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         }));
       }
     } catch {
-      // Ignore
+      historyLoadedRef.current.delete(sessionId);
     }
   }, []);
+
+  const loadOlderMessages = useCallback(async (sessionId: string) => {
+    const existing = messagesBySession[sessionId];
+    if (!existing || existing.length === 0) return;
+    if (!sessionHasMore[sessionId]) return;
+    if (loadingOlderBySession[sessionId]) return;
+
+    setLoadingOlderBySession((prev) => ({ ...prev, [sessionId]: true }));
+    try {
+      const oldestId = existing[0].id;
+      const page = await SygenAPI.getChatHistoryPage(sessionId, {
+        limit: 50,
+        before: oldestId,
+      });
+      setSessionHasMore((prev) => ({ ...prev, [sessionId]: page.has_more }));
+      if (page.messages.length > 0) {
+        setMessagesBySession((prev) => {
+          const current = prev[sessionId] || [];
+          const older: ChatMsg[] = page.messages.map((m) => ({
+            id: m.id,
+            sender: m.sender,
+            agentName: m.agentName,
+            content: m.content,
+            timestamp: m.timestamp,
+            files: m.files as FileAttachment[] | undefined,
+          }));
+          const seen = new Set(current.map((m) => m.id));
+          const merged = [...older.filter((m) => !seen.has(m.id)), ...current];
+          return { ...prev, [sessionId]: merged };
+        });
+      }
+    } catch {
+      // Ignore — next scroll will retry.
+    } finally {
+      setLoadingOlderBySession((prev) => ({ ...prev, [sessionId]: false }));
+    }
+  }, [messagesBySession, sessionHasMore, loadingOlderBySession]);
 
   // Load sessions on agent change
   useEffect(() => {
@@ -330,7 +373,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         timestamp: m.timestamp,
         files: m.files,
       }));
-      SygenAPI.saveChatHistory(activeSessionId, saveMsgs).catch(() => {});
+      // merge=true so we don't wipe older messages we haven't paginated into memory.
+      SygenAPI.saveChatHistory(activeSessionId, saveMsgs, { merge: true }).catch(() => {});
     }, 1000);
 
     return () => clearTimeout(timer);
@@ -395,16 +439,18 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const sendFileMessage = useCallback(
     (
       sessionId: string,
-      file: { path: string; name: string; size?: number; mime?: string },
+      files: { path: string; name: string; size?: number; mime?: string }[],
       prompt: string,
-      isVoice = false
+      options?: { caption?: string; isVoice?: boolean }
     ) => {
+      if (files.length === 0) return;
+      const caption = options?.caption ?? "";
       const fileMsg: ChatMsg = {
         id: `msg-${uuid()}`,
         sender: "user",
-        content: isVoice ? "" : `\u{1F4CE} ${file.name}`,
+        content: caption,
         timestamp: new Date().toISOString(),
-        files: [file],
+        files,
       };
       addMessage(sessionId, fileMsg);
 
@@ -486,6 +532,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       loadingSessions,
       messages,
       messagesBySession,
+      sessionHasMore,
+      loadingOlderBySession,
       addMessage,
       updateStreamingMessage,
       sendMessage,
@@ -493,6 +541,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       abortStreaming,
       loadSessions,
       loadSessionHistory,
+      loadOlderMessages,
       removeSessionData,
       setNotificationCallback,
       wsRef,
@@ -511,6 +560,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       loadingSessions,
       messages,
       messagesBySession,
+      sessionHasMore,
+      loadingOlderBySession,
       addMessage,
       updateStreamingMessage,
       sendMessage,
@@ -518,6 +569,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       abortStreaming,
       loadSessions,
       loadSessionHistory,
+      loadOlderMessages,
       removeSessionData,
       setActiveSessionId,
       setNotificationCallback,

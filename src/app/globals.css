@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Slightly larger base font — makes text feel more readable on mobile */
+html {
+  font-size: 16.5px;
+}
+
 @theme inline {
   --color-bg-primary: var(--theme-bg-primary);
   --color-bg-card: var(--theme-bg-card);
@@ -29,7 +34,7 @@
 [data-theme="dark"] {
   --theme-bg-primary: #0a0a14;
   --theme-bg-card: #12122a;
-  --theme-bg-sidebar: #0e1a32;
+  --theme-bg-sidebar: #17172a;
   --theme-accent: #1380EC;
   --theme-accent-hover: #3d9af0;
   --theme-danger: #e94560;
@@ -87,32 +92,18 @@ input[type="radio"] {
   touch-action: manipulation;
 }
 
-/* Scrollbar */
+/* Scrollbars — hidden everywhere for a native mobile-app feel.
+   Scrolling still works via touch, wheel, keyboard and trackpad. */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 0;
+  height: 0;
+  display: none;
 }
-::-webkit-scrollbar-track {
-  background: var(--theme-bg-primary);
-}
-::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-secondary);
-}
-
-/* Mobile: hide scrollbars for a native app feel */
-@media (max-width: 767px) {
-  ::-webkit-scrollbar {
-    display: none;
-  }
-  html,
-  body,
-  * {
-    scrollbar-width: none;
-  }
+html,
+body,
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 /* Toast animation */

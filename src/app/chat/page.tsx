@@ -10,7 +10,6 @@ import {
   Paperclip,
   Plus,
   Trash2,
-  Menu,
   X,
   Wifi,
   WifiOff,
@@ -24,6 +23,7 @@ import {
   Check,
 } from "lucide-react";
 import StreamingMessage from "@/components/StreamingMessage";
+import AttachmentPreviewModal from "@/components/AttachmentPreviewModal";
 import CommandMenu, { type CommandMenuHandle } from "@/components/CommandMenu";
 import StatusBadge from "@/components/StatusBadge";
 import { Select } from "@/components/Select";
@@ -111,6 +111,9 @@ export default function ChatPage() {
     loadingSessions,
     loadSessions,
     loadSessionHistory,
+    loadOlderMessages,
+    sessionHasMore,
+    loadingOlderBySession,
     messages,
     sendMessage: chatSendMessage,
     sendFileMessage,
@@ -145,7 +148,9 @@ export default function ChatPage() {
   const [pendingFiles, setPendingFiles] = useState<
     { file: File; uploading: boolean; name: string }[]
   >([]);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [stagedFiles, setStagedFiles] = useState<File[]>([]);
+  const [sendingStaged, setSendingStaged] = useState(false);
+  const messagesScrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatAreaRef = useRef<HTMLDivElement>(null);
@@ -160,13 +165,32 @@ export default function ChatPage() {
     if (activeSessionId) isInitialScrollRef.current = true;
   }, [activeSessionId]);
 
-  // Auto-scroll: instant on initial load / session switch, smooth for new messages
+  // With flex-col-reverse, scrollTop = 0 is the visual bottom (newest message).
+  // Browser's scroll anchoring keeps us there automatically while new messages
+  // arrive. We only need an explicit reset on session switch.
   useEffect(() => {
-    if (messages.length === 0) return;
-    const behavior = isInitialScrollRef.current ? "instant" : "smooth";
-    messagesEndRef.current?.scrollIntoView({ behavior });
-    if (isInitialScrollRef.current) isInitialScrollRef.current = false;
+    const container = messagesScrollRef.current;
+    if (!container) return;
+    if (isInitialScrollRef.current) {
+      container.scrollTop = 0;
+      isInitialScrollRef.current = false;
+    }
   }, [messages]);
+
+  // Load older messages when user scrolls near the visual top.
+  // In flex-col-reverse the visual top is reached when
+  // scrollTop + clientHeight approaches scrollHeight.
+  const handleMessagesScroll = useCallback(() => {
+    const container = messagesScrollRef.current;
+    if (!container || !activeSessionId) return;
+    if (!sessionHasMore[activeSessionId]) return;
+    if (loadingOlderBySession[activeSessionId]) return;
+    const distanceFromTop =
+      container.scrollHeight - container.scrollTop - container.clientHeight;
+    if (distanceFromTop < 200) {
+      loadOlderMessages(activeSessionId);
+    }
+  }, [activeSessionId, sessionHasMore, loadingOlderBySession, loadOlderMessages]);
 
   // Auto-resize textarea
   const resizeTextarea = useCallback(() => {
@@ -227,58 +251,109 @@ export default function ChatPage() {
     }
   }, [activeSessionId, selectedAgent, setSessions, setActiveSessionId]);
 
-  const handleFiles = useCallback(
-    async (fileList: FileList | File[]) => {
-      const files = Array.from(fileList);
+  // Stage files in the preview modal — user confirms before sending.
+  const handleFiles = useCallback((fileList: FileList | File[]) => {
+    const files = Array.from(fileList);
+    if (files.length === 0) return;
+    setStagedFiles((prev) => [...prev, ...files]);
+  }, []);
+
+  const handleCancelStaged = useCallback(() => {
+    setStagedFiles([]);
+  }, []);
+
+  const handleSendStaged = useCallback(
+    async (caption: string) => {
+      const files = stagedFiles;
       if (files.length === 0) return;
 
       const sessionId = await ensureSession();
       if (!sessionId) return;
 
-      const entries = files.map((f) => ({
-        file: f,
-        uploading: true,
-        name: f.name,
-      }));
+      setSendingStaged(true);
+      const entries = files.map((f) => ({ file: f, uploading: true, name: f.name }));
       setPendingFiles((prev) => [...prev, ...entries]);
 
-      for (let i = 0; i < files.length; i++) {
-        try {
-          // Wait for any in-progress streaming to finish before sending next file
-          if (streamingIdRef.current) {
-            await new Promise<void>((resolve) => {
-              const check = () => {
-                if (!streamingIdRef.current) { resolve(); return; }
-                setTimeout(check, 200);
-              };
-              check();
-            });
-          }
+      try {
+        // Wait for any in-progress streaming to finish
+        if (streamingIdRef.current) {
+          await new Promise<void>((resolve) => {
+            const check = () => {
+              if (!streamingIdRef.current) { resolve(); return; }
+              setTimeout(check, 200);
+            };
+            check();
+          });
+        }
 
-          const result = await uploadFile(files[i]);
+        const uploaded: { path: string; name: string; size?: number; mime?: string }[] = [];
+        const prompts: string[] = [];
 
+        for (const f of files) {
+          const result = await uploadFile(f);
           if (result) {
-            const isVoice = /^voice_\d+\.(webm|ogg|m4a|mp3|mp4)$/i.test(result.name);
-            sendFileMessage(
-              sessionId,
-              { path: result.path, name: result.name, size: files[i].size, mime: files[i].type },
-              result.prompt,
-              isVoice
-            );
+            uploaded.push({ path: result.path, name: result.name, size: f.size, mime: f.type });
+            if (result.prompt) prompts.push(result.prompt);
           } else {
             toast.error(t("chat.uploadFailed"));
           }
-        } catch (err) {
-          console.error("File upload error:", err);
-          toast.error(t("chat.uploadFailed"));
-        } finally {
-          setPendingFiles((prev) =>
-            prev.filter((p) => p.file !== files[i])
-          );
         }
+
+        if (uploaded.length > 0) {
+          const combinedPrompt = caption
+            ? [...prompts, caption].filter(Boolean).join("\n\n")
+            : prompts.join("\n\n");
+          sendFileMessage(sessionId, uploaded, combinedPrompt, { caption });
+        }
+
+        setStagedFiles([]);
+      } catch (err) {
+        console.error("Staged send error:", err);
+        toast.error(t("chat.uploadFailed"));
+      } finally {
+        setPendingFiles((prev) => prev.filter((p) => !files.includes(p.file)));
+        setSendingStaged(false);
       }
     },
-    [uploadFile, sendFileMessage, ensureSession, streamingIdRef, toast, t]
+    [stagedFiles, uploadFile, sendFileMessage, ensureSession, streamingIdRef, toast, t],
+  );
+
+  // Voice flow — skip preview modal, upload + send immediately.
+  const sendVoiceFile = useCallback(
+    async (file: File) => {
+      const sessionId = await ensureSession();
+      if (!sessionId) return;
+      const entry = { file, uploading: true, name: file.name };
+      setPendingFiles((prev) => [...prev, entry]);
+      try {
+        if (streamingIdRef.current) {
+          await new Promise<void>((resolve) => {
+            const check = () => {
+              if (!streamingIdRef.current) { resolve(); return; }
+              setTimeout(check, 200);
+            };
+            check();
+          });
+        }
+        const result = await uploadFile(file);
+        if (result) {
+          sendFileMessage(
+            sessionId,
+            [{ path: result.path, name: result.name, size: file.size, mime: file.type }],
+            result.prompt,
+            { isVoice: true },
+          );
+        } else {
+          toast.error(t("chat.uploadFailed"));
+        }
+      } catch (err) {
+        console.error("Voice upload error:", err);
+        toast.error(t("chat.uploadFailed"));
+      } finally {
+        setPendingFiles((prev) => prev.filter((p) => p.file !== file));
+      }
+    },
+    [uploadFile, sendFileMessage, ensureSession, streamingIdRef, toast, t],
   );
 
   // Drag and drop
@@ -308,13 +383,13 @@ export default function ChatPage() {
     [handleFiles]
   );
 
-  // Voice recording complete — send as file
+  // Voice recording complete — send as file (skip preview modal)
   const handleVoiceRecording = useCallback(
     (blob: Blob, filename: string) => {
       const file = new File([blob], filename, { type: blob.type });
-      handleFiles([file]);
+      void sendVoiceFile(file);
     },
-    [handleFiles]
+    [sendVoiceFile],
   );
 
   const handleSend = useCallback(async () => {
@@ -429,6 +504,14 @@ export default function ChatPage() {
 
   return (
     <div className="flex-1 flex min-h-0 gap-0 -m-3 sm:-m-4 md:-m-6 lg:-m-8 mt-0 md:mt-0">
+      {stagedFiles.length > 0 && (
+        <AttachmentPreviewModal
+          files={stagedFiles}
+          onCancel={handleCancelStaged}
+          onSend={handleSendStaged}
+          sending={sendingStaged}
+        />
+      )}
       {/* Mobile sidebar overlay */}
       {showSidebar && (
         <div
@@ -495,7 +578,7 @@ export default function ChatPage() {
         </div>
 
         {/* Sessions list */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto min-h-0">
           {loadingSessions && (
             <div className="flex items-center justify-center py-6">
               <Loader2 size={18} className="animate-spin text-text-secondary" />
@@ -577,7 +660,7 @@ export default function ChatPage() {
       {/* Chat Area */}
       <div
         ref={chatAreaRef}
-        className="flex-1 flex flex-col min-w-0 relative"
+        className="flex-1 flex flex-col min-w-0 min-h-0 relative"
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
@@ -595,14 +678,6 @@ export default function ChatPage() {
         {/* Header */}
         <div className="flex items-center justify-between gap-2 px-4 md:px-6 py-3 border-b border-border bg-bg-card/50">
           <div className="flex items-center gap-3 min-w-0 flex-1">
-            {/* Mobile menu button */}
-            <button
-              type="button"
-              onClick={() => setShowSidebar(true)}
-              className="p-1.5 hover:bg-white/10 rounded md:hidden shrink-0"
-            >
-              <Menu size={18} />
-            </button>
             <div className="w-8 h-8 rounded-full bg-accent/30 flex items-center justify-center overflow-hidden shrink-0">
               <HeaderAgentAvatar
                 apiUrl={
@@ -645,6 +720,15 @@ export default function ChatPage() {
             />
             <button
               type="button"
+              onClick={() => setShowSidebar(true)}
+              className="p-2 hover:bg-bg-card rounded-lg transition-colors md:hidden"
+              aria-label={t('chat.sessions')}
+              title={t('chat.sessions')}
+            >
+              <MessageSquare size={18} className="text-text-secondary" />
+            </button>
+            <button
+              type="button"
               onClick={() => setShowInfo(!showInfo)}
               className="p-2 hover:bg-bg-card rounded-lg transition-colors hidden lg:block"
               aria-label="Toggle connection info"
@@ -654,28 +738,43 @@ export default function ChatPage() {
           </div>
         </div>
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-6">
-          {messages.length === 0 && (
-            <div className="flex items-center justify-center h-full text-text-secondary text-sm">
+        {/* Messages — flex-col-reverse: messages stack from the bottom up
+            (Telegram/iMessage style). Newest is at the top of the reversed
+            list → rendered at the visual bottom. overflow-y-auto with
+            scrollTop=0 lands us at the bottom automatically. */}
+        <div
+          ref={messagesScrollRef}
+          onScroll={handleMessagesScroll}
+          className="flex-1 overflow-y-auto min-h-0 p-4 md:p-6 flex flex-col-reverse"
+        >
+          {messages.length === 0 ? (
+            <div className="m-auto py-8 text-text-secondary text-sm text-center">
               <p>{t('chat.startChat')} {selectedAgent}</p>
             </div>
+          ) : (
+            <>
+              {[...messages].reverse().map((msg) => (
+              <StreamingMessage
+                key={msg.id}
+                {...msg}
+                serverUrl={activeServer.url}
+                token={activeServer.token}
+                agentAvatarUrl={
+                  msg.sender === "agent" && msg.agentName && agentAvatars.has(msg.agentName)
+                    ? `${activeServer.url}/api/agents/${encodeURIComponent(msg.agentName)}/avatar`
+                    : undefined
+                }
+                userAvatarUrl={msg.sender === "user" ? userAvatarUrl : undefined}
+              />
+              ))}
+              {activeSessionId && loadingOlderBySession[activeSessionId] && (
+                <div className="py-4 text-center text-text-secondary text-xs">
+                  <Loader2 size={14} className="inline animate-spin mr-1" />
+                  {t('chat.loadingOlder') || 'Загрузка…'}
+                </div>
+              )}
+            </>
           )}
-          {messages.map((msg) => (
-            <StreamingMessage
-              key={msg.id}
-              {...msg}
-              serverUrl={activeServer.url}
-              token={activeServer.token}
-              agentAvatarUrl={
-                msg.sender === "agent" && msg.agentName && agentAvatars.has(msg.agentName)
-                  ? `${activeServer.url}/api/agents/${encodeURIComponent(msg.agentName)}/avatar`
-                  : undefined
-              }
-              userAvatarUrl={msg.sender === "user" ? userAvatarUrl : undefined}
-            />
-          ))}
-          <div ref={messagesEndRef} />
         </div>
 
         {/* Pending file uploads */}
@@ -750,6 +849,21 @@ export default function ChatPage() {
                 setShowCommandMenu(val.startsWith("/") && !val.includes(" "));
               }}
               onKeyDown={handleKeyDown}
+              onPaste={(e) => {
+                const items = e.clipboardData?.items;
+                if (!items) return;
+                const pasted: File[] = [];
+                for (const item of items) {
+                  if (item.kind === "file") {
+                    const f = item.getAsFile();
+                    if (f) pasted.push(f);
+                  }
+                }
+                if (pasted.length > 0) {
+                  e.preventDefault();
+                  handleFiles(pasted);
+                }
+              }}
               placeholder={`${t('chat.message')} ${selectedAgent}...`}
               disabled={wsStatus !== "connected"}
               rows={1}

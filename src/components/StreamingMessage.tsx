@@ -87,9 +87,10 @@ function FilePreview({
   serverUrl: string;
   token: string;
 }) {
-  const fileUrl = `${serverUrl}/files?path=${encodeURIComponent(file.path)}`;
+  const fileUrl = `${serverUrl}/api/files/download?path=${encodeURIComponent(file.path)}`;
   const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
   const Icon = getFileIcon(file.name);
+  const imageBlobUrl = useAuthedImage(isImageFile(file.name) ? fileUrl : null);
 
   const handleDownload = async () => {
     try {
@@ -108,11 +109,16 @@ function FilePreview({
   };
 
   if (isImageFile(file.name)) {
+    if (!imageBlobUrl) {
+      return (
+        <div className="mt-2 rounded-lg border border-border max-w-sm h-40 bg-bg-card/50 animate-pulse" />
+      );
+    }
     return (
       <div className="mt-2 rounded-lg overflow-hidden border border-border max-w-sm">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={fileUrl}
+          src={imageBlobUrl}
           alt={file.name}
           className="max-w-full max-h-64 object-contain bg-black/20"
           loading="lazy"
@@ -253,7 +259,7 @@ export default function StreamingMessage({
           <Bot size={16} className="text-brand-400" />
         )}
       </div>
-      <div className={cn("max-w-[75%] min-w-0", isUser && "text-right")}>
+      <div className={cn("max-w-[75%] min-w-0 flex flex-col", isUser ? "items-end" : "items-start")}>
         {/* Tool activity indicator */}
         {toolActivity && !isUser && (
           <div className="flex items-center gap-1.5 mb-1.5 text-xs text-yellow-400">
@@ -262,8 +268,8 @@ export default function StreamingMessage({
           </div>
         )}
 
-        {/* Hide text bubble for voice-only messages (empty content + files) */}
-        {!(isUser && !content && allFiles.length > 0) && (
+        {/* Hide text bubble for file-only user messages (empty content OR legacy "📎 filename" auto-label) */}
+        {!(isUser && allFiles.length > 0 && (!content || /^\u{1F4CE}\s+\S+$/u.test(content.trim()))) && (
         <div
           className={cn(
             "rounded-2xl px-4 py-2.5 text-sm leading-relaxed relative",

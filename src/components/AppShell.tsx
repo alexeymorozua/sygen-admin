@@ -29,7 +29,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <Sidebar />
       <CommandPalette />
       <KeyboardShortcuts />
-      <main className="lg:ml-64 h-screen flex flex-col overflow-hidden">
+      <main className="lg:ml-64 h-[100dvh] flex flex-col overflow-hidden">
         <div className="flex-1 flex flex-col min-h-0 overflow-y-auto p-3 sm:p-4 md:p-6 lg:p-8 pt-16 md:pt-6 lg:pt-8">
           {children}
         </div>

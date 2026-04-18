@@ -7,6 +7,7 @@ import { SygenAPI } from "@/lib/api";
 import { useAuthedImage } from "@/lib/hooks";
 import { useToast } from "@/components/Toast";
 import { RefreshButton } from "@/components/RefreshButton";
+import TwoFactorSection from "@/components/TwoFactorSection";
 import { useTranslation } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
@@ -230,6 +231,9 @@ export default function ProfilePage() {
             />
           </div>
         </div>
+
+        {/* 2FA (before password for security emphasis) */}
+        <TwoFactorSection />
 
         {/* Password change */}
         <div className="bg-bg-card border border-border rounded-xl p-5 space-y-4">

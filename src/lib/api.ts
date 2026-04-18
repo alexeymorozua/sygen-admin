@@ -1082,12 +1082,32 @@ export class SygenAPI {
     return fetchAPI<ChatSessionMessage[]>(`/api/chat/sessions/${encodeURIComponent(sessionId)}/messages`);
   }
 
-  static async saveChatHistory(sessionId: string, messages: ChatSessionMessage[]): Promise<void> {
+  static async getChatHistoryPage(
+    sessionId: string,
+    opts: { limit: number; before?: string },
+  ): Promise<{ messages: ChatSessionMessage[]; has_more: boolean; total: number }> {
+    if (USE_MOCK) return { messages: [], has_more: false, total: 0 };
+    const params = new URLSearchParams({ limit: String(opts.limit) });
+    if (opts.before) params.set("before", opts.before);
+    return fetchAPI(
+      `/api/chat/sessions/${encodeURIComponent(sessionId)}/messages?${params.toString()}`,
+    );
+  }
+
+  static async saveChatHistory(
+    sessionId: string,
+    messages: ChatSessionMessage[],
+    opts?: { merge?: boolean },
+  ): Promise<void> {
     if (USE_MOCK) return;
-    await fetchAPI(`/api/chat/sessions/${encodeURIComponent(sessionId)}/messages`, {
-      method: "PUT",
-      body: JSON.stringify({ messages }),
-    });
+    const suffix = opts?.merge ? "?merge=true" : "";
+    await fetchAPI(
+      `/api/chat/sessions/${encodeURIComponent(sessionId)}/messages${suffix}`,
+      {
+        method: "PUT",
+        body: JSON.stringify({ messages }),
+      },
+    );
   }
 
   // ---- Provider switching ----
@@ -1326,10 +1346,13 @@ export class SygenAPI {
     });
   }
 
-  static async disable2FA(code: string): Promise<{ status: string; totp_enabled: boolean }> {
+  static async disable2FA(
+    code: string,
+    password: string,
+  ): Promise<{ status: string; totp_enabled: boolean }> {
     return fetchAPI<{ status: string; totp_enabled: boolean }>("/api/auth/2fa/disable", {
       method: "POST",
-      body: JSON.stringify({ code }),
+      body: JSON.stringify({ code, password }),
     });
   }
 
