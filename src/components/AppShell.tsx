@@ -37,7 +37,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         }}
       >
         <div
-          className="flex-1 flex flex-col min-h-0 overflow-y-auto p-3 sm:p-4 md:p-6 lg:p-8 pt-[calc(env(safe-area-inset-top)+3.5rem)] md:pt-[calc(env(safe-area-inset-top)+1.5rem)] lg:pt-[calc(env(safe-area-inset-top)+2rem)]"
+          className="flex-1 flex flex-col min-h-0 overflow-y-auto p-3 sm:p-4 md:p-6 lg:p-8 pt-[calc(env(safe-area-inset-top)+3.5rem)] md:pt-[calc(env(safe-area-inset-top)+3.5rem)] lg:pt-[calc(env(safe-area-inset-top)+2rem)]"
         >
           {children}
         </div>

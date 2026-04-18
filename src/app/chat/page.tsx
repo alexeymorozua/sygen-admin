@@ -684,7 +684,6 @@ export default function ChatPage() {
       <div
         ref={chatAreaRef}
         className="flex-1 flex flex-col min-w-0 min-h-0 relative"
-        style={{ paddingTop: "env(safe-area-inset-top)" }}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
