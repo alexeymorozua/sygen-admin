@@ -20,8 +20,8 @@ export default function SygenLogo({ size = 28, className }: Props) {
     >
       <defs>
         <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#60A5FA" />
-          <stop offset="100%" stopColor="#A78BFA" />
+          <stop offset="0%" stopColor="#7DD3FC" />
+          <stop offset="100%" stopColor="#1380EC" />
         </linearGradient>
         <mask id={maskId}>
           <rect width="512" height="512" fill="white" />
