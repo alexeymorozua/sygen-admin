@@ -455,13 +455,28 @@ The per-session override is applied only for messages sent on that specific chat
 
 **Server sends:**
 ```json
-{ "type": "auth_ok", "agents": ["main", "assistant"] }
-{ "type": "text_delta", "content": "partial response..." }
-{ "type": "tool_activity", "tool": "Bash", "status": "running" }
-{ "type": "result", "content": "final answer", "files": [] }
-{ "type": "notification", "notification": { "id": "...", "title": "...", "body": "...", "read": false } }
-{ "type": "error", "message": "description" }
+{ "type": "auth_ok", "agents": ["main", "assistant"], "role": "admin" }
+{ "type": "text_delta", "text": "partial response...", "session_id": "sess-...", "agent": "main" }
+{ "type": "tool_activity", "tool": "Bash", "session_id": "sess-...", "agent": "main" }
+{ "type": "system_status", "data": "Thinking...", "session_id": "sess-...", "agent": "main" }
+{ "type": "result", "text": "final answer", "files": [], "session_id": "sess-...", "agent": "main" }
+{ "type": "error", "message": "description", "session_id": "sess-...", "agent": "main" }
+{ "type": "chat_message", "kind": "task_result", "role": "agent", "agent": "main",
+  "session_id": "sess-...", "content": "...",
+  "meta": { "task_id": "t-1", "task_name": "Flight search" }, "timestamp": 1700000000 }
+{ "type": "notification", "data": { "id": "...", "title": "...", "body": "...", "read": false } }
 ```
+
+Streaming events (`text_delta`, `tool_activity`, `system_status`, `result`,
+`error`) carry `session_id` + `agent` so the client can route events to the
+correct chat session. The server also fans every streaming event out to
+the same user's other live WebSockets, keeping chat in sync across
+devices.
+
+`chat_message` envelopes mirror Telegram-transport deliveries
+(`task_result`, `task_question`, `interagent`, background `text`) into the
+admin chat. Each is persisted into the agent's most recent REST chat
+session so it survives a reload.
 
 ## License
 

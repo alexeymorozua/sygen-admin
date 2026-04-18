@@ -156,6 +156,10 @@ export interface ChatSessionMessage {
   content: string;
   timestamp: string;
   files?: { path: string; name: string; size?: number; mime?: string }[];
+  /** Semantic kind for mirrored TASK/INTERAGENT/BACKGROUND events. */
+  kind?: string;
+  /** Extra metadata (task_id, task_name, from_agent, ...) for kind-labelled rows. */
+  meta?: Record<string, unknown>;
 }
 
 export interface RagStatus {

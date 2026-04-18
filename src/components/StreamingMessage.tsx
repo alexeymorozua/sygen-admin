@@ -26,6 +26,12 @@ export interface FileAttachment {
   mime?: string;
 }
 
+export type MessageKind =
+  | "text"
+  | "task_result"
+  | "task_question"
+  | "interagent";
+
 export interface StreamingMessageProps {
   id: string;
   sender: "user" | "agent";
@@ -35,6 +41,12 @@ export interface StreamingMessageProps {
   isStreaming?: boolean;
   toolActivity?: string | null;
   files?: FileAttachment[];
+  /**
+   * Semantic kind for TASK/INTERAGENT mirror messages. `undefined` or `"text"`
+   * renders as a regular chat bubble; other values add a labelled card header.
+   */
+  kind?: MessageKind | string;
+  meta?: Record<string, unknown>;
 }
 
 // Parse <file:/path/to/file> markers from text
@@ -183,6 +195,26 @@ interface MessageProps extends StreamingMessageProps {
   userAvatarUrl?: string;
 }
 
+const KIND_LABELS: Record<string, string> = {
+  task_result: "Результат задачи",
+  task_question: "Вопрос от задачи",
+  interagent: "Ответ от агента",
+};
+
+function kindLabel(kind: string | undefined, meta?: Record<string, unknown>): string | null {
+  if (!kind || kind === "text") return null;
+  const base = KIND_LABELS[kind] ?? kind;
+  if (kind === "task_result" || kind === "task_question") {
+    const taskName = meta?.task_name || meta?.name;
+    if (typeof taskName === "string" && taskName) return `${base}: ${taskName}`;
+  }
+  if (kind === "interagent") {
+    const from = meta?.from_agent;
+    if (typeof from === "string" && from) return `${base}: ${from}`;
+  }
+  return base;
+}
+
 export default function StreamingMessage({
   sender,
   agentName,
@@ -191,6 +223,8 @@ export default function StreamingMessage({
   isStreaming,
   toolActivity,
   files: attachedFiles,
+  kind,
+  meta,
   serverUrl = "",
   token = "",
   agentAvatarUrl,
@@ -268,6 +302,13 @@ export default function StreamingMessage({
           </div>
         )}
 
+        {/* Kind label (task_result / task_question / interagent) */}
+        {!isUser && kindLabel(kind, meta) && (
+          <div className="mb-1 text-[11px] font-medium text-brand-300/90 tracking-wide">
+            {kindLabel(kind, meta)}
+          </div>
+        )}
+
         {/* Hide text bubble for file-only user messages (empty content OR legacy "📎 filename" auto-label) */}
         {!(isUser && allFiles.length > 0 && (!content || /^\u{1F4CE}\s+\S+$/u.test(content.trim()))) && (
         <div
@@ -275,7 +316,8 @@ export default function StreamingMessage({
             "rounded-2xl px-4 py-2.5 text-sm leading-relaxed relative",
             isUser
               ? "bg-accent text-accent-foreground rounded-br-md"
-              : "bg-bg-card border border-border text-text-primary rounded-bl-md pr-8"
+              : "bg-bg-card border border-border text-text-primary rounded-bl-md pr-8",
+            !isUser && kind && kind !== "text" && "border-l-2 border-l-brand-400/50"
           )}
         >
           {isUser ? (

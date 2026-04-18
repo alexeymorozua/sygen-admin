@@ -83,7 +83,10 @@ describe("callbacks", () => {
     await new Promise((r) => setTimeout(r, 10));
 
     mockWsInstance.simulateMessage({ type: "text_delta", text: "Hello" });
-    expect(onTextDelta).toHaveBeenCalledWith("Hello");
+    expect(onTextDelta).toHaveBeenCalledWith("Hello", {
+      sessionId: undefined,
+      agent: undefined,
+    });
 
     ws.disconnect();
   });
@@ -100,9 +103,11 @@ describe("callbacks", () => {
       text: "Done",
       files: [{ path: "/tmp/f.txt", name: "f.txt", is_image: false }],
     });
-    expect(onResult).toHaveBeenCalledWith("Done", [
-      { path: "/tmp/f.txt", name: "f.txt", is_image: false },
-    ]);
+    expect(onResult).toHaveBeenCalledWith(
+      "Done",
+      [{ path: "/tmp/f.txt", name: "f.txt", is_image: false }],
+      { sessionId: undefined, agent: undefined },
+    );
 
     ws.disconnect();
   });
@@ -121,6 +126,109 @@ describe("callbacks", () => {
     mockWsInstance.simulateMessage({ type: "auth_ok", agents: ["main", "prism"] });
     expect(onConnected).toHaveBeenCalledWith(["main", "prism"]);
     expect(ws.getStatus()).toBe("connected");
+
+    ws.disconnect();
+  });
+});
+
+describe("enriched streaming events", () => {
+  it("passes session_id/agent in context to onTextDelta", async () => {
+    const onTextDelta = vi.fn();
+    const ws = new SygenWebSocket({ onTextDelta }, { url: "http://test:8080" });
+
+    ws.connect();
+    await new Promise((r) => setTimeout(r, 10));
+
+    mockWsInstance.simulateMessage({
+      type: "text_delta",
+      text: "Part",
+      session_id: "sess-1",
+      agent: "main",
+    });
+    expect(onTextDelta).toHaveBeenCalledWith("Part", {
+      sessionId: "sess-1",
+      agent: "main",
+    });
+
+    ws.disconnect();
+  });
+
+  it("passes session_id/agent in context to onResult", async () => {
+    const onResult = vi.fn();
+    const ws = new SygenWebSocket({ onResult }, { url: "http://test:8080" });
+
+    ws.connect();
+    await new Promise((r) => setTimeout(r, 10));
+
+    mockWsInstance.simulateMessage({
+      type: "result",
+      text: "Done",
+      session_id: "sess-1",
+      agent: "sonic",
+    });
+    expect(onResult).toHaveBeenCalledWith("Done", undefined, {
+      sessionId: "sess-1",
+      agent: "sonic",
+    });
+
+    ws.disconnect();
+  });
+});
+
+describe("chat_message events", () => {
+  it("fires onChatMessage for mirrored task_result", async () => {
+    const onChatMessage = vi.fn();
+    const ws = new SygenWebSocket({ onChatMessage }, { url: "http://test:8080" });
+
+    ws.connect();
+    await new Promise((r) => setTimeout(r, 10));
+
+    mockWsInstance.simulateMessage({
+      type: "chat_message",
+      kind: "task_result",
+      role: "agent",
+      agent: "main",
+      session_id: "sess-1",
+      content: "Task done",
+      timestamp: 1_700_000_000,
+      meta: { task_id: "t-1", task_name: "myjob" },
+    });
+
+    expect(onChatMessage).toHaveBeenCalledWith({
+      type: "chat_message",
+      kind: "task_result",
+      role: "agent",
+      agent: "main",
+      session_id: "sess-1",
+      content: "Task done",
+      timestamp: 1_700_000_000,
+      meta: { task_id: "t-1", task_name: "myjob" },
+    });
+
+    ws.disconnect();
+  });
+
+  it("defaults missing fields on chat_message", async () => {
+    const onChatMessage = vi.fn();
+    const ws = new SygenWebSocket({ onChatMessage }, { url: "http://test:8080" });
+
+    ws.connect();
+    await new Promise((r) => setTimeout(r, 10));
+
+    mockWsInstance.simulateMessage({
+      type: "chat_message",
+      agent: "main",
+      content: "Plain",
+    });
+
+    expect(onChatMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "text",
+        role: "agent",
+        agent: "main",
+        content: "Plain",
+      }),
+    );
 
     ws.disconnect();
   });

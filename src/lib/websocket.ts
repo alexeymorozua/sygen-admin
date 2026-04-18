@@ -9,25 +9,43 @@ import type { SygenNotification } from "./api";
 
 export type WSStatus = "connecting" | "connected" | "disconnected" | "error";
 
+/**
+ * Per-event routing context. Streaming payloads from the server are enriched
+ * with `session_id` + `agent` so sibling admin tabs can route events to the
+ * correct chat session even when the event was initiated by another device.
+ */
+export interface WSStreamContext {
+  sessionId?: string;
+  agent?: string;
+}
+
 export interface WSTextDelta {
   type: "text_delta";
   text: string;
+  session_id?: string;
+  agent?: string;
 }
 
 export interface WSToolActivity {
   type: "tool_activity";
   tool: string;
+  session_id?: string;
+  agent?: string;
 }
 
 export interface WSResult {
   type: "result";
   text: string;
   files?: { path: string; name: string; is_image: boolean }[];
+  session_id?: string;
+  agent?: string;
 }
 
 export interface WSError {
   type: "error";
   message: string;
+  session_id?: string;
+  agent?: string;
 }
 
 export interface WSAbortOk {
@@ -38,6 +56,23 @@ export interface WSAbortOk {
 export interface WSSystemStatus {
   type: "system_status";
   data: string | null;
+  session_id?: string;
+  agent?: string;
+}
+
+/**
+ * TASK_RESULT / TASK_QUESTION / INTERAGENT / BACKGROUND deliveries mirrored
+ * from the Telegram transport into the admin chat.
+ */
+export interface WSChatMessage {
+  type: "chat_message";
+  kind: "task_result" | "task_question" | "interagent" | "text" | string;
+  role: "agent" | "user";
+  agent: string;
+  session_id?: string;
+  content: string;
+  timestamp?: number;
+  meta?: Record<string, unknown>;
 }
 
 export type WSEvent =
@@ -46,17 +81,23 @@ export type WSEvent =
   | WSResult
   | WSError
   | WSAbortOk
-  | WSSystemStatus;
+  | WSSystemStatus
+  | WSChatMessage;
 
 export interface SygenWSCallbacks {
   onConnected?: (agents: string[], role?: string) => void;
   onDisconnected?: () => void;
-  onTextDelta?: (text: string) => void;
-  onToolActivity?: (tool: string) => void;
-  onResult?: (text: string, files?: WSResult["files"]) => void;
-  onError?: (message: string) => void;
+  onTextDelta?: (text: string, ctx: WSStreamContext) => void;
+  onToolActivity?: (tool: string, ctx: WSStreamContext) => void;
+  onResult?: (
+    text: string,
+    files: WSResult["files"] | undefined,
+    ctx: WSStreamContext
+  ) => void;
+  onError?: (message: string, ctx: WSStreamContext) => void;
   onAbortOk?: (killed: number) => void;
-  onSystemStatus?: (data: string | null) => void;
+  onSystemStatus?: (data: string | null, ctx: WSStreamContext) => void;
+  onChatMessage?: (msg: WSChatMessage) => void;
   onStatusChange?: (status: WSStatus) => void;
   onAuthFailed?: (message: string) => void;
   onNotification?: (notification: SygenNotification) => void;
@@ -161,6 +202,11 @@ export class SygenWebSocket {
   private handleMessage(data: Record<string, unknown>): void {
     if (typeof data !== "object" || data === null) return;
     const type = typeof data.type === "string" ? data.type : "";
+    const ctx: WSStreamContext = {
+      sessionId:
+        typeof data.session_id === "string" ? data.session_id : undefined,
+      agent: typeof data.agent === "string" ? data.agent : undefined,
+    };
 
     switch (type) {
       case "auth_ok": {
@@ -177,18 +223,19 @@ export class SygenWebSocket {
       }
       case "text_delta":
         if (typeof data.text === "string") {
-          this.callbacks.onTextDelta?.(data.text);
+          this.callbacks.onTextDelta?.(data.text, ctx);
         }
         break;
       case "tool_activity":
         if (typeof data.tool === "string") {
-          this.callbacks.onToolActivity?.(data.tool);
+          this.callbacks.onToolActivity?.(data.tool, ctx);
         }
         break;
       case "result":
         this.callbacks.onResult?.(
           typeof data.text === "string" ? data.text : "",
-          Array.isArray(data.files) ? (data.files as WSResult["files"]) : undefined
+          Array.isArray(data.files) ? (data.files as WSResult["files"]) : undefined,
+          ctx
         );
         break;
       case "auth_error":
@@ -197,13 +244,15 @@ export class SygenWebSocket {
           typeof data.message === "string" ? data.message : "Authentication failed"
         );
         this.callbacks.onError?.(
-          typeof data.message === "string" ? data.message : "Authentication failed"
+          typeof data.message === "string" ? data.message : "Authentication failed",
+          ctx
         );
         this.disconnect();
         break;
       case "error":
         this.callbacks.onError?.(
-          typeof data.message === "string" ? data.message : "Unknown error"
+          typeof data.message === "string" ? data.message : "Unknown error",
+          ctx
         );
         break;
       case "abort_ok":
@@ -213,9 +262,35 @@ export class SygenWebSocket {
         break;
       case "system_status":
         this.callbacks.onSystemStatus?.(
-          typeof data.data === "string" ? data.data : null
+          typeof data.data === "string" ? data.data : null,
+          ctx
         );
         break;
+      case "chat_message": {
+        const kind = typeof data.kind === "string" ? data.kind : "text";
+        const role = data.role === "user" ? "user" : "agent";
+        const agent = typeof data.agent === "string" ? data.agent : "";
+        const content = typeof data.content === "string" ? data.content : "";
+        const sessionId =
+          typeof data.session_id === "string" ? data.session_id : undefined;
+        const timestamp =
+          typeof data.timestamp === "number" ? data.timestamp : undefined;
+        const meta =
+          data.meta && typeof data.meta === "object"
+            ? (data.meta as Record<string, unknown>)
+            : undefined;
+        this.callbacks.onChatMessage?.({
+          type: "chat_message",
+          kind,
+          role,
+          agent,
+          content,
+          session_id: sessionId,
+          timestamp,
+          meta,
+        });
+        break;
+      }
       case "notification":
         if (data.data && typeof data.data === "object") {
           this.callbacks.onNotification?.(data.data as SygenNotification);

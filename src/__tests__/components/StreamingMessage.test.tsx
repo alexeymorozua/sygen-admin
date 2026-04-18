@@ -82,4 +82,43 @@ describe("StreamingMessage", () => {
     );
     expect(screen.queryByText("web_search")).not.toBeInTheDocument();
   });
+
+  it("renders kind label for task_result with task_name", () => {
+    render(
+      <StreamingMessage
+        {...baseProps}
+        kind="task_result"
+        meta={{ task_id: "t-1", task_name: "myjob" }}
+      />
+    );
+    expect(screen.getByText(/Результат задачи: myjob/)).toBeInTheDocument();
+  });
+
+  it("renders kind label for interagent with from_agent", () => {
+    render(
+      <StreamingMessage
+        {...baseProps}
+        kind="interagent"
+        meta={{ from_agent: "sonic" }}
+      />
+    );
+    expect(screen.getByText(/Ответ от агента: sonic/)).toBeInTheDocument();
+  });
+
+  it("renders kind label for task_question", () => {
+    render(
+      <StreamingMessage
+        {...baseProps}
+        kind="task_question"
+        meta={{ task_id: "t-7" }}
+      />
+    );
+    expect(screen.getByText(/Вопрос от задачи/)).toBeInTheDocument();
+  });
+
+  it("does not render a kind label when kind is text or undefined", () => {
+    render(<StreamingMessage {...baseProps} kind="text" />);
+    expect(screen.queryByText(/Результат задачи/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Вопрос от задачи/)).not.toBeInTheDocument();
+  });
 });

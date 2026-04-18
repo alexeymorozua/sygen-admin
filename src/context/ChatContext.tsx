@@ -9,7 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { SygenWebSocket, type WSStatus } from "@/lib/websocket";
+import { SygenWebSocket, type WSStatus, type WSChatMessage, type WSStreamContext } from "@/lib/websocket";
 import { SygenAPI, type ChatSession, type ChatSessionMessage, type SygenNotification, type UserInfo } from "@/lib/api";
 import type { StreamingMessageProps, FileAttachment } from "@/components/StreamingMessage";
 import { useServer } from "@/context/ServerContext";
@@ -119,6 +119,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const wsRef = useRef<SygenWebSocket | null>(null);
   const streamingIdRef = useRef<string | null>(null);
   const streamingSessionRef = useRef<string | null>(null);
+  // Tracks placeholder message ids created for streams initiated by *sibling*
+  // tabs (same user, different device/window). Keyed by session id so we can
+  // route cross-device deltas into the correct chat without colliding with
+  // our own streamingIdRef.
+  const siblingStreamingRef = useRef<Map<string, string>>(new Map());
   const historyLoadedRef = useRef<Set<string>>(new Set());
   const prevAgentRef = useRef(selectedAgent);
   const notificationCallbackRef = useRef<((n: SygenNotification) => void) | null>(null);
@@ -158,6 +163,53 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   // ---------------------------------------------------------------------------
 
   useEffect(() => {
+    // Resolve the (session, msgId) pair for an enriched streaming event.
+    // If the event belongs to *this* tab's active stream we use the local
+    // refs; otherwise we track a per-session placeholder for sibling streams
+    // so cross-device live sync writes into the correct chat history.
+    const resolveStreamTarget = (
+      ctx: WSStreamContext,
+    ): { session: string; id: string; own: boolean } | null => {
+      const ownId = streamingIdRef.current;
+      const ownSession = streamingSessionRef.current;
+      const ctxSession = ctx.sessionId;
+
+      if (ctxSession && ownSession && ctxSession === ownSession && ownId) {
+        return { session: ownSession, id: ownId, own: true };
+      }
+      if (!ctxSession) {
+        if (ownId && ownSession) {
+          return { session: ownSession, id: ownId, own: true };
+        }
+        return null;
+      }
+      const existing = siblingStreamingRef.current.get(ctxSession);
+      if (existing) {
+        return { session: ctxSession, id: existing, own: false };
+      }
+      return null;
+    };
+
+    const ensureSiblingPlaceholder = (
+      ctx: WSStreamContext,
+    ): { session: string; id: string; own: false } | null => {
+      const sessionId = ctx.sessionId;
+      if (!sessionId) return null;
+      const existing = siblingStreamingRef.current.get(sessionId);
+      if (existing) return { session: sessionId, id: existing, own: false };
+      const newId = `msg-${uuid()}`;
+      siblingStreamingRef.current.set(sessionId, newId);
+      addMessage(sessionId, {
+        id: newId,
+        sender: "agent",
+        agentName: ctx.agent,
+        content: "",
+        timestamp: new Date().toISOString(),
+        isStreaming: true,
+      });
+      return { session: sessionId, id: newId, own: false };
+    };
+
     const ws = new SygenWebSocket(
       {
         onConnected: (agentList: string[], role?: string) => {
@@ -181,60 +233,84 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           setAgentStatus(null);
           streamingIdRef.current = null;
           streamingSessionRef.current = null;
+          siblingStreamingRef.current.clear();
         },
-        onTextDelta: (text) => {
-          const id = streamingIdRef.current;
-          const session = streamingSessionRef.current;
-          if (!id || !session) return;
-          setAgentStatus(null);
-          updateStreamingMessage(session, id, (msg) => ({
+        onTextDelta: (text, ctx) => {
+          const target = resolveStreamTarget(ctx) ?? ensureSiblingPlaceholder(ctx);
+          if (!target) return;
+          if (target.own) setAgentStatus(null);
+          updateStreamingMessage(target.session, target.id, (msg) => ({
             ...msg,
             content: msg.content + text,
           }));
         },
-        onToolActivity: (tool) => {
-          const id = streamingIdRef.current;
-          const session = streamingSessionRef.current;
-          if (!id || !session) return;
-          setAgentStatus(`Using tool: ${tool}`);
-          updateStreamingMessage(session, id, (msg) => ({
+        onToolActivity: (tool, ctx) => {
+          const target = resolveStreamTarget(ctx) ?? ensureSiblingPlaceholder(ctx);
+          if (!target) return;
+          if (target.own) setAgentStatus(`Using tool: ${tool}`);
+          updateStreamingMessage(target.session, target.id, (msg) => ({
             ...msg,
             toolActivity: tool,
           }));
         },
-        onResult: (text) => {
-          const id = streamingIdRef.current;
-          const session = streamingSessionRef.current;
-          if (!id || !session) return;
-          updateStreamingMessage(session, id, (msg) => ({
+        onResult: (text, _files, ctx) => {
+          const target = resolveStreamTarget(ctx) ?? ensureSiblingPlaceholder(ctx);
+          if (!target) return;
+          updateStreamingMessage(target.session, target.id, (msg) => ({
             ...msg,
             content: text,
             isStreaming: false,
             toolActivity: null,
           }));
-          setIsStreaming(false);
-          setAgentStatus(null);
-          streamingIdRef.current = null;
-          streamingSessionRef.current = null;
+          if (target.own) {
+            setIsStreaming(false);
+            setAgentStatus(null);
+            streamingIdRef.current = null;
+            streamingSessionRef.current = null;
+          } else if (ctx.sessionId) {
+            siblingStreamingRef.current.delete(ctx.sessionId);
+          }
         },
-        onError: (message) => {
-          const id = streamingIdRef.current;
-          const session = streamingSessionRef.current;
-          if (id && session) {
-            updateStreamingMessage(session, id, (msg) => ({
+        onError: (message, ctx) => {
+          const target = resolveStreamTarget(ctx);
+          if (target) {
+            updateStreamingMessage(target.session, target.id, (msg) => ({
               ...msg,
               content: msg.content || `Error: ${message}`,
               isStreaming: false,
               toolActivity: null,
             }));
+            if (target.own) {
+              setIsStreaming(false);
+              setAgentStatus(null);
+              streamingIdRef.current = null;
+              streamingSessionRef.current = null;
+            } else if (ctx.sessionId) {
+              siblingStreamingRef.current.delete(ctx.sessionId);
+            }
           }
-          setIsStreaming(false);
-          setAgentStatus(null);
-          streamingIdRef.current = null;
-          streamingSessionRef.current = null;
         },
-        onSystemStatus: (data) => {
-          if (data) setAgentStatus(data);
+        onSystemStatus: (data, ctx) => {
+          if (!data) return;
+          const ownSession = streamingSessionRef.current;
+          if (!ctx.sessionId || ctx.sessionId === ownSession) {
+            setAgentStatus(data);
+          }
+        },
+        onChatMessage: (msg: WSChatMessage) => {
+          const sessionId = msg.session_id;
+          if (!sessionId) return;
+          addMessage(sessionId, {
+            id: `msg-${uuid()}`,
+            sender: msg.role === "user" ? "user" : "agent",
+            agentName: msg.agent,
+            content: msg.content,
+            timestamp: msg.timestamp
+              ? new Date(msg.timestamp * 1000).toISOString()
+              : new Date().toISOString(),
+            kind: msg.kind,
+            meta: msg.meta,
+          });
         },
         onStatusChange: setWsStatus,
         onNotification: (notification) => {
@@ -249,7 +325,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
     return () => ws.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [updateStreamingMessage, activeServer.id, activeServer.url]);
+  }, [updateStreamingMessage, addMessage, activeServer.id, activeServer.url]);
 
   // ---------------------------------------------------------------------------
   // Session / history loading
@@ -283,6 +359,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             content: m.content,
             timestamp: m.timestamp,
             files: m.files as FileAttachment[] | undefined,
+            kind: m.kind,
+            meta: m.meta,
           })),
         }));
       }
@@ -315,6 +393,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             content: m.content,
             timestamp: m.timestamp,
             files: m.files as FileAttachment[] | undefined,
+            kind: m.kind,
+            meta: m.meta,
           }));
           const seen = new Set(current.map((m) => m.id));
           const merged = [...older.filter((m) => !seen.has(m.id)), ...current];
@@ -372,6 +452,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         content: m.content,
         timestamp: m.timestamp,
         files: m.files,
+        kind: m.kind,
+        meta: m.meta,
       }));
       // merge=true so we don't wipe older messages we haven't paginated into memory.
       SygenAPI.saveChatHistory(activeSessionId, saveMsgs, { merge: true }).catch(() => {});
