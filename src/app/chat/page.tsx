@@ -826,8 +826,8 @@ export default function ChatPage() {
 
         {/* Input */}
         <div
-          className="px-3 md:px-4 pt-2 md:pt-4 border-t border-border"
-          style={{ paddingBottom: "max(calc(env(safe-area-inset-bottom) - 14px), 0.25rem)" }}
+          className="px-3 md:px-4 pt-3 md:pt-4 border-t border-border"
+          style={{ paddingBottom: "max(env(safe-area-inset-bottom), 0.5rem)" }}
         >
           <div className="relative flex items-end gap-2">
             {/* Command menu popup */}

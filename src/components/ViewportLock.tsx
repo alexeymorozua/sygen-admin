@@ -66,11 +66,18 @@ export default function ViewportLock() {
     // standalone PWA: vv.offsetTop becomes >0 on input focus, so main
     // pinned to layout top:0 ends up above the visible area. Track
     // offsetTop too and translate main down to follow the pan.
+    // iOS 26 bug FB19889436: vv.offsetTop sticks at a non-zero value
+    // after keyboard dismiss until a scroll happens. Detect "keyboard
+    // closed" state (vv.height ≈ innerHeight) and force offsetTop=0 +
+    // height=innerHeight so main returns flush to the screen.
     const apply = () => {
       requestAnimationFrame(() =>
         requestAnimationFrame(() => {
-          html.style.setProperty("--app-vh", `${vv.height}px`);
-          html.style.setProperty("--app-vv-top", `${vv.offsetTop}px`);
+          const kbOpen = vv.height < window.innerHeight - 50;
+          const h = kbOpen ? vv.height : window.innerHeight;
+          const t = kbOpen ? vv.offsetTop : 0;
+          html.style.setProperty("--app-vh", `${h}px`);
+          html.style.setProperty("--app-vv-top", `${t}px`);
         }),
       );
     };
