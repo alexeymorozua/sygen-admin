@@ -72,6 +72,17 @@ html {
   scrollbar-width: none;
 }
 
+/* iOS auto-zooms on input focus when the computed font-size is < 16px.
+   Forcing 16px on touch devices removes the zoom without affecting
+   desktop layouts (where the small-text classes still apply visually). */
+@media (hover: none) and (pointer: coarse) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
 body {
   background: var(--color-bg-primary);
   color: var(--color-text-primary);
