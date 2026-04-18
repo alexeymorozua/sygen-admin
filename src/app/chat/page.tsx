@@ -177,6 +177,28 @@ export default function ChatPage() {
     }
   }, [messages]);
 
+  // iOS PWA quirk: after keyboard dismiss, the scroll container resizes but
+  // scrollTop is not re-anchored to the visual bottom — user sees a gap
+  // below the input. Re-pin scrollTop to 0 (= visual bottom in
+  // flex-col-reverse) on every visualViewport resize, but only when the
+  // user was already near the bottom so we don't yank them away from
+  // mid-history browsing.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const onResize = () => {
+      const container = messagesScrollRef.current;
+      if (!container) return;
+      if (container.scrollTop < 40) {
+        requestAnimationFrame(() => {
+          container.scrollTop = 0;
+        });
+      }
+    };
+    vv.addEventListener("resize", onResize);
+    return () => vv.removeEventListener("resize", onResize);
+  }, []);
+
   // Load older messages when user scrolls near the visual top.
   // In flex-col-reverse the visual top is reached when
   // scrollTop + clientHeight approaches scrollHeight.
