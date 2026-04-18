@@ -11,9 +11,14 @@ function isStandalone(): boolean {
   return Boolean(nav.standalone);
 }
 
-function isMobile(): boolean {
+function isTouchDevice(): boolean {
   if (typeof window === "undefined") return false;
-  return /iPhone|iPad|iPod|Android/i.test(window.navigator.userAgent);
+  if (window.matchMedia?.("(pointer: coarse)").matches) return true;
+  const ua = window.navigator.userAgent;
+  if (/iPhone|iPad|iPod|Android/i.test(ua)) return true;
+  // iPadOS 13+ spoofs its UA as Macintosh; use maxTouchPoints to unmask it.
+  if (/Macintosh/.test(ua) && window.navigator.maxTouchPoints > 1) return true;
+  return false;
 }
 
 export default function PwaTopBar() {
@@ -22,7 +27,7 @@ export default function PwaTopBar() {
   const [canGoBack, setCanGoBack] = useState(false);
 
   useEffect(() => {
-    setVisible(isStandalone() && !isMobile());
+    setVisible(isStandalone() && !isTouchDevice());
     setCanGoBack(window.history.length > 1);
     const onPop = () => setCanGoBack(window.history.length > 1);
     window.addEventListener("popstate", onPop);
