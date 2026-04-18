@@ -62,20 +62,28 @@ export default function ViewportLock() {
 
     // Double rAF works around WebKit bug #237851 where vv.offsetTop /
     // vv.height lag by one frame on focus/blur.
-    // iOS Safari still pans visualViewport even with body:fixed in
-    // standalone PWA: vv.offsetTop becomes >0 on input focus, so main
-    // pinned to layout top:0 ends up above the visible area. Track
-    // offsetTop too and translate main down to follow the pan.
-    // iOS 26 bug FB19889436: vv.offsetTop sticks at a non-zero value
-    // after keyboard dismiss until a scroll happens. Detect "keyboard
-    // closed" state (vv.height ≈ innerHeight) and force offsetTop=0 +
-    // height=innerHeight so main returns flush to the screen.
+    //
+    // Keyboard-open state is gated on document.activeElement being an
+    // input/textarea — NOT on vv.height vs innerHeight, because in iOS
+    // standalone PWA innerHeight can also shrink with the keyboard, so
+    // the diff-based check misfires.
+    //
+    // When no input is focused we force vv-top=0 + vh=innerHeight to
+    // sidestep iOS 26 bug FB19889436 (vv.offsetTop sticks non-zero after
+    // swipe-dismiss until a scroll happens) — main returns flush to the
+    // screen immediately on blur.
+    const isInputFocused = () => {
+      const ae = document.activeElement as HTMLElement | null;
+      if (!ae) return false;
+      const tag = ae.tagName;
+      return tag === "INPUT" || tag === "TEXTAREA" || ae.isContentEditable;
+    };
     const apply = () => {
       requestAnimationFrame(() =>
         requestAnimationFrame(() => {
-          const kbOpen = vv.height < window.innerHeight - 50;
-          const h = kbOpen ? vv.height : window.innerHeight;
-          const t = kbOpen ? vv.offsetTop : 0;
+          const focused = isInputFocused();
+          const h = focused ? vv.height : window.innerHeight;
+          const t = focused ? vv.offsetTop : 0;
           html.style.setProperty("--app-vh", `${h}px`);
           html.style.setProperty("--app-vv-top", `${t}px`);
         }),
@@ -85,11 +93,15 @@ export default function ViewportLock() {
     vv.addEventListener("resize", apply);
     vv.addEventListener("scroll", apply);
     window.addEventListener("orientationchange", apply);
+    window.addEventListener("focusin", apply);
+    window.addEventListener("focusout", apply);
 
     return () => {
       vv.removeEventListener("resize", apply);
       vv.removeEventListener("scroll", apply);
       window.removeEventListener("orientationchange", apply);
+      window.removeEventListener("focusin", apply);
+      window.removeEventListener("focusout", apply);
       Object.assign(html.style, { overflow: saved.htmlOverflow, height: saved.htmlHeight });
       Object.assign(body.style, {
         overflow: saved.bodyOverflow,
