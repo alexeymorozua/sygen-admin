@@ -30,8 +30,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <CommandPalette />
       <KeyboardShortcuts />
       <main
-        className="fixed inset-0 lg:left-64 flex flex-col overflow-hidden"
-        style={{ height: "var(--app-vh, 100dvh)" }}
+        className="fixed left-0 right-0 lg:left-64 flex flex-col overflow-hidden"
+        style={{
+          top: "var(--app-vv-top, 0px)",
+          height: "var(--app-vh, 100dvh)",
+        }}
       >
         <div className="flex-1 flex flex-col min-h-0 overflow-y-auto p-3 sm:p-4 md:p-6 lg:p-8 pt-[calc(env(safe-area-inset-top)+3.5rem)] md:pt-6 lg:pt-8">
           {children}

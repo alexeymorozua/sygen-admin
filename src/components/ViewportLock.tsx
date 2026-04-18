@@ -62,10 +62,15 @@ export default function ViewportLock() {
 
     // Double rAF works around WebKit bug #237851 where vv.offsetTop /
     // vv.height lag by one frame on focus/blur.
+    // iOS Safari still pans visualViewport even with body:fixed in
+    // standalone PWA: vv.offsetTop becomes >0 on input focus, so main
+    // pinned to layout top:0 ends up above the visible area. Track
+    // offsetTop too and translate main down to follow the pan.
     const apply = () => {
       requestAnimationFrame(() =>
         requestAnimationFrame(() => {
           html.style.setProperty("--app-vh", `${vv.height}px`);
+          html.style.setProperty("--app-vv-top", `${vv.offsetTop}px`);
         }),
       );
     };
