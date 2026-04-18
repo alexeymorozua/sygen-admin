@@ -29,10 +29,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <Sidebar />
       <CommandPalette />
       <KeyboardShortcuts />
-      <main
-        className="lg:ml-64 flex flex-col overflow-hidden"
-        style={{ height: "calc(100dvh - var(--kb-inset, 0px))" }}
-      >
+      <main className="lg:ml-64 flex flex-col overflow-hidden h-[100dvh]">
         <div className="flex-1 flex flex-col min-h-0 overflow-y-auto p-3 sm:p-4 md:p-6 lg:p-8 pt-[calc(env(safe-area-inset-top)+3.5rem)] md:pt-6 lg:pt-8">
           {children}
         </div>

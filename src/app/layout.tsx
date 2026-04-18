@@ -91,26 +91,13 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-title" content="Sygen" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        {/* 180 is transparent — iOS 18 applies Home Screen Appearance overlay
-            (Light/Dark/Tinted) so transparent PNG reads brand color on any
-            system theme. 192 is provided in both dark and light variants
-            with media queries — macOS Safari "Add to Dock" / Chrome PWA
-            pick the matching PNG at install time and Safari re-reads on
-            system theme change. */}
+        {/* Transparent PNG only — iOS 18 Home Screen Appearance and
+            macOS Sequoia Dock tint/dark/light overlays require an alpha
+            channel to tint the icon. Baked-in backgrounds defeat the
+            tint. macOS hard-bakes the icon at install, so after changes
+            the PWA must be removed from the Dock and re-installed. */}
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-180.png" />
-        <link
-          rel="apple-touch-icon"
-          sizes="192x192"
-          href="/apple-touch-icon-192-dark.png"
-          media="(prefers-color-scheme: dark)"
-        />
-        <link
-          rel="apple-touch-icon"
-          sizes="192x192"
-          href="/apple-touch-icon-192-light.png"
-          media="(prefers-color-scheme: light)"
-        />
-        <link rel="apple-touch-icon" sizes="192x192" href="/apple-touch-icon-192-dark.png" />
+        <link rel="apple-touch-icon" sizes="192x192" href="/apple-touch-icon-192.png" />
         {splashScreens.map((s) => (
           <link
             key={s.href}
