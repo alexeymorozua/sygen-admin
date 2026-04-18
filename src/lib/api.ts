@@ -88,6 +88,45 @@ export const ALL_SEVERITIES: readonly NotificationSeverity[] = [
   "silent",
 ];
 
+/** Severity used by /api/activity/recent and /api/dashboard/summary. */
+export type ActivitySeverity = "info" | "success" | "warning" | "error";
+
+export interface ActivityRecentEvent {
+  id: string;
+  /** Machine type (e.g. "task_completed"); used for filtering, NOT for display. */
+  type: string;
+  /** Backend-localized human-readable label. Always rendered as-is. */
+  title: string;
+  /** Backend-localized "{actor} · {relative_time}". */
+  subtitle: string;
+  agent_name: string;
+  /** ISO-8601 UTC. */
+  timestamp: string;
+  severity: ActivitySeverity;
+}
+
+export interface DashboardSummarySystem {
+  cpu_percent: number;
+  ram_percent: number;
+  disk_percent: number;
+  uptime_seconds: number;
+  uptime_human: string;
+}
+
+export interface DashboardSummaryCounters {
+  agents_total: number;
+  agents_online: number;
+  active_tasks: number;
+  running_crons: number;
+  failed_last_24h: number;
+}
+
+export interface DashboardSummary {
+  system: DashboardSummarySystem;
+  counters: DashboardSummaryCounters;
+  recent_activity: ActivityRecentEvent[];
+}
+
 export interface SygenNotification {
   id: string;
   type: "cron" | "webhook" | "task" | "system";
@@ -258,6 +297,19 @@ function clearUserState() {
 
 const UNSAFE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
+function getStoredAcceptLanguage(): string {
+  if (typeof window === "undefined") return "ru";
+  try {
+    const stored = window.localStorage.getItem("sygen_locale");
+    // Backend localizer only knows ru + en; uk falls through to ru server-side.
+    if (stored === "en") return "en";
+    if (stored === "uk") return "uk, ru;q=0.9, en;q=0.8";
+    return "ru";
+  } catch {
+    return "ru";
+  }
+}
+
 function mergeAuthHeaders(
   method: string | undefined,
   base: HeadersInit | undefined,
@@ -265,6 +317,7 @@ function mergeAuthHeaders(
 ): HeadersInit {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    "Accept-Language": getStoredAcceptLanguage(),
     ...extras,
   };
   // Server falls back to Authorization if no cookie is present; remote-server
@@ -1003,18 +1056,26 @@ export class SygenAPI {
   static async getSystemStatus(): Promise<SystemHealth> {
     if (USE_MOCK) return mockSystemHealth;
     const data = await fetchAPI<Record<string, unknown>>("/api/system/status");
+    // Counters moved to /api/dashboard/summary in core v1.3.30 — this probe
+    // now returns only the health fields.
     return {
       instanceName: String(data.instance_name || ""),
       cpu: Number(data.cpu_percent) || 0,
       ram: Number(data.ram_percent) || 0,
       disk: Number(data.disk_percent) || 0,
-      uptime: formatUptime(Number(data.uptime_seconds) || 0),
-      agents: Number(data.agents) || 0,
-      sessions: Number(data.sessions) || 0,
-      cronJobs: Number(data.cron_jobs) || 0,
-      tasksTotal: Number(data.tasks_total) || 0,
-      tasksActive: Number(data.tasks_active) || 0,
-    } as SystemHealth & Record<string, unknown>;
+      uptime: typeof data.uptime_human === "string" && data.uptime_human
+        ? String(data.uptime_human)
+        : formatUptime(Number(data.uptime_seconds) || 0),
+    };
+  }
+
+  static async getDashboardSummary(): Promise<DashboardSummary> {
+    return await fetchAPI<DashboardSummary>("/api/dashboard/summary");
+  }
+
+  static async getActivityRecent(limit = 20): Promise<ActivityRecentEvent[]> {
+    const params = new URLSearchParams({ limit: String(limit) });
+    return await fetchAPI<ActivityRecentEvent[]>(`/api/activity/recent?${params.toString()}`);
   }
 
   static async updateInstanceName(name: string): Promise<void> {
