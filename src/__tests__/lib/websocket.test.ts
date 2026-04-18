@@ -234,6 +234,129 @@ describe("chat_message events", () => {
   });
 });
 
+describe("enriched events — system_status + error routing context", () => {
+  it("passes session_id/agent context to onSystemStatus", async () => {
+    const onSystemStatus = vi.fn();
+    const ws = new SygenWebSocket({ onSystemStatus }, { url: "http://test:8080" });
+
+    ws.connect();
+    await new Promise((r) => setTimeout(r, 10));
+
+    mockWsInstance.simulateMessage({
+      type: "system_status",
+      data: "Thinking…",
+      session_id: "sess-7",
+      agent: "sonic",
+    });
+    expect(onSystemStatus).toHaveBeenCalledWith("Thinking…", {
+      sessionId: "sess-7",
+      agent: "sonic",
+    });
+
+    ws.disconnect();
+  });
+
+  it("passes session_id/agent context to onError", async () => {
+    const onError = vi.fn();
+    const ws = new SygenWebSocket({ onError }, { url: "http://test:8080" });
+
+    ws.connect();
+    await new Promise((r) => setTimeout(r, 10));
+
+    mockWsInstance.simulateMessage({
+      type: "error",
+      message: "boom",
+      session_id: "sess-9",
+      agent: "main",
+    });
+    expect(onError).toHaveBeenCalledWith("boom", {
+      sessionId: "sess-9",
+      agent: "main",
+    });
+
+    ws.disconnect();
+  });
+
+  it("passes null system_status data through onSystemStatus", async () => {
+    const onSystemStatus = vi.fn();
+    const ws = new SygenWebSocket({ onSystemStatus }, { url: "http://test:8080" });
+
+    ws.connect();
+    await new Promise((r) => setTimeout(r, 10));
+
+    mockWsInstance.simulateMessage({ type: "system_status", data: null });
+    expect(onSystemStatus).toHaveBeenCalledWith(null, {
+      sessionId: undefined,
+      agent: undefined,
+    });
+
+    ws.disconnect();
+  });
+});
+
+describe("chat_message — unknown kind + edge cases", () => {
+  it("preserves unknown kind strings on the payload", async () => {
+    const onChatMessage = vi.fn();
+    const ws = new SygenWebSocket({ onChatMessage }, { url: "http://test:8080" });
+
+    ws.connect();
+    await new Promise((r) => setTimeout(r, 10));
+
+    mockWsInstance.simulateMessage({
+      type: "chat_message",
+      kind: "future_kind_v2",
+      role: "agent",
+      agent: "main",
+      content: "preview",
+    });
+    expect(onChatMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "future_kind_v2", agent: "main" }),
+    );
+
+    ws.disconnect();
+  });
+
+  it("coerces non-string role to 'agent'", async () => {
+    const onChatMessage = vi.fn();
+    const ws = new SygenWebSocket({ onChatMessage }, { url: "http://test:8080" });
+
+    ws.connect();
+    await new Promise((r) => setTimeout(r, 10));
+
+    mockWsInstance.simulateMessage({
+      type: "chat_message",
+      agent: "main",
+      content: "x",
+      role: 42,
+    });
+    expect(onChatMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ role: "agent" }),
+    );
+
+    ws.disconnect();
+  });
+
+  it("drops non-object meta payloads", async () => {
+    const onChatMessage = vi.fn();
+    const ws = new SygenWebSocket({ onChatMessage }, { url: "http://test:8080" });
+
+    ws.connect();
+    await new Promise((r) => setTimeout(r, 10));
+
+    mockWsInstance.simulateMessage({
+      type: "chat_message",
+      agent: "main",
+      content: "x",
+      meta: "not-an-object",
+    });
+    expect(onChatMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ meta: undefined }),
+    );
+
+    ws.disconnect();
+  });
+});
+
 describe("reconnection", () => {
   it("schedules reconnect on network close", async () => {
     vi.useFakeTimers();

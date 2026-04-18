@@ -286,6 +286,120 @@ describe("setActiveServerForApi", () => {
   });
 });
 
+describe("Accept-Language header (v1.3.29 localized endpoints)", () => {
+  it("defaults to 'ru' when no locale is stored", async () => {
+    const fetchSpy = mockFetch({ data: [] });
+    vi.stubGlobal("fetch", fetchSpy);
+
+    await SygenAPI.getAgents();
+
+    const callHeaders = fetchSpy.mock.calls[0][1]?.headers as Record<string, string>;
+    expect(callHeaders["Accept-Language"]).toBe("ru");
+  });
+
+  it("sends 'en' when locale is stored as 'en'", async () => {
+    localStorage.setItem("sygen_locale", "en");
+    const fetchSpy = mockFetch({ data: [] });
+    vi.stubGlobal("fetch", fetchSpy);
+
+    await SygenAPI.getAgents();
+
+    const callHeaders = fetchSpy.mock.calls[0][1]?.headers as Record<string, string>;
+    expect(callHeaders["Accept-Language"]).toBe("en");
+  });
+
+  it("falls back to uk→ru→en quality list when locale is 'uk' (backend only knows ru+en)", async () => {
+    localStorage.setItem("sygen_locale", "uk");
+    const fetchSpy = mockFetch({ data: [] });
+    vi.stubGlobal("fetch", fetchSpy);
+
+    await SygenAPI.getAgents();
+
+    const callHeaders = fetchSpy.mock.calls[0][1]?.headers as Record<string, string>;
+    expect(callHeaders["Accept-Language"]).toBe("uk, ru;q=0.9, en;q=0.8");
+  });
+
+  it("defaults to 'ru' for unknown locale values", async () => {
+    localStorage.setItem("sygen_locale", "fr");
+    const fetchSpy = mockFetch({ data: [] });
+    vi.stubGlobal("fetch", fetchSpy);
+
+    await SygenAPI.getAgents();
+
+    const callHeaders = fetchSpy.mock.calls[0][1]?.headers as Record<string, string>;
+    expect(callHeaders["Accept-Language"]).toBe("ru");
+  });
+});
+
+describe("getDashboardSummary / getActivityRecent (v1.3.29)", () => {
+  it("getDashboardSummary hits /api/dashboard/summary and unwraps data", async () => {
+    const summary = {
+      system: { cpu_percent: 1, ram_percent: 2, disk_percent: 3, uptime_seconds: 10, uptime_human: "10s" },
+      counters: { agents_total: 1, agents_online: 1, active_tasks: 0, running_crons: 0, failed_last_24h: 0 },
+      recent_activity: [],
+    };
+    const fetchSpy = mockFetch({ data: summary });
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const result = await SygenAPI.getDashboardSummary();
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "http://test-api:8080/api/dashboard/summary",
+      expect.anything(),
+    );
+    expect(result).toEqual(summary);
+  });
+
+  it("getActivityRecent forwards limit query", async () => {
+    const fetchSpy = mockFetch({ data: [] });
+    vi.stubGlobal("fetch", fetchSpy);
+
+    await SygenAPI.getActivityRecent(5);
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "http://test-api:8080/api/activity/recent?limit=5",
+      expect.anything(),
+    );
+  });
+
+  it("getActivityRecent defaults to limit=20 when not specified", async () => {
+    const fetchSpy = mockFetch({ data: [] });
+    vi.stubGlobal("fetch", fetchSpy);
+
+    await SygenAPI.getActivityRecent();
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "http://test-api:8080/api/activity/recent?limit=20",
+      expect.anything(),
+    );
+  });
+
+  it("getSystemStatus no longer reads removed counter fields", async () => {
+    const fetchSpy = mockFetch({
+      data: {
+        instance_name: "primary",
+        uptime_seconds: 7200,
+        uptime_human: "2h",
+        cpu_percent: 12,
+        ram_percent: 34,
+        disk_percent: 56,
+      },
+    });
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const health = (await SygenAPI.getSystemStatus()) as Record<string, unknown>;
+    expect(health.cpu).toBe(12);
+    expect(health.ram).toBe(34);
+    expect(health.disk).toBe(56);
+    expect(health.uptime).toBe("2h");
+    // Removed fields must not be present on the slim health probe.
+    expect(health.agents).toBeUndefined();
+    expect(health.sessions).toBeUndefined();
+    expect(health.cronJobs).toBeUndefined();
+    expect(health.tasksActive).toBeUndefined();
+  });
+});
+
 describe("createApiForServer", () => {
   it("creates isolated API instance with server URL and token", async () => {
     const server = {

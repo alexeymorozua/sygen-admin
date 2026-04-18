@@ -41,20 +41,28 @@ describe("StreamingMessage", () => {
     expect(screen.queryByTestId("markdown")).not.toBeInTheDocument();
   });
 
-  it("shows cursor when streaming", () => {
+  it("shows bouncing dots when streaming with no content yet", () => {
     const { container } = render(
-      <StreamingMessage {...baseProps} isStreaming={true} />
+      <StreamingMessage {...baseProps} content="" isStreaming={true} />
     );
-    const cursor = container.querySelector(".animate-pulse.bg-brand-400");
-    expect(cursor).toBeInTheDocument();
+    const dots = container.querySelectorAll(".animate-bounce.bg-brand-400");
+    expect(dots.length).toBe(3);
   });
 
-  it("hides cursor when not streaming", () => {
+  it("hides bouncing dots once content arrives", () => {
     const { container } = render(
-      <StreamingMessage {...baseProps} isStreaming={false} />
+      <StreamingMessage {...baseProps} content="Hi" isStreaming={true} />
     );
-    const cursor = container.querySelector(".animate-pulse.bg-brand-400");
-    expect(cursor).not.toBeInTheDocument();
+    const dots = container.querySelectorAll(".animate-bounce.bg-brand-400");
+    expect(dots.length).toBe(0);
+  });
+
+  it("hides bouncing dots when not streaming", () => {
+    const { container } = render(
+      <StreamingMessage {...baseProps} content="" isStreaming={false} />
+    );
+    const dots = container.querySelectorAll(".animate-bounce.bg-brand-400");
+    expect(dots.length).toBe(0);
   });
 
   it("shows agent name for agent messages", () => {
@@ -120,5 +128,17 @@ describe("StreamingMessage", () => {
     render(<StreamingMessage {...baseProps} kind="text" />);
     expect(screen.queryByText(/Результат задачи/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Вопрос от задачи/)).not.toBeInTheDocument();
+  });
+
+  it("falls back to the raw kind string when kind is unknown", () => {
+    render(<StreamingMessage {...baseProps} kind="future_kind_v2" />);
+    // Unknown kind renders as-is (no mapping) but still shows a labelled card.
+    expect(screen.getByText("future_kind_v2")).toBeInTheDocument();
+  });
+
+  it("renders kind label for task_result even without meta", () => {
+    render(<StreamingMessage {...baseProps} kind="task_result" />);
+    // No task_name → base label only, no colon suffix.
+    expect(screen.getByText("Результат задачи")).toBeInTheDocument();
   });
 });
