@@ -1571,6 +1571,20 @@ export class SygenAPI {
     }
     return `${getApiUrl()}${data.url}`;
   }
+
+  static async signFilePath(path: string, ttl = 300): Promise<string> {
+    const data = await fetchAPI<{ url: string; exp: number }>(
+      "/api/files/sign-url",
+      {
+        method: "POST",
+        body: JSON.stringify({ path, ttl }),
+      },
+    );
+    if (data.url.startsWith("http://") || data.url.startsWith("https://")) {
+      return data.url;
+    }
+    return `${getApiUrl()}${data.url}`;
+  }
 }
 
 // ---------------------------------------------------------------------------

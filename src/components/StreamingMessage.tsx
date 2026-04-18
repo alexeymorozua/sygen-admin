@@ -136,7 +136,7 @@ function FilePreview({
   if (isAudioFile(file.name) || isVoiceMessage(file.name)) {
     return (
       <div className="mt-2 rounded-2xl border border-border bg-bg-card/50 px-3 py-2 max-w-sm">
-        <AudioPlayer src={fileUrl} token={token} filePath={file.path} />
+        <AudioPlayer filePath={file.path} />
         {!isVoiceMessage(file.name) && (
           <div className="flex items-center justify-between mt-1 text-[10px] text-text-secondary">
             <span className="truncate">{file.name}</span>

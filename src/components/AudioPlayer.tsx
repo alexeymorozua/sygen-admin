@@ -7,9 +7,7 @@ import { useTranslation } from "@/lib/i18n";
 import { SygenAPI } from "@/lib/api";
 
 interface AudioPlayerProps {
-  src: string;
-  token?: string;
-  filePath?: string;
+  filePath: string;
   className?: string;
 }
 
@@ -20,32 +18,10 @@ function formatTime(seconds: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-function guessMimeFromUrl(url: string): string {
-  const match = url.match(/\.([a-z0-9]+)(?:\?|$)/i);
-  const ext = match?.[1]?.toLowerCase();
-  switch (ext) {
-    case "mp3":
-      return "audio/mpeg";
-    case "m4a":
-    case "mp4":
-      return "audio/mp4";
-    case "ogg":
-    case "opus":
-      return "audio/ogg";
-    case "webm":
-      return "audio/webm";
-    case "wav":
-      return "audio/wav";
-    default:
-      return "audio/mpeg";
-  }
-}
-
-export default function AudioPlayer({ src, token, filePath, className }: AudioPlayerProps) {
+export default function AudioPlayer({ filePath, className }: AudioPlayerProps) {
   const { t } = useTranslation();
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const blobUrlRef = useRef<string | null>(null);
-  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [playableSrc, setPlayableSrc] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -54,39 +30,17 @@ export default function AudioPlayer({ src, token, filePath, className }: AudioPl
   const [transcribing, setTranscribing] = useState(false);
   const progressRef = useRef<HTMLDivElement>(null);
 
-  // Fetch the audio with auth and hand the blob URL to a real <audio> element
-  // that lives in the DOM. iOS Safari in standalone PWA mode refuses to play
-  // audio elements created via `new Audio()` that are never attached to the
-  // document — using a ref'd <audio> tag fixes the "Format not supported"
-  // error on iPhone.
   useEffect(() => {
     setHasError(false);
     setIsPlaying(false);
     setCurrentTime(0);
     setDuration(0);
-    setBlobUrl(null);
-
-    const headers: Record<string, string> = {};
-    if (token) headers["Authorization"] = `Bearer ${token}`;
+    setPlayableSrc(null);
 
     let cancelled = false;
-    let createdUrl: string | null = null;
-    fetch(src, { credentials: "include", headers })
-      .then((res) => {
-        if (!res.ok) throw new Error(`${res.status}`);
-        return res.blob();
-      })
-      .then((blob) => {
-        if (cancelled) return;
-        // Always normalize MIME from the filename extension. The backend
-        // can return `video/mp4` for MP4/AAC voice files (container-based
-        // detection via python-magic), which makes iOS Safari <audio>
-        // refuse playback and fire onError.
-        const typed = new Blob([blob], { type: guessMimeFromUrl(src) });
-        const url = URL.createObjectURL(typed);
-        createdUrl = url;
-        blobUrlRef.current = url;
-        setBlobUrl(url);
+    SygenAPI.signFilePath(filePath, 300)
+      .then((url) => {
+        if (!cancelled) setPlayableSrc(url);
       })
       .catch(() => {
         if (!cancelled) setHasError(true);
@@ -94,12 +48,8 @@ export default function AudioPlayer({ src, token, filePath, className }: AudioPl
 
     return () => {
       cancelled = true;
-      if (createdUrl) {
-        URL.revokeObjectURL(createdUrl);
-        if (blobUrlRef.current === createdUrl) blobUrlRef.current = null;
-      }
     };
-  }, [src, token]);
+  }, [filePath]);
 
   const togglePlay = useCallback(() => {
     const audio = audioRef.current;
@@ -129,7 +79,7 @@ export default function AudioPlayer({ src, token, filePath, className }: AudioPl
   );
 
   const handleTranscribe = useCallback(async () => {
-    if (!filePath || transcribing) return;
+    if (transcribing) return;
     setTranscribing(true);
     try {
       const text = await SygenAPI.transcribeAudio(filePath);
@@ -144,10 +94,10 @@ export default function AudioPlayer({ src, token, filePath, className }: AudioPl
 
   // Hidden audio element. Keeping it in the DOM (not `new Audio()`) is
   // required for iOS Safari standalone PWA playback.
-  const audioEl = blobUrl && (
+  const audioEl = playableSrc && (
     <audio
       ref={audioRef}
-      src={blobUrl}
+      src={playableSrc}
       preload="metadata"
       playsInline
       onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
@@ -165,7 +115,7 @@ export default function AudioPlayer({ src, token, filePath, className }: AudioPl
     />
   );
 
-  if (!blobUrl && !hasError) {
+  if (!playableSrc && !hasError) {
     return (
       <div
         className={cn(
@@ -209,7 +159,7 @@ export default function AudioPlayer({ src, token, filePath, className }: AudioPl
           <span className="text-xs text-text-secondary flex-1">
             {t("chat.audioUnsupported") || t("common.error")}
           </span>
-          {filePath && !transcript && (
+          {!transcript && (
             <button
               type="button"
               onClick={handleTranscribe}
@@ -287,7 +237,7 @@ export default function AudioPlayer({ src, token, filePath, className }: AudioPl
       </div>
 
       {/* Transcribe button */}
-      {filePath && !transcript && (
+      {!transcript && (
         <button
           type="button"
           onClick={handleTranscribe}
