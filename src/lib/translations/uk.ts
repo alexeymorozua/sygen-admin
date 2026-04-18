@@ -21,6 +21,7 @@ const uk: Record<string, string> = {
   "dashboard.noRecentActivity": "Немає останньої активності",
   "dashboard.uptime": "Час роботи",
   "dashboard.activeTasks": "Активні задачі",
+  "dashboard.failedLast24h": "Збої (24г)",
   "dashboard.online": "онлайн",
   "dashboard.running": "виконується",
   "dashboard.active": "активних",

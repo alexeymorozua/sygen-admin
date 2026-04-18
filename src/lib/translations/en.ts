@@ -21,6 +21,7 @@ const en: Record<string, string> = {
   "dashboard.noRecentActivity": "No recent activity",
   "dashboard.uptime": "Uptime",
   "dashboard.activeTasks": "Active Tasks",
+  "dashboard.failedLast24h": "Failed (24h)",
   "dashboard.online": "online",
   "dashboard.running": "running",
   "dashboard.active": "active",

@@ -21,6 +21,7 @@ const ru: Record<string, string> = {
   "dashboard.noRecentActivity": "Нет последней активности",
   "dashboard.uptime": "Время работы",
   "dashboard.activeTasks": "Активные задачи",
+  "dashboard.failedLast24h": "Сбои (24ч)",
   "dashboard.online": "онлайн",
   "dashboard.running": "выполняется",
   "dashboard.active": "активных",

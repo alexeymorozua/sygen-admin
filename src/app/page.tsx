@@ -1,14 +1,12 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { Bot, ListTodo, Clock, Webhook as WebhookIcon, Activity, Cpu, HardDrive, MemoryStick, Server, Circle, LogIn, Terminal } from "lucide-react";
+import { Bot, ListTodo, Clock, Activity, Cpu, HardDrive, MemoryStick, Server, Circle, LogIn, Terminal, Webhook as WebhookIcon, AlertTriangle } from "lucide-react";
 import StatusCard from "@/components/StatusCard";
 import { RefreshButton } from "@/components/RefreshButton";
-import StatusBadge from "@/components/StatusBadge";
 import { LoadingSpinner, ErrorState } from "@/components/LoadingState";
-import { SygenAPI } from "@/lib/api";
-import { formatDate, cn } from "@/lib/utils";
-import type { Agent, ActivityEvent, SystemHealth } from "@/lib/mock-data";
+import { SygenAPI, type ActivityRecentEvent, type DashboardSummary } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import { useServer } from "@/context/ServerContext";
 import { checkServerHealth } from "@/lib/servers";
 import { useTranslation } from "@/lib/i18n";
@@ -50,15 +48,27 @@ function Sparkline({ data, color, height = 32 }: { data: number[]; color: string
   );
 }
 
+function iconForEventType(type: string, className: string) {
+  const props = { size: 14, className: `shrink-0 mt-0.5 ${className}` };
+  if (type.startsWith("task")) return <ListTodo {...props} />;
+  if (type.startsWith("cron")) return <Clock {...props} />;
+  if (type.startsWith("agent")) return <Bot {...props} />;
+  if (type.startsWith("webhook")) return <WebhookIcon {...props} />;
+  if (type === "auth_login" || type === "login") return <LogIn {...props} />;
+  return <Terminal {...props} />;
+}
+
+function severityColorClass(severity: ActivityRecentEvent["severity"]): string {
+  if (severity === "error") return "text-danger";
+  if (severity === "warning") return "text-warning";
+  if (severity === "success") return "text-success";
+  return "text-brand-400";
+}
+
 export default function DashboardPage() {
   const { servers, activeServer, switchServer, refreshKey } = useServer();
   const { t } = useTranslation();
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [events, setEvents] = useState<ActivityEvent[]>([]);
-  const [health, setHealth] = useState<SystemHealth | null>(null);
-  const [cronCount, setCronCount] = useState({ total: 0, active: 0, paused: 0 });
-  const [webhookCount, setWebhookCount] = useState({ total: 0, active: 0 });
-  const [taskCount, setTaskCount] = useState({ total: 0, running: 0 });
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
@@ -70,37 +80,13 @@ export default function DashboardPage() {
     if (!silent) setRefreshing(true);
     setError("");
     try {
-      const [a, e, h, crons, webhooks, tasks] = await Promise.all([
-        SygenAPI.getAgents(),
-        SygenAPI.getActivity().catch(() => []),
-        SygenAPI.getSystemStatus().catch(() => null),
-        SygenAPI.getCronJobs().catch(() => []),
-        SygenAPI.getWebhooks().catch(() => []),
-        SygenAPI.getTasks().catch(() => []),
-      ]);
-      setAgents(a);
-      setEvents(e);
-      setHealth(h);
-      if (h) {
-        setMetricHistory((prev) => ({
-          cpu: [...prev.cpu, h.cpu].slice(-HISTORY_MAX),
-          ram: [...prev.ram, h.ram].slice(-HISTORY_MAX),
-          disk: [...prev.disk, h.disk].slice(-HISTORY_MAX),
-        }));
-      }
-      setCronCount({
-        total: crons.length,
-        active: crons.filter((cj) => cj.status === "active").length,
-        paused: crons.filter((cj) => cj.status === "paused").length,
-      });
-      setWebhookCount({
-        total: webhooks.length,
-        active: webhooks.filter((wh) => wh.status === "active").length,
-      });
-      setTaskCount({
-        total: tasks.length,
-        running: tasks.filter((tk) => tk.status === "running").length,
-      });
+      const data = await SygenAPI.getDashboardSummary();
+      setSummary(data);
+      setMetricHistory((prev) => ({
+        cpu: [...prev.cpu, data.system.cpu_percent].slice(-HISTORY_MAX),
+        ram: [...prev.ram, data.system.ram_percent].slice(-HISTORY_MAX),
+        disk: [...prev.disk, data.system.disk_percent].slice(-HISTORY_MAX),
+      }));
     } catch (err) {
       if (!silent) setError(err instanceof Error ? err.message : "Failed to load dashboard");
     } finally {
@@ -141,9 +127,9 @@ export default function DashboardPage() {
   }, [servers]);
 
   if (loading) return <LoadingSpinner />;
-  if (error) return <ErrorState message={error} onRetry={loadData} />;
+  if (error || !summary) return <ErrorState message={error || "No data"} onRetry={loadData} />;
 
-  const onlineAgents = agents.filter((a) => a.status === "online").length;
+  const { system, counters, recent_activity } = summary;
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
@@ -186,64 +172,34 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Status Cards */}
+      {/* Status Cards — driven by counters from /api/dashboard/summary */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 md:mb-8">
-        <StatusCard title={t('nav.agents')} value={`${onlineAgents}/${agents.length}`} icon={Bot} trend={`${onlineAgents} ${t('dashboard.online')}`} />
-        <StatusCard title={t('dashboard.activeTasks')} value={taskCount.total} icon={ListTodo} trend={`${taskCount.running} ${t('dashboard.running')}`} />
-        <StatusCard title={t('nav.cron')} value={cronCount.total} icon={Clock} trend={`${cronCount.active} ${t('dashboard.active')}, ${cronCount.paused} ${t('dashboard.paused')}`} />
-        <StatusCard title={t('nav.webhooks')} value={webhookCount.total} icon={WebhookIcon} trend={`${webhookCount.active} ${t('dashboard.active')}`} />
+        <StatusCard title={t('nav.agents')} value={`${counters.agents_online}/${counters.agents_total}`} icon={Bot} trend={`${counters.agents_online} ${t('dashboard.online')}`} />
+        <StatusCard title={t('dashboard.activeTasks')} value={counters.active_tasks} icon={ListTodo} trend={`${counters.active_tasks} ${t('dashboard.running')}`} />
+        <StatusCard title={t('nav.cron')} value={counters.running_crons} icon={Clock} trend={`${counters.running_crons} ${t('dashboard.active')}`} />
+        <StatusCard title={t('dashboard.failedLast24h')} value={counters.failed_last_24h} icon={AlertTriangle} trend="" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-        {/* Agent Status */}
-        <div className="bg-bg-card border border-border rounded-xl p-5">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <Bot size={18} className="text-brand-400" />
-            {t('dashboard.agentStatus')}
-          </h2>
-          <div className="space-y-3">
-            {agents.map((agent) => (
-              <div key={agent.id} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
-                <div>
-                  <p className="text-sm font-medium">{agent.displayName}</p>
-                  <p className="text-xs text-text-secondary">{agent.model}</p>
-                </div>
-                <StatusBadge status={agent.status} />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Recent Activity */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+        {/* Recent Activity — backend-localized title/subtitle/severity */}
         <div className="bg-bg-card border border-border rounded-xl p-5">
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <Activity size={18} className="text-brand-400" />
             {t('dashboard.recentActivity')}
           </h2>
           <div className="space-y-3">
-            {events.length === 0 && (
+            {recent_activity.length === 0 && (
               <p className="text-sm text-text-secondary py-4 text-center">{t('dashboard.noRecentActivity')}</p>
             )}
-            {events.slice(0, 8).map((event, idx) => {
-              const iconProps = { size: 14, className: "shrink-0 mt-0.5" };
-              const icon =
-                event.type === "login" ? <LogIn {...iconProps} className={`${iconProps.className} text-brand-400`} /> :
-                event.type === "task" ? <ListTodo {...iconProps} className={`${iconProps.className} text-yellow-400`} /> :
-                event.type === "cron" ? <Clock {...iconProps} className={`${iconProps.className} text-green-400`} /> :
-                event.type === "agent" ? <Bot {...iconProps} className={`${iconProps.className} text-brand-400`} /> :
-                event.type === "webhook" ? <WebhookIcon {...iconProps} className={`${iconProps.className} text-purple-400`} /> :
-                <Terminal {...iconProps} className={`${iconProps.className} text-gray-400`} />;
-
-              return (
-                <div key={event.id || `activity-${idx}`} className="flex items-start gap-3 py-2 border-b border-border/50 last:border-0">
-                  {icon}
-                  <div className="min-w-0">
-                    <p className="text-sm text-text-primary truncate">{event.message}</p>
-                    <p className="text-xs text-text-secondary">{formatDate(event.timestamp)}</p>
-                  </div>
+            {recent_activity.slice(0, 8).map((event) => (
+              <div key={event.id} className="flex items-start gap-3 py-2 border-b border-border/50 last:border-0">
+                {iconForEventType(event.type, severityColorClass(event.severity))}
+                <div className="min-w-0">
+                  <p className="text-sm text-text-primary truncate">{event.title}</p>
+                  <p className="text-xs text-text-secondary">{event.subtitle}</p>
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         </div>
 
@@ -253,17 +209,15 @@ export default function DashboardPage() {
             <Cpu size={18} className="text-brand-400" />
             {t('dashboard.systemHealth')}
           </h2>
-          {health && (
-            <div className="space-y-5">
-              <HealthBar label="CPU" value={health.cpu} icon={Cpu} history={metricHistory.cpu} color="#00c853" />
-              <HealthBar label="RAM" value={health.ram} icon={MemoryStick} history={metricHistory.ram} color="#ffa726" />
-              <HealthBar label="Disk" value={health.disk} icon={HardDrive} history={metricHistory.disk} color="#42a5f5" />
-              <div className="pt-3 border-t border-border/50">
-                <p className="text-xs text-text-secondary">{t('dashboard.uptime')}</p>
-                <p className="text-sm font-medium">{health.uptime}</p>
-              </div>
+          <div className="space-y-5">
+            <HealthBar label="CPU" value={system.cpu_percent} icon={Cpu} history={metricHistory.cpu} color="#00c853" />
+            <HealthBar label="RAM" value={system.ram_percent} icon={MemoryStick} history={metricHistory.ram} color="#ffa726" />
+            <HealthBar label="Disk" value={system.disk_percent} icon={HardDrive} history={metricHistory.disk} color="#42a5f5" />
+            <div className="pt-3 border-t border-border/50">
+              <p className="text-xs text-text-secondary">{t('dashboard.uptime')}</p>
+              <p className="text-sm font-medium">{system.uptime_human}</p>
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>
