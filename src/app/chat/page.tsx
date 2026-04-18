@@ -864,6 +864,17 @@ export default function ChatPage() {
                   handleFiles(pasted);
                 }
               }}
+              onFocus={() => {
+                // iOS standalone PWA doesn't auto-scroll focused input into
+                // view the way Safari/Chrome do. Nudge after the keyboard
+                // animation so the textarea sits just above it.
+                setTimeout(() => {
+                  textareaRef.current?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "end",
+                  });
+                }, 300);
+              }}
               placeholder={`${t('chat.message')} ${selectedAgent}...`}
               disabled={wsStatus !== "connected"}
               rows={1}
