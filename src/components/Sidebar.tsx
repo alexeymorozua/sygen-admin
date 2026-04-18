@@ -146,7 +146,8 @@ export default function Sidebar() {
       <button
         type="button"
         onClick={() => setMobileOpen(!mobileOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-bg-card border border-border rounded-lg"
+        className="lg:hidden fixed left-4 z-50 p-2 bg-bg-card border border-border rounded-lg"
+        style={{ top: "calc(env(safe-area-inset-top) + 0.5rem)" }}
         aria-label={mobileOpen ? "Close menu" : "Open menu"}
       >
         {mobileOpen ? <X size={20} /> : <Menu size={20} />}
