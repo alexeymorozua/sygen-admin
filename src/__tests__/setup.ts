@@ -3,6 +3,30 @@ import { cleanup } from "@testing-library/react";
 import { afterEach, vi } from "vitest";
 import React from "react";
 
+// jsdom 29 under vitest 4 does not expose a working localStorage unless
+// --localstorage-file is configured. Install a minimal in-memory polyfill so
+// all tests that touch localStorage (i18n, server selection, etc.) work
+// without per-test setup.
+if (typeof window !== "undefined" && typeof window.localStorage?.getItem !== "function") {
+  const store = new Map<string, string>();
+  const storage: Storage = {
+    get length() {
+      return store.size;
+    },
+    clear: () => store.clear(),
+    getItem: (key: string) => (store.has(key) ? store.get(key)! : null),
+    key: (index: number) => Array.from(store.keys())[index] ?? null,
+    removeItem: (key: string) => {
+      store.delete(key);
+    },
+    setItem: (key: string, value: string) => {
+      store.set(key, String(value));
+    },
+  };
+  Object.defineProperty(window, "localStorage", { value: storage, configurable: true });
+  Object.defineProperty(globalThis, "localStorage", { value: storage, configurable: true });
+}
+
 afterEach(() => {
   cleanup();
   if (typeof localStorage !== "undefined" && typeof localStorage.clear === "function") {
