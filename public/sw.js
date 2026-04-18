@@ -1,5 +1,5 @@
 /* Sygen Admin Service Worker */
-const VERSION = 'v50';
+const VERSION = 'v51';
 const STATIC_CACHE = `sygen-admin-static-${VERSION}`;
 const PAGES_CACHE = `sygen-admin-pages-${VERSION}`;
 const KNOWN_CACHES = new Set([STATIC_CACHE, PAGES_CACHE]);
@@ -10,7 +10,6 @@ const PRECACHE_URLS = [
   '/manifest.json',
   '/icon-192x192.png',
   '/icon-512x512.png',
-  '/icon.svg',
 ];
 
 self.addEventListener('install', (event) => {
