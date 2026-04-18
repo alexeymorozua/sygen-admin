@@ -1,3 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <polygon points="256,80 412,170 412,342 256,432 100,342 100,170" fill="#e94560"/>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1380EC"/>
+      <stop offset="100%" stop-color="#6200EA"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <g stroke="#FFFFFF" stroke-width="18" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.9">
+    <path d="M256,170 L150,350 L362,350 Z"/>
+  </g>
+  <circle cx="256" cy="170" r="52" fill="#FFFFFF"/>
+  <circle cx="256" cy="170" r="22" fill="#6200EA"/>
+  <circle cx="150" cy="350" r="44" fill="#FFFFFF"/>
+  <circle cx="362" cy="350" r="44" fill="#FFFFFF"/>
 </svg>
