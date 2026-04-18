@@ -167,6 +167,7 @@ export default function Sidebar() {
           "fixed top-0 left-0 h-full w-64 bg-bg-sidebar border-r border-border flex flex-col z-40 transition-transform duration-200",
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
+        style={{ paddingTop: "env(safe-area-inset-top)" }}
       >
         {nav}
       </aside>
