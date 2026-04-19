@@ -2,8 +2,6 @@
 
 import { useState } from "react";
 import {
-  Bot,
-  User,
   Wrench,
   Copy,
   Check,
@@ -198,8 +196,6 @@ function FilePreview({
 interface MessageProps extends StreamingMessageProps {
   serverUrl?: string;
   token?: string;
-  agentAvatarUrl?: string;
-  userAvatarUrl?: string;
 }
 
 const KIND_LABELS: Record<string, string> = {
@@ -234,16 +230,9 @@ export default function StreamingMessage({
   meta,
   serverUrl = "",
   token = "",
-  agentAvatarUrl,
-  userAvatarUrl,
 }: MessageProps) {
   const [copied, setCopied] = useState(false);
-  const [avatarError, setAvatarError] = useState(false);
-  const [userAvatarError, setUserAvatarError] = useState(false);
   const isUser = sender === "user";
-  // userAvatarUrl comes from the parent as an object URL (already authed).
-  // agentAvatarUrl is a raw API URL — fetch it with auth and turn into an object URL.
-  const agentAvatarBlobUrl = useAuthedImage(agentAvatarUrl);
 
   // Parse <file:...> from agent content
   const { cleanText, files: parsedFiles } = isUser
@@ -269,38 +258,8 @@ export default function StreamingMessage({
   };
 
   return (
-    <div className={cn("flex gap-3 mb-4 group", isUser && "flex-row-reverse")}>
-      <div
-        className={cn(
-          "w-8 h-8 rounded-full flex items-center justify-center shrink-0 overflow-hidden",
-          isUser ? "bg-accent text-accent-foreground" : "bg-bg-card border border-border"
-        )}
-      >
-        {isUser ? (
-          userAvatarUrl && !userAvatarError ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={userAvatarUrl}
-              alt="User"
-              className="w-8 h-8 rounded-full object-cover"
-              onError={() => setUserAvatarError(true)}
-            />
-          ) : (
-            <User size={16} />
-          )
-        ) : agentAvatarBlobUrl && !avatarError ? (
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img
-            src={agentAvatarBlobUrl}
-            alt={agentName || "agent"}
-            className="w-8 h-8 rounded-full object-cover"
-            onError={() => setAvatarError(true)}
-          />
-        ) : (
-          <Bot size={16} className="text-brand-400" />
-        )}
-      </div>
-      <div className={cn("max-w-[75%] min-w-0 flex flex-col", isUser ? "items-end" : "items-start")}>
+    <div className={cn("flex mb-4 group", isUser ? "justify-end" : "justify-start")}>
+      <div className={cn("max-w-[85%] min-w-0 flex flex-col", isUser ? "items-end" : "items-start")}>
         {/* Tool activity indicator */}
         {toolActivity && !isUser && (
           <div className="flex items-center gap-1.5 mb-1.5 text-xs text-yellow-400">

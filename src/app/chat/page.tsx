@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Send,
@@ -38,7 +38,6 @@ import { SygenAPI, type ChatSession } from "@/lib/api";
 import { useAuthedImage } from "@/lib/hooks";
 import { useServer } from "@/context/ServerContext";
 import { useChat } from "@/context/ChatContext";
-import { useAuth } from "@/context/AuthContext";
 import { useTranslation } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
@@ -89,13 +88,6 @@ export default function ChatPage() {
   const { confirm } = useConfirm();
   const toast = useToast();
   const searchParams = useSearchParams();
-  const { user } = useAuth();
-
-  const userAvatarApiUrl = useMemo(
-    () => (user?.avatar ? SygenAPI.getAvatarUrl(user.avatar) : null),
-    [user?.avatar]
-  );
-  const userAvatarUrl = useAuthedImage(userAvatarApiUrl) ?? undefined;
 
   // Global chat state from context (persists across navigation)
   const chat = useChat();
@@ -910,12 +902,6 @@ export default function ChatPage() {
                 {...msg}
                 serverUrl={activeServer.url}
                 token={activeServer.token}
-                agentAvatarUrl={
-                  msg.sender === "agent" && msg.agentName && agentAvatars.has(msg.agentName)
-                    ? `${activeServer.url}/api/agents/${encodeURIComponent(msg.agentName)}/avatar`
-                    : undefined
-                }
-                userAvatarUrl={msg.sender === "user" ? userAvatarUrl : undefined}
               />
               ))}
               {activeSessionId && loadingOlderBySession[activeSessionId] && (
