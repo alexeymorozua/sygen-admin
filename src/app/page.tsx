@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, forwardRef } from "react";
 import {
   Bot,
   ListTodo,
@@ -43,17 +43,29 @@ function thresholdLevel(value: number): ThresholdLevel {
   return "ok";
 }
 
-const THRESHOLD_BAR: Record<ThresholdLevel, string> = {
-  ok: "bg-success",
-  warn: "bg-warning",
-  critical: "bg-danger",
-};
-
+// Severity colors the % number on the right, not the bar — so CPU/RAM/Disk
+// at the same "warn" level don't visually collapse into one yellow blob.
 const THRESHOLD_TEXT: Record<ThresholdLevel, string> = {
   ok: "text-success",
   warn: "text-warning",
   critical: "text-danger",
 };
+
+type MetricTone = "cpu" | "ram" | "disk";
+
+const METRIC_BAR: Record<MetricTone, string> = {
+  cpu: "bg-sky-500",
+  ram: "bg-purple-500",
+  disk: "bg-teal-500",
+};
+
+const METRIC_ICON: Record<MetricTone, string> = {
+  cpu: "text-sky-500",
+  ram: "text-purple-500",
+  disk: "text-teal-500",
+};
+
+type ActivityFilter = "all" | "error";
 
 function iconForEventType(type: string): LucideIcon {
   if (type.startsWith("task")) return ListTodo;
@@ -115,7 +127,9 @@ export default function DashboardPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [serverStatuses, setServerStatuses] = useState<Record<string, { online: boolean }>>({});
+  const [activityFilter, setActivityFilter] = useState<ActivityFilter>("all");
   const refreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const activityRef = useRef<HTMLDivElement>(null);
 
   const loadData = useCallback(async (silent = false) => {
     if (!silent) setRefreshing(true);
@@ -227,7 +241,11 @@ export default function DashboardPage() {
                 label={t("nav.agents")}
                 value={`${summary.counters.agents_online}/${summary.counters.agents_total}`}
                 icon={Bot}
-                hint={`${summary.counters.agents_online} ${t("dashboard.online")}`}
+                hint={
+                  summary.counters.agents_online === 0 && summary.counters.agents_total > 0
+                    ? t("dashboard.registered")
+                    : `${summary.counters.agents_online} ${t("dashboard.online")}`
+                }
               />
               <CounterTile
                 label={t("dashboard.activeTasks")}
@@ -246,11 +264,26 @@ export default function DashboardPage() {
                 value={summary.counters.failed_last_24h}
                 icon={AlertTriangle}
                 alert={summary.counters.failed_last_24h > 0}
+                hint={t("dashboard.last24h")}
+                onClick={
+                  summary.counters.failed_last_24h > 0
+                    ? () => {
+                        setActivityFilter("error");
+                        activityRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                      }
+                    : undefined
+                }
               />
             </div>
           </div>
 
-          <ActivityCard events={summary.recent_activity} t={t} />
+          <ActivityCard
+            ref={activityRef}
+            events={summary.recent_activity}
+            t={t}
+            filter={activityFilter}
+            onClearFilter={() => setActivityFilter("all")}
+          />
         </>
       )}
     </div>
@@ -272,9 +305,9 @@ function SystemHero({ system, t }: { system: DashboardSummarySystem; t: TFn }) {
         {t("dashboard.systemHealth")}
       </h2>
       <div className="space-y-4 flex-1">
-        <MetricBar label="CPU" value={system.cpu_percent} icon={Cpu} />
-        <MetricBar label="RAM" value={system.ram_percent} icon={MemoryStick} />
-        <MetricBar label="Disk" value={system.disk_percent} icon={HardDrive} />
+        <MetricBar label="CPU" value={system.cpu_percent} icon={Cpu} tone="cpu" />
+        <MetricBar label="RAM" value={system.ram_percent} icon={MemoryStick} tone="ram" />
+        <MetricBar label="Disk" value={system.disk_percent} icon={HardDrive} tone="disk" />
       </div>
       <div className="pt-3 mt-4 border-t border-border/50">
         <p className="text-xs text-text-secondary">{t("dashboard.uptime")}</p>
@@ -284,13 +317,23 @@ function SystemHero({ system, t }: { system: DashboardSummarySystem; t: TFn }) {
   );
 }
 
-function MetricBar({ label, value, icon: Icon }: { label: string; value: number; icon: LucideIcon }) {
+function MetricBar({
+  label,
+  value,
+  icon: Icon,
+  tone,
+}: {
+  label: string;
+  value: number;
+  icon: LucideIcon;
+  tone: MetricTone;
+}) {
   const level = thresholdLevel(value);
   return (
-    <div data-testid={`metric-${label.toLowerCase()}`} data-level={level}>
+    <div data-testid={`metric-${label.toLowerCase()}`} data-level={level} data-tone={tone}>
       <div className="flex items-center justify-between mb-1.5">
         <span className="text-sm text-text-secondary flex items-center gap-1.5">
-          <Icon size={14} />
+          <Icon size={14} className={METRIC_ICON[tone]} />
           {label}
         </span>
         <span className={cn("text-sm font-medium tabular-nums", THRESHOLD_TEXT[level])}>
@@ -300,7 +343,7 @@ function MetricBar({ label, value, icon: Icon }: { label: string; value: number;
       <div className="w-full h-1.5 bg-bg-primary rounded-full overflow-hidden">
         <div
           data-testid={`metric-${label.toLowerCase()}-bar`}
-          className={cn("h-full rounded-full transition-all duration-500", THRESHOLD_BAR[level])}
+          className={cn("h-full rounded-full transition-all duration-500", METRIC_BAR[tone])}
           style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
         />
       </div>
@@ -314,21 +357,38 @@ function CounterTile({
   icon: Icon,
   hint,
   alert,
+  onClick,
 }: {
   label: string;
   value: string | number;
   icon: LucideIcon;
   hint?: string;
   alert?: boolean;
+  onClick?: () => void;
 }) {
   const numericValue = typeof value === "number" ? value : null;
   const isAlerting = alert && numericValue !== null && numericValue > 0;
+  const clickable = Boolean(onClick);
   return (
     <div
       data-testid={`counter-${label}`}
+      role={clickable ? "button" : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={
+        clickable
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onClick?.();
+              }
+            }
+          : undefined
+      }
       className={cn(
         "bg-bg-card border rounded-xl p-4 transition-colors",
-        isAlerting ? "border-danger/40 hover:border-danger/70" : "border-border hover:border-accent/50"
+        isAlerting ? "border-danger/40 hover:border-danger/70" : "border-border hover:border-accent/50",
+        clickable && "cursor-pointer focus:outline-none focus:ring-2 focus:ring-danger/50"
       )}
     >
       <div className="flex items-center justify-between mb-2">
@@ -359,27 +419,50 @@ function CountUp({ value }: { value: number }) {
   return <>{display}</>;
 }
 
-function ActivityCard({ events, t }: { events: ActivityRecentEvent[]; t: TFn }) {
+const ActivityCard = forwardRef<
+  HTMLDivElement,
+  {
+    events: ActivityRecentEvent[];
+    t: TFn;
+    filter: ActivityFilter;
+    onClearFilter: () => void;
+  }
+>(function ActivityCard({ events, t, filter, onClearFilter }, ref) {
+  const filtered = filter === "error" ? events.filter((e) => e.severity === "error") : events;
   return (
-    <div className="bg-bg-card border border-border rounded-xl p-5">
-      <h2 className="text-sm font-semibold text-text-secondary mb-4 flex items-center gap-2">
-        <Activity size={14} className="text-brand-400" />
-        {t("dashboard.recentActivity")}
-      </h2>
-      {events.length === 0 ? (
+    <div ref={ref} className="bg-bg-card border border-border rounded-xl p-5">
+      <div className="flex items-center justify-between mb-4 gap-2">
+        <h2 className="text-sm font-semibold text-text-secondary flex items-center gap-2">
+          <Activity size={14} className="text-brand-400" />
+          {t("dashboard.recentActivity")}
+        </h2>
+        {filter === "error" && (
+          <button
+            type="button"
+            onClick={onClearFilter}
+            data-testid="activity-clear-filter"
+            className="inline-flex items-center gap-1 rounded-full border border-danger/40 bg-danger/10 px-2.5 py-0.5 text-xs text-danger hover:bg-danger/20"
+          >
+            {t("dashboard.filterErrors")}
+            <span aria-hidden="true">×</span>
+            <span className="sr-only">{t("dashboard.clearFilter")}</span>
+          </button>
+        )}
+      </div>
+      {filtered.length === 0 ? (
         <p className="text-sm text-text-secondary py-6 text-center">
           {t("dashboard.noRecentActivity")}
         </p>
       ) : (
         <ul className="space-y-2">
-          {events.slice(0, 8).map((event) => (
+          {filtered.slice(0, 8).map((event) => (
             <ActivityItem key={event.id} event={event} />
           ))}
         </ul>
       )}
     </div>
   );
-}
+});
 
 function ActivityItem({ event }: { event: ActivityRecentEvent }) {
   const sev = severityStyle(event.severity);

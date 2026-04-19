@@ -27,6 +27,10 @@ const uk: Record<string, string> = {
   "dashboard.active": "активних",
   "dashboard.paused": "призупинено",
   "dashboard.refresh": "Оновити",
+  "dashboard.last24h": "за 24 години",
+  "dashboard.registered": "зареєстровано",
+  "dashboard.filterErrors": "Тільки помилки",
+  "dashboard.clearFilter": "Скинути фільтр",
 
   // Agents
   "agents.title": "Агенти",

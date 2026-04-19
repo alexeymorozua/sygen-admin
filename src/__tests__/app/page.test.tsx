@@ -127,30 +127,33 @@ describe("DashboardPage", () => {
     expect(within(failedTile).getByText("0")).toBeInTheDocument();
   });
 
-  it("renders system metrics with threshold-driven color levels", async () => {
+  it("renders system metrics: threshold colors the %, resource tone colors the bar", async () => {
     renderWithI18n(<DashboardPage />);
 
     await waitFor(() => {
       expect(screen.getByText("System Health")).toBeInTheDocument();
     });
 
-    // CPU 34% → ok (green)
+    // CPU 34% → ok threshold, cpu tone
     const cpu = screen.getByTestId("metric-cpu");
     expect(cpu.dataset.level).toBe("ok");
+    expect(cpu.dataset.tone).toBe("cpu");
     expect(within(cpu).getByText("34%").className).toContain("text-success");
-    expect(screen.getByTestId("metric-cpu-bar").className).toContain("bg-success");
+    expect(screen.getByTestId("metric-cpu-bar").className).toContain("bg-sky-500");
 
-    // RAM 62% → warn (yellow)
+    // RAM 62% → warn threshold, ram tone
     const ram = screen.getByTestId("metric-ram");
     expect(ram.dataset.level).toBe("warn");
+    expect(ram.dataset.tone).toBe("ram");
     expect(within(ram).getByText("62%").className).toContain("text-warning");
-    expect(screen.getByTestId("metric-ram-bar").className).toContain("bg-warning");
+    expect(screen.getByTestId("metric-ram-bar").className).toContain("bg-purple-500");
 
-    // Disk 90% → critical (red)
+    // Disk 90% → critical threshold, disk tone
     const disk = screen.getByTestId("metric-disk");
     expect(disk.dataset.level).toBe("critical");
+    expect(disk.dataset.tone).toBe("disk");
     expect(within(disk).getByText("90%").className).toContain("text-danger");
-    expect(screen.getByTestId("metric-disk-bar").className).toContain("bg-danger");
+    expect(screen.getByTestId("metric-disk-bar").className).toContain("bg-teal-500");
 
     expect(screen.getByText("14d 7h 23m")).toBeInTheDocument();
   });

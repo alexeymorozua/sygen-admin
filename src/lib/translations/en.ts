@@ -27,6 +27,10 @@ const en: Record<string, string> = {
   "dashboard.active": "active",
   "dashboard.paused": "paused",
   "dashboard.refresh": "Refresh",
+  "dashboard.last24h": "last 24h",
+  "dashboard.registered": "registered",
+  "dashboard.filterErrors": "Errors only",
+  "dashboard.clearFilter": "Clear filter",
 
   // Agents
   "agents.title": "Agents",

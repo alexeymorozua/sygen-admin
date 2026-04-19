@@ -27,6 +27,10 @@ const ru: Record<string, string> = {
   "dashboard.active": "активных",
   "dashboard.paused": "приостановлено",
   "dashboard.refresh": "Обновить",
+  "dashboard.last24h": "за 24 часа",
+  "dashboard.registered": "зарегистрировано",
+  "dashboard.filterErrors": "Только ошибки",
+  "dashboard.clearFilter": "Сбросить фильтр",
 
   // Agents
   "agents.title": "Агенты",
