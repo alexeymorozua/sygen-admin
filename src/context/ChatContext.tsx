@@ -272,6 +272,21 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           } else if (ctx.sessionId) {
             siblingStreamingRef.current.delete(ctx.sessionId);
           }
+          // Notification path: admin↔admin stream delivers text_delta+result,
+          // not chat_message. Synthesize a local chat_message envelope so
+          // useDesktopNotifications fires on agent replies. Only fire on the
+          // final text + when we actually have a session id.
+          if (chatMessageCallbackRef.current && text && ctx.sessionId && ctx.agent) {
+            chatMessageCallbackRef.current({
+              type: "chat_message",
+              role: "agent",
+              kind: "text",
+              agent: ctx.agent,
+              session_id: ctx.sessionId,
+              content: text,
+              timestamp: Math.floor(Date.now() / 1000),
+            });
+          }
         },
         onError: (message, ctx) => {
           const target = resolveStreamTarget(ctx);
@@ -353,19 +368,32 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       const page = await SygenAPI.getChatHistoryPage(sessionId, { limit: 50 });
       setSessionHasMore((prev) => ({ ...prev, [sessionId]: page.has_more }));
       if (page.messages.length > 0) {
-        setMessagesBySession((prev) => ({
-          ...prev,
-          [sessionId]: page.messages.map((m) => ({
-            id: m.id,
-            sender: m.sender,
-            agentName: m.agentName,
-            content: m.content,
-            timestamp: m.timestamp,
-            files: m.files as FileAttachment[] | undefined,
-            kind: m.kind,
-            meta: m.meta,
-          })),
+        const restMsgs: ChatMsg[] = page.messages.map((m) => ({
+          id: m.id,
+          sender: m.sender,
+          agentName: m.agentName,
+          content: m.content,
+          timestamp: m.timestamp,
+          files: m.files as FileAttachment[] | undefined,
+          kind: m.kind,
+          meta: m.meta,
         }));
+        // Merge instead of overwrite: a WS message that arrived between the
+        // REST request and its resolve must not be discarded. Dedupe by id,
+        // then sort by timestamp so order is stable regardless of which side
+        // landed first.
+        setMessagesBySession((prev) => {
+          const liveMsgs = prev[sessionId] || [];
+          const seen = new Set(restMsgs.map((m) => m.id));
+          const extras = liveMsgs.filter((m) => !seen.has(m.id));
+          const merged = [...restMsgs, ...extras];
+          merged.sort((a, b) => {
+            const ta = Date.parse(a.timestamp || "") || 0;
+            const tb = Date.parse(b.timestamp || "") || 0;
+            return ta - tb;
+          });
+          return { ...prev, [sessionId]: merged };
+        });
       }
     } catch {
       historyLoadedRef.current.delete(sessionId);
