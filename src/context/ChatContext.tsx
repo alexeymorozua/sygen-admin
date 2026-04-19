@@ -208,6 +208,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         content: "",
         timestamp: new Date().toISOString(),
         isStreaming: true,
+        sibling: true,
       });
       return { session: sessionId, id: newId, own: false };
     };
@@ -317,6 +318,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         onChatMessage: (msg: WSChatMessage) => {
           const sessionId = msg.session_id;
           if (!sessionId) return;
+          // A chat_message from the server is always a cross-device mirror for
+          // admin↔agent chats: the initiating tab already added its own local
+          // copy before sending. Mark it as sibling so our debounced save
+          // doesn't re-persist it with a different id (which would duplicate
+          // the message on next reload — the originator saves with its own id).
           addMessage(sessionId, {
             id: `msg-${uuid()}`,
             sender: msg.role === "user" ? "user" : "agent",
@@ -327,6 +333,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
               : new Date().toISOString(),
             kind: msg.kind,
             meta: msg.meta,
+            sibling: true,
           });
           chatMessageCallbackRef.current?.(msg);
         },
@@ -476,7 +483,13 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     if (msgs.length === 0) return;
 
     const timer = setTimeout(() => {
-      const saveMsgs: ChatSessionMessage[] = msgs.map((m) => ({
+      // Skip sibling-mirror messages: they were originated by another device
+      // which will save them under its own id. If we saved our copy too, the
+      // merge-by-id endpoint would treat them as distinct and persist both,
+      // causing visible duplicates after reload.
+      const persistable = msgs.filter((m) => !m.sibling);
+      if (persistable.length === 0) return;
+      const saveMsgs: ChatSessionMessage[] = persistable.map((m) => ({
         id: m.id,
         sender: m.sender as "user" | "agent",
         agentName: m.agentName,

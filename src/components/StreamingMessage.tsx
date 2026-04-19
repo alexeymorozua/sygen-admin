@@ -47,6 +47,13 @@ export interface StreamingMessageProps {
    */
   kind?: MessageKind | string;
   meta?: Record<string, unknown>;
+  /**
+   * True when this message arrived as a cross-device mirror from a sibling tab
+   * (user already sent / agent already answered in another browser). Display
+   * only — never persisted by this tab's auto-save, because the originating
+   * device will save it with its own id and our copy would create a duplicate.
+   */
+  sibling?: boolean;
 }
 
 // Parse <file:/path/to/file> markers from text

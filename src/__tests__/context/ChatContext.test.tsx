@@ -158,6 +158,44 @@ describe("ChatContext.onResult — synthesized chat_message", () => {
   });
 });
 
+describe("ChatContext — cross-device save dedup", () => {
+  it("does not persist sibling-mirror messages (cross-device duplication fix)", async () => {
+    const { SygenAPI } = await import("@/lib/api");
+    const saveMock = SygenAPI.saveChatHistory as ReturnType<typeof vi.fn>;
+    saveMock.mockClear();
+
+    const { result } = renderHook(() => useChat(), { wrapper });
+    await waitFor(() => expect(hoist.captured).not.toBeNull());
+    fireConnected();
+
+    act(() => {
+      result.current.setActiveSessionId("sib-sess");
+    });
+    await act(async () => {
+      hoist.historyResolve({ messages: [], has_more: false, total: 0 });
+    });
+
+    // Sibling event (sent from another device, mirrored here via WS).
+    act(() => {
+      hoist.captured?.onChatMessage?.({
+        type: "chat_message",
+        role: "user",
+        kind: "text",
+        agent: "main",
+        session_id: "sib-sess",
+        content: "from other device",
+        timestamp: Math.floor(Date.now() / 1000),
+      });
+    });
+
+    // Wait past the 1s debounce.
+    await new Promise((r) => setTimeout(r, 1200));
+
+    // No save call — sibling messages are display-only on this tab.
+    expect(saveMock).not.toHaveBeenCalled();
+  }, 3000);
+});
+
 describe("ChatContext.loadSessionHistory — race with WS messages", () => {
   it("preserves WS messages that arrive while the REST fetch is in flight", async () => {
     const { result } = renderHook(() => useChat(), { wrapper });
