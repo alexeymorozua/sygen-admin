@@ -11,6 +11,17 @@ vi.mock("@/lib/i18n", () => ({
   }),
 }));
 
+// Mock Toast — component uses useToast() to surface HTTPS/unsupported warnings,
+// but those paths aren't exercised in these tests.
+vi.mock("@/components/Toast", () => ({
+  useToast: () => ({
+    success: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+    warning: vi.fn(),
+  }),
+}));
+
 // Mock MediaRecorder
 class MockMediaRecorder {
   state = "inactive" as "inactive" | "recording" | "paused";
@@ -20,11 +31,19 @@ class MockMediaRecorder {
   start() {
     this.state = "recording";
   }
+  pause() {
+    if (this.state === "recording") this.state = "paused";
+  }
+  resume() {
+    if (this.state === "paused") this.state = "recording";
+  }
   stop() {
     this.state = "inactive";
-    // Simulate data chunk
+    // Simulate data chunk. Component rejects blobs ≤ 1024 bytes, so pad.
     if (this.ondataavailable) {
-      this.ondataavailable({ data: new Blob(["audio-data"], { type: "audio/webm" }) });
+      this.ondataavailable({
+        data: new Blob(["x".repeat(2048)], { type: "audio/webm" }),
+      });
     }
     if (this.onstop) {
       this.onstop();
@@ -122,6 +141,84 @@ describe("VoiceRecorder", () => {
     const [blob, filename] = onComplete.mock.calls[0];
     expect(blob).toBeInstanceOf(Blob);
     expect(filename).toMatch(/^voice_\d+\.webm$/);
+
+    vi.useRealTimers();
+  });
+
+  it("cancel button discards recording without calling onRecordingComplete", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const onComplete = vi.fn();
+    render(<VoiceRecorder onRecordingComplete={onComplete} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("voice-record-btn"));
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(2000);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("voice-cancel-btn"));
+    });
+
+    // onComplete must NOT fire — user threw the recording away.
+    expect(onComplete).not.toHaveBeenCalled();
+
+    // And we're back to the idle mic button.
+    expect(screen.getByTestId("voice-record-btn")).toBeInTheDocument();
+
+    vi.useRealTimers();
+  });
+
+  it("pause toggles to resume icon and freezes the duration", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const onComplete = vi.fn();
+    render(<VoiceRecorder onRecordingComplete={onComplete} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("voice-record-btn"));
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(2000);
+    });
+
+    const pauseBtn = screen.getByTestId("voice-pause-btn");
+    expect(pauseBtn).toHaveAttribute("aria-label", "chat.pauseRecording");
+
+    await act(async () => {
+      fireEvent.click(pauseBtn);
+    });
+
+    // After pause, button aria-label flips to resume
+    expect(screen.getByTestId("voice-pause-btn")).toHaveAttribute(
+      "aria-label",
+      "chat.resumeRecording",
+    );
+
+    // Duration must not advance while paused
+    const beforePause = screen.getByTestId("voice-recorder-active").textContent;
+    await act(async () => {
+      vi.advanceTimersByTime(3000);
+    });
+    const afterPause = screen.getByTestId("voice-recorder-active").textContent;
+    expect(afterPause).toBe(beforePause);
+
+    // Resume and stop — recording should still flush via onstop
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("voice-pause-btn"));
+    });
+    expect(screen.getByTestId("voice-pause-btn")).toHaveAttribute(
+      "aria-label",
+      "chat.pauseRecording",
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("voice-stop-btn"));
+    });
+
+    expect(onComplete).toHaveBeenCalledTimes(1);
 
     vi.useRealTimers();
   });
