@@ -92,13 +92,28 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-title" content="Sygen" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        {/* Transparent PNG only — iOS 18 Home Screen Appearance and
-            macOS Sequoia Dock tint/dark/light overlays require an alpha
-            channel to tint the icon. Baked-in backgrounds defeat the
-            tint. macOS hard-bakes the icon at install, so after changes
-            the PWA must be removed from the Dock and re-installed. */}
+        {/* Opaque variants (light = white bg, dark = brand near-black bg)
+            selected via media query. Trade-off vs transparent: we lose
+            the iOS 18 / macOS Sequoia live tint overlay in Tinted mode,
+            but gain consistent look across iOS versions — transparent
+            alpha gets filled black on the PWA home-screen, which made
+            the icon appear as a dark square in Light mode. macOS hard-
+            bakes the icon at install, so after changes the PWA must be
+            removed from the Dock and re-installed. */}
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-180.png" />
         <link rel="apple-touch-icon" sizes="192x192" href="/apple-touch-icon-192.png" />
+        <link
+          rel="apple-touch-icon"
+          sizes="180x180"
+          href="/apple-touch-icon-dark-180.png"
+          media="(prefers-color-scheme: dark)"
+        />
+        <link
+          rel="apple-touch-icon"
+          sizes="192x192"
+          href="/apple-touch-icon-dark-192.png"
+          media="(prefers-color-scheme: dark)"
+        />
         {splashScreens.map((s) => (
           <link
             key={s.href}
