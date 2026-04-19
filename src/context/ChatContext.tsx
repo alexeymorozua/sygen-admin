@@ -459,11 +459,16 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           const tb = Date.parse(b.timestamp || "") || 0;
           return ta - tb;
         });
-        // Safety net: during a protocol transition the server and the client
-        // may briefly persist the same turn under two different ids (server
-        // generated + client autosave). Collapse near-duplicates by
-        // (sender, content) within 60 s, preferring the earliest arrival so
-        // ordering stays stable across reloads.
+        // Safety net for legacy history files: 1.3.41 briefly persisted the
+        // same turn under two different ids when the client autosave raced
+        // against the server's first persist. Collapse those leftovers on a
+        // replace-sweep only (reconnect / visibility refetch), with a tight
+        // 5 s window so legitimate repeats like "ok" / "да" are never merged.
+        // Fresh history written by 1.3.42 shares ids across both paths and
+        // won't trigger this branch at all.
+        if (!opts?.replace) {
+          return { ...prev, [sessionId]: merged };
+        }
         const deduped: ChatMsg[] = [];
         for (const msg of merged) {
           const ts = Date.parse(msg.timestamp || "") || 0;
@@ -471,7 +476,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             (d) =>
               d.sender === msg.sender &&
               (d.content || "") === (msg.content || "") &&
-              Math.abs((Date.parse(d.timestamp || "") || 0) - ts) < 60_000,
+              Math.abs((Date.parse(d.timestamp || "") || 0) - ts) < 5_000,
           );
           if (!twin) deduped.push(msg);
         }

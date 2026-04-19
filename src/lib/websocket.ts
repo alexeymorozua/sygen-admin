@@ -256,12 +256,27 @@ export class SygenWebSocket {
         );
         this.disconnect();
         break;
-      case "error":
+      case "error": {
+        // Server rejects the handshake via ``_ws_reject`` with
+        // ``{type:"error", code:"auth_failed"/"auth_required"/"auth_timeout"}``
+        // before closing the socket. Treat those codes as an auth failure so
+        // we actually redirect to /login instead of retrying forever with a
+        // dead token.
+        const code = typeof data.code === "string" ? data.code : "";
+        if (code.startsWith("auth_")) {
+          this.authFailed = true;
+          this.callbacks.onAuthFailed?.(
+            typeof data.message === "string" ? data.message : "Authentication failed"
+          );
+          this.disconnect();
+          break;
+        }
         this.callbacks.onError?.(
           typeof data.message === "string" ? data.message : "Unknown error",
           ctx
         );
         break;
+      }
       case "abort_ok":
         this.callbacks.onAbortOk?.(
           typeof data.killed === "number" ? data.killed : 0

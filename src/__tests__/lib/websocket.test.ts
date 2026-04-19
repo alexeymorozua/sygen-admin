@@ -398,6 +398,61 @@ describe("reconnection", () => {
 
     vi.useRealTimers();
   });
+
+  it("treats {type:error, code:auth_failed} as auth failure (handshake reject)", async () => {
+    // The server's ``_ws_reject`` helper sends
+    // ``{type:"error", code:"auth_failed"/"auth_required"/"auth_timeout"}``
+    // before closing the socket. Before this fix the client routed it to
+    // the generic error handler and kept retrying with a dead token.
+    vi.useFakeTimers();
+    const onAuthFailed = vi.fn();
+    const onError = vi.fn();
+    const ws = new SygenWebSocket(
+      { onAuthFailed, onError },
+      { url: "http://test:8080" },
+    );
+
+    ws.connect();
+    await vi.advanceTimersByTimeAsync(10);
+
+    mockWsInstance.simulateMessage({
+      type: "error",
+      code: "auth_failed",
+      message: "Invalid token",
+    });
+
+    expect(onAuthFailed).toHaveBeenCalledWith("Invalid token");
+    // Should not fall through to the generic error path.
+    expect(onError).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(35000);
+    expect(ws.getStatus()).toBe("disconnected");
+
+    vi.useRealTimers();
+  });
+
+  it("still routes non-auth error frames to onError", async () => {
+    vi.useFakeTimers();
+    const onAuthFailed = vi.fn();
+    const onError = vi.fn();
+    const ws = new SygenWebSocket(
+      { onAuthFailed, onError },
+      { url: "http://test:8080" },
+    );
+
+    ws.connect();
+    await vi.advanceTimersByTimeAsync(10);
+
+    mockWsInstance.simulateMessage({
+      type: "error",
+      message: "Agent 'main' not found",
+    });
+
+    expect(onError).toHaveBeenCalledWith("Agent 'main' not found", expect.anything());
+    expect(onAuthFailed).not.toHaveBeenCalled();
+
+    vi.useRealTimers();
+  });
 });
 
 describe("abort", () => {
