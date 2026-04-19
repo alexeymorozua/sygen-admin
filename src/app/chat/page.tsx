@@ -595,6 +595,7 @@ export default function ChatPage() {
           files={stagedFiles}
           onCancel={handleCancelStaged}
           onSend={handleSendStaged}
+          onAddFiles={handleFiles}
           sending={sendingStaged}
         />
       )}

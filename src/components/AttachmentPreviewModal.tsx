@@ -29,13 +29,15 @@ interface Props {
   files: File[];
   onCancel: () => void;
   onSend: (caption: string) => void;
+  onAddFiles?: (files: File[]) => void;
   sending?: boolean;
 }
 
-export default function AttachmentPreviewModal({ files, onCancel, onSend, sending }: Props) {
+export default function AttachmentPreviewModal({ files, onCancel, onSend, onAddFiles, sending }: Props) {
   const { t } = useTranslation();
   const [caption, setCaption] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
 
   const previewUrls = useMemo(
     () => files.map((f) => (isImageFile(f.name) ? URL.createObjectURL(f) : null)),
@@ -72,6 +74,44 @@ export default function AttachmentPreviewModal({ files, onCancel, onSend, sendin
     }
   };
 
+  const handlePaste = (e: React.ClipboardEvent) => {
+    if (!onAddFiles || sending) return;
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    const pasted: File[] = [];
+    for (const item of items) {
+      if (item.kind === "file") {
+        const f = item.getAsFile();
+        if (f) pasted.push(f);
+      }
+    }
+    if (pasted.length > 0) {
+      e.preventDefault();
+      e.stopPropagation();
+      onAddFiles(pasted);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    if (!onAddFiles || sending) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isDragging) setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    if (e.target === e.currentTarget) setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    if (!onAddFiles || sending) return;
+    const dropped = Array.from(e.dataTransfer.files);
+    if (dropped.length > 0) onAddFiles(dropped);
+  };
+
   if (!active) return null;
 
   return (
@@ -80,8 +120,16 @@ export default function AttachmentPreviewModal({ files, onCancel, onSend, sendin
       onClick={(e) => {
         if (e.target === e.currentTarget && !sending) onCancel();
       }}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      onPaste={handlePaste}
     >
-      <div className="bg-bg-primary border border-border rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
+      <div
+        className={`bg-bg-primary border rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden transition-colors ${
+          isDragging ? "border-accent" : "border-border"
+        }`}
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
           <div className="text-sm text-text-secondary">
@@ -157,6 +205,7 @@ export default function AttachmentPreviewModal({ files, onCancel, onSend, sendin
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
               onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
               placeholder={t("chat.addCaption")}
               disabled={sending}
               rows={1}
