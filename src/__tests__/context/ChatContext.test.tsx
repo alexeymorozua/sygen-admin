@@ -158,6 +158,66 @@ describe("ChatContext.onResult — synthesized chat_message", () => {
   });
 });
 
+describe("ChatContext.loadSessionHistory — force reload", () => {
+  it("bypasses the once-per-session guard when force=true (Refresh button / iOS resume)", async () => {
+    const { SygenAPI } = await import("@/lib/api");
+    const getMock = SygenAPI.getChatHistoryPage as ReturnType<typeof vi.fn>;
+    getMock.mockClear();
+
+    const { result } = renderHook(() => useChat(), { wrapper });
+    await waitFor(() => expect(hoist.captured).not.toBeNull());
+    fireConnected();
+
+    // First load.
+    let p1!: Promise<void>;
+    act(() => {
+      p1 = result.current.loadSessionHistory("force-sess");
+    });
+    await act(async () => {
+      hoist.historyResolve({ messages: [], has_more: false, total: 0 });
+      await p1;
+    });
+
+    // Second call without force: early-return, no new fetch.
+    let p2!: Promise<void>;
+    act(() => {
+      p2 = result.current.loadSessionHistory("force-sess");
+    });
+    await act(async () => {
+      await p2;
+    });
+    // Exactly one REST call so far (the very first load).
+    expect(getMock).toHaveBeenCalledTimes(1);
+
+    // Third call WITH force: bypass guard → another fetch.
+    let p3!: Promise<void>;
+    act(() => {
+      p3 = result.current.loadSessionHistory("force-sess", { force: true });
+    });
+    await act(async () => {
+      hoist.historyResolve({
+        messages: [
+          {
+            id: "late-msg",
+            sender: "agent",
+            agentName: "main",
+            content: "missed while suspended",
+            timestamp: "2026-04-19T17:00:00Z",
+          },
+        ],
+        has_more: false,
+        total: 1,
+      });
+      await p3;
+    });
+
+    expect(getMock).toHaveBeenCalledTimes(2);
+    const msgs = result.current.messagesBySession["force-sess"];
+    expect(msgs).toHaveLength(1);
+    expect(msgs[0].id).toBe("late-msg");
+  });
+});
+
 describe("ChatContext — cross-device save dedup", () => {
   it("does not persist sibling-mirror messages (cross-device duplication fix)", async () => {
     const { SygenAPI } = await import("@/lib/api");

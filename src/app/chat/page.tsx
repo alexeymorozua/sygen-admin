@@ -448,7 +448,10 @@ export default function ChatPage() {
     setRefreshingChat(true);
     try {
       if (activeSessionId) {
-        await loadSessionHistory(activeSessionId);
+        // force: true — bypass the "already loaded this session" guard so the
+        // button actually re-fetches. Without it, this was a no-op after the
+        // first load of a session.
+        await loadSessionHistory(activeSessionId, { force: true });
       } else {
         await loadSessions(selectedAgent);
       }

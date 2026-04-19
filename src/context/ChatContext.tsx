@@ -69,7 +69,7 @@ interface ChatContextValue {
   ) => void;
   abortStreaming: () => void;
   loadSessions: (agent: string) => Promise<void>;
-  loadSessionHistory: (sessionId: string) => Promise<void>;
+  loadSessionHistory: (sessionId: string, opts?: { force?: boolean }) => Promise<void>;
   loadOlderMessages: (sessionId: string) => Promise<void>;
   removeSessionData: (sessionId: string) => void;
 
@@ -368,8 +368,19 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const loadSessionHistory = useCallback(async (sessionId: string) => {
-    if (historyLoadedRef.current.has(sessionId)) return;
+  const loadSessionHistory = useCallback(async (
+    sessionId: string,
+    opts?: { force?: boolean },
+  ) => {
+    // The cached-once guard is there to avoid re-fetching on every mount of
+    // <ChatPage/>, not to block explicit refreshes. ``force: true`` bypasses
+    // it for two cases:
+    //   1. User pressed the Refresh button — they expect a fresh pull.
+    //   2. PWA resumed from the background on iOS — WS was killed by the OS
+    //      while suspended and any messages sent from other devices during
+    //      that window are only in the persisted history now.
+    // Merge-by-id still protects against duplicating live messages.
+    if (!opts?.force && historyLoadedRef.current.has(sessionId)) return;
     historyLoadedRef.current.add(sessionId);
     try {
       const page = await SygenAPI.getChatHistoryPage(sessionId, { limit: 50 });
@@ -474,6 +485,34 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     setSessions([]);
     setActiveSessionIdRaw(null);
   }, [activeServer.id]);
+
+  // Re-sync when the tab becomes visible again. iOS Safari suspends
+  // backgrounded PWAs aggressively: the WebSocket is killed and any
+  // chat_message/text_delta events pushed from sibling devices during that
+  // window never reach us. The SygenWebSocket auto-reconnect handles the
+  // live channel going forward, but we still need to catch up on messages
+  // that were written to history while we slept. Force a history reload
+  // for the active session (merge-by-id dedupes against anything already
+  // in memory so reopen mid-stream doesn't double-render).
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      const sid = activeSessionId;
+      if (sid) loadSessionHistory(sid, { force: true });
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    // pageshow with persisted=true fires on iOS when PWA is restored from
+    // bfcache — visibilitychange doesn't always fire in that path.
+    const onPageShow = (ev: PageTransitionEvent) => {
+      if (ev.persisted) onVisible();
+    };
+    window.addEventListener("pageshow", onPageShow);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("pageshow", onPageShow);
+    };
+  }, [activeSessionId, loadSessionHistory]);
 
   // Save messages to server (debounced)
   useEffect(() => {
