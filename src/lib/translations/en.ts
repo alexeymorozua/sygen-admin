@@ -31,6 +31,11 @@ const en: Record<string, string> = {
   "dashboard.registered": "registered",
   "dashboard.filterErrors": "Errors only",
   "dashboard.clearFilter": "Clear filter",
+  "dashboard.clearErrors": "Clear",
+  "dashboard.clearErrorsTitle": "Mark errors as seen",
+  "dashboard.clearErrorsSuccess": "Error counter reset",
+  "dashboard.clearErrorsFailed": "Failed to clear errors",
+  "dashboard.loadingErrors": "Loading errors…",
 
   // Agents
   "agents.title": "Agents",

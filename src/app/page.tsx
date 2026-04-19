@@ -128,6 +128,9 @@ export default function DashboardPage() {
   const [error, setError] = useState("");
   const [serverStatuses, setServerStatuses] = useState<Record<string, { online: boolean }>>({});
   const [activityFilter, setActivityFilter] = useState<ActivityFilter>("all");
+  const [errorEvents, setErrorEvents] = useState<ActivityRecentEvent[] | null>(null);
+  const [errorEventsLoading, setErrorEventsLoading] = useState(false);
+  const [clearingErrors, setClearingErrors] = useState(false);
   const refreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const activityRef = useRef<HTMLDivElement>(null);
 
@@ -145,19 +148,61 @@ export default function DashboardPage() {
     }
   }, []);
 
+  // Errors-filter view asks the backend for the full error feed instead of
+  // client-filtering the summary's top-10 slice — otherwise the counter and
+  // the list disagree when recent non-error traffic pushes errors out.
+  const loadErrorEvents = useCallback(async (silent = false) => {
+    if (!silent) setErrorEventsLoading(true);
+    try {
+      const data = await SygenAPI.getActivityRecent(50, "error");
+      setErrorEvents(data);
+    } catch {
+      setErrorEvents([]);
+    } finally {
+      setErrorEventsLoading(false);
+    }
+  }, []);
+
   useEffect(() => { loadData(); }, [loadData, refreshKey]);
 
   useEffect(() => {
-    refreshRef.current = setInterval(() => loadData(true), REFRESH_INTERVAL);
-    return () => { if (refreshRef.current) clearInterval(refreshRef.current); };
-  }, [loadData]);
+    if (activityFilter === "error") {
+      loadErrorEvents();
+    } else {
+      setErrorEvents(null);
+    }
+  }, [activityFilter, loadErrorEvents, refreshKey]);
+
+  const handleClearErrors = useCallback(async () => {
+    if (clearingErrors) return;
+    setClearingErrors(true);
+    try {
+      await SygenAPI.ackDashboardErrors();
+      await Promise.all([loadData(true), loadErrorEvents(true)]);
+    } catch {
+      // Non-fatal: poll will re-sync on the next interval tick.
+    } finally {
+      setClearingErrors(false);
+    }
+  }, [clearingErrors, loadData, loadErrorEvents]);
 
   useEffect(() => {
-    const onFocus = () => loadData(true);
+    refreshRef.current = setInterval(() => {
+      loadData(true);
+      if (activityFilter === "error") loadErrorEvents(true);
+    }, REFRESH_INTERVAL);
+    return () => { if (refreshRef.current) clearInterval(refreshRef.current); };
+  }, [loadData, loadErrorEvents, activityFilter]);
+
+  useEffect(() => {
+    const onFocus = () => {
+      loadData(true);
+      if (activityFilter === "error") loadErrorEvents(true);
+    };
     if (typeof window === "undefined") return;
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
-  }, [loadData]);
+  }, [loadData, loadErrorEvents, activityFilter]);
 
   useEffect(() => {
     if (servers.length <= 1) return;
@@ -280,9 +325,14 @@ export default function DashboardPage() {
           <ActivityCard
             ref={activityRef}
             events={summary.recent_activity}
+            errorEvents={errorEvents}
+            errorsLoading={errorEventsLoading}
             t={t}
             filter={activityFilter}
             onClearFilter={() => setActivityFilter("all")}
+            onClearErrors={handleClearErrors}
+            clearingErrors={clearingErrors}
+            errorCount={summary.counters.failed_last_24h}
           />
         </>
       )}
@@ -423,12 +473,37 @@ const ActivityCard = forwardRef<
   HTMLDivElement,
   {
     events: ActivityRecentEvent[];
+    errorEvents: ActivityRecentEvent[] | null;
+    errorsLoading: boolean;
     t: TFn;
     filter: ActivityFilter;
     onClearFilter: () => void;
+    onClearErrors: () => void;
+    clearingErrors: boolean;
+    errorCount: number;
   }
->(function ActivityCard({ events, t, filter, onClearFilter }, ref) {
-  const filtered = filter === "error" ? events.filter((e) => e.severity === "error") : events;
+>(function ActivityCard(
+  {
+    events,
+    errorEvents,
+    errorsLoading,
+    t,
+    filter,
+    onClearFilter,
+    onClearErrors,
+    clearingErrors,
+    errorCount,
+  },
+  ref,
+) {
+  const isErrorView = filter === "error";
+  // In error view, the full error feed comes from the backend
+  // (/api/activity/recent?severity=error) so the list stays consistent with
+  // the counter even when errors are pushed out of the summary's top-10.
+  const listEvents = isErrorView ? errorEvents ?? [] : events;
+  const showLoading = isErrorView && errorEvents === null && errorsLoading;
+  const clearDisabled = clearingErrors || errorCount <= 0;
+
   return (
     <div ref={ref} className="bg-bg-card border border-border rounded-xl p-5">
       <div className="flex items-center justify-between mb-4 gap-2">
@@ -436,26 +511,45 @@ const ActivityCard = forwardRef<
           <Activity size={14} className="text-brand-400" />
           {t("dashboard.recentActivity")}
         </h2>
-        {filter === "error" && (
-          <button
-            type="button"
-            onClick={onClearFilter}
-            data-testid="activity-clear-filter"
-            className="inline-flex items-center gap-1 rounded-full border border-danger/40 bg-danger/10 px-2.5 py-0.5 text-xs text-danger hover:bg-danger/20"
-          >
-            {t("dashboard.filterErrors")}
-            <span aria-hidden="true">×</span>
-            <span className="sr-only">{t("dashboard.clearFilter")}</span>
-          </button>
+        {isErrorView && (
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={onClearErrors}
+              disabled={clearDisabled}
+              data-testid="activity-clear-errors"
+              title={t("dashboard.clearErrorsTitle")}
+              className="inline-flex items-center gap-1 rounded-full border border-danger/40 bg-danger/5 px-2.5 py-0.5 text-xs text-danger hover:bg-danger/15 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {t("dashboard.clearErrors")}
+              {errorCount > 0 && (
+                <span className="tabular-nums font-medium">· {errorCount}</span>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={onClearFilter}
+              data-testid="activity-clear-filter"
+              className="inline-flex items-center gap-1 rounded-full border border-danger/40 bg-danger/10 px-2.5 py-0.5 text-xs text-danger hover:bg-danger/20"
+            >
+              {t("dashboard.filterErrors")}
+              <span aria-hidden="true">×</span>
+              <span className="sr-only">{t("dashboard.clearFilter")}</span>
+            </button>
+          </div>
         )}
       </div>
-      {filtered.length === 0 ? (
+      {showLoading ? (
+        <p className="text-sm text-text-secondary py-6 text-center" data-testid="activity-loading">
+          {t("dashboard.loadingErrors")}
+        </p>
+      ) : listEvents.length === 0 ? (
         <p className="text-sm text-text-secondary py-6 text-center">
           {t("dashboard.noRecentActivity")}
         </p>
       ) : (
         <ul className="space-y-2">
-          {filtered.slice(0, 8).map((event) => (
+          {listEvents.slice(0, 8).map((event) => (
             <ActivityItem key={event.id} event={event} />
           ))}
         </ul>

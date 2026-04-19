@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import DashboardPage from "@/app/page";
 import { I18nProvider } from "@/lib/i18n";
-import type { DashboardSummary } from "@/lib/api";
+import type { ActivityRecentEvent, DashboardSummary } from "@/lib/api";
 
 function renderWithI18n(ui: React.ReactElement) {
   return render(<I18nProvider>{ui}</I18nProvider>);
@@ -24,10 +24,15 @@ vi.mock("@/context/ServerContext", () => ({
 }));
 
 const mockGetDashboardSummary = vi.fn();
+const mockGetActivityRecent = vi.fn();
+const mockAckDashboardErrors = vi.fn();
 
 vi.mock("@/lib/api", () => ({
   SygenAPI: {
     getDashboardSummary: () => mockGetDashboardSummary(),
+    getActivityRecent: (limit?: number, severity?: string) =>
+      mockGetActivityRecent(limit, severity),
+    ackDashboardErrors: () => mockAckDashboardErrors(),
   },
 }));
 
@@ -97,10 +102,18 @@ const mockSummary: DashboardSummary = {
 };
 
 beforeEach(() => {
+  mockGetDashboardSummary.mockReset();
+  mockGetActivityRecent.mockReset();
+  mockAckDashboardErrors.mockReset();
   mockGetDashboardSummary.mockResolvedValue(mockSummary);
+  mockGetActivityRecent.mockResolvedValue([]);
+  mockAckDashboardErrors.mockResolvedValue({ ack_at: Date.now() / 1000 });
   mockServers = [
     { id: "default", name: "Default", url: "http://localhost:8080", token: "t", color: "#e94560", isDefault: true },
   ];
+  // jsdom lacks scrollIntoView; the dashboard uses it to reveal the activity
+  // card after the error-counter tile is clicked.
+  Element.prototype.scrollIntoView = vi.fn();
 });
 
 describe("DashboardPage", () => {
@@ -234,5 +247,116 @@ describe("DashboardPage", () => {
     });
 
     expect(screen.queryByText("Connected Servers")).not.toBeInTheDocument();
+  });
+
+  describe("errors filter + ack flow", () => {
+    const summaryWithErrors: DashboardSummary = {
+      ...mockSummary,
+      counters: { ...mockSummary.counters, failed_last_24h: 3 },
+    };
+
+    const backendErrorFeed: ActivityRecentEvent[] = [
+      {
+        id: "err-a",
+        type: "task_failed",
+        title: "Task 'A' failed",
+        subtitle: "main · 1 minute ago",
+        agent_name: "main",
+        timestamp: "2026-04-19T09:59:00Z",
+        severity: "error",
+      },
+      {
+        id: "err-b",
+        type: "task_failed",
+        title: "Task 'B' failed",
+        subtitle: "nexus · 2 minutes ago",
+        agent_name: "nexus",
+        timestamp: "2026-04-19T09:58:00Z",
+        severity: "error",
+      },
+      {
+        id: "err-c",
+        type: "cron_failed",
+        title: "Cron 'C' failed",
+        subtitle: "sonic · 3 minutes ago",
+        agent_name: "sonic",
+        timestamp: "2026-04-19T09:57:00Z",
+        severity: "error",
+      },
+    ];
+
+    it("fetches errors feed from backend when Failed (24h) tile is clicked", async () => {
+      mockGetDashboardSummary.mockResolvedValue(summaryWithErrors);
+      mockGetActivityRecent.mockResolvedValue(backendErrorFeed);
+
+      renderWithI18n(<DashboardPage />);
+
+      const failedTile = await screen.findByTestId("counter-Failed (24h)");
+      expect(within(failedTile).getByText("3")).toBeInTheDocument();
+
+      fireEvent.click(failedTile);
+
+      await waitFor(() => {
+        expect(mockGetActivityRecent).toHaveBeenCalledWith(50, "error");
+      });
+
+      // All three backend-provided errors are rendered, even if the summary's
+      // top-10 slice never included them.
+      expect(await screen.findByTestId("activity-err-a")).toBeInTheDocument();
+      expect(screen.getByTestId("activity-err-b")).toBeInTheDocument();
+      expect(screen.getByTestId("activity-err-c")).toBeInTheDocument();
+    });
+
+    it("clicking 'Clear' posts to ack endpoint and re-fetches summary + errors feed", async () => {
+      mockGetDashboardSummary.mockResolvedValue(summaryWithErrors);
+      mockGetActivityRecent.mockResolvedValue(backendErrorFeed);
+
+      renderWithI18n(<DashboardPage />);
+
+      fireEvent.click(await screen.findByTestId("counter-Failed (24h)"));
+
+      const clearBtn = await screen.findByTestId("activity-clear-errors");
+      expect(clearBtn).not.toBeDisabled();
+
+      const summaryCallsBefore = mockGetDashboardSummary.mock.calls.length;
+      const errorsCallsBefore = mockGetActivityRecent.mock.calls.length;
+
+      await act(async () => {
+        fireEvent.click(clearBtn);
+      });
+
+      await waitFor(() => {
+        expect(mockAckDashboardErrors).toHaveBeenCalledTimes(1);
+      });
+      // Both the summary and the errors-feed are re-fetched after ack so the
+      // counter tile and the filtered activity list stay in sync.
+      expect(mockGetDashboardSummary.mock.calls.length).toBeGreaterThan(summaryCallsBefore);
+      expect(mockGetActivityRecent.mock.calls.length).toBeGreaterThan(errorsCallsBefore);
+    });
+
+    it("Clear button becomes disabled once the counter drops to 0 after ack", async () => {
+      mockGetDashboardSummary.mockResolvedValueOnce(summaryWithErrors);
+      mockGetActivityRecent.mockResolvedValueOnce(backendErrorFeed);
+      // After ack, every subsequent summary fetch reports 0.
+      mockGetDashboardSummary.mockResolvedValue({
+        ...summaryWithErrors,
+        counters: { ...summaryWithErrors.counters, failed_last_24h: 0 },
+      });
+      mockGetActivityRecent.mockResolvedValue([]);
+
+      renderWithI18n(<DashboardPage />);
+
+      fireEvent.click(await screen.findByTestId("counter-Failed (24h)"));
+      const clearBtn = await screen.findByTestId("activity-clear-errors");
+      expect(clearBtn).not.toBeDisabled();
+
+      await act(async () => {
+        fireEvent.click(clearBtn);
+      });
+
+      await waitFor(() => {
+        expect(clearBtn).toBeDisabled();
+      });
+    });
   });
 });

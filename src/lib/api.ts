@@ -1073,9 +1073,19 @@ export class SygenAPI {
     return await fetchAPI<DashboardSummary>("/api/dashboard/summary");
   }
 
-  static async getActivityRecent(limit = 20): Promise<ActivityRecentEvent[]> {
+  static async getActivityRecent(
+    limit = 20,
+    severity?: ActivitySeverity,
+  ): Promise<ActivityRecentEvent[]> {
     const params = new URLSearchParams({ limit: String(limit) });
+    if (severity) params.set("severity", severity);
     return await fetchAPI<ActivityRecentEvent[]>(`/api/activity/recent?${params.toString()}`);
+  }
+
+  static async ackDashboardErrors(): Promise<{ ack_at: number }> {
+    return await fetchAPI<{ ack_at: number }>("/api/dashboard/errors/ack", {
+      method: "POST",
+    });
   }
 
   static async updateInstanceName(name: string): Promise<void> {

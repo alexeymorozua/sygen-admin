@@ -31,6 +31,11 @@ const ru: Record<string, string> = {
   "dashboard.registered": "зарегистрировано",
   "dashboard.filterErrors": "Только ошибки",
   "dashboard.clearFilter": "Сбросить фильтр",
+  "dashboard.clearErrors": "Очистить",
+  "dashboard.clearErrorsTitle": "Отметить ошибки как просмотренные",
+  "dashboard.clearErrorsSuccess": "Счётчик ошибок сброшен",
+  "dashboard.clearErrorsFailed": "Не удалось очистить ошибки",
+  "dashboard.loadingErrors": "Загрузка ошибок…",
 
   // Agents
   "agents.title": "Агенты",

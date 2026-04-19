@@ -305,7 +305,8 @@ All endpoints require `Authorization: Bearer <token>` header unless noted.
 | `GET` | `/health` | Basic health check (200 OK) |
 | `GET` | `/api/system/status` | CPU, RAM, disk (real metrics via `/proc`), `uptime_seconds` + `uptime_human`. Counters (`agents`, `tasks_active`, `cron_jobs`) were **removed** — read them from `/api/dashboard/summary` instead. |
 | `GET` | `/api/dashboard/summary` | Single payload for the dashboard: `system`, `counters`, and 10 latest `recent_activity` events with localized `title` / `subtitle` / `severity`. Honors `Accept-Language`. Replaced the previous fan-out of parallel calls. |
-| `GET` | `/api/activity/recent?limit=20` | Canonical activity stream for the Activity page — localized `title` + `subtitle`, machine `type` for filtering, `severity` (info/success/warning/error). |
+| `GET` | `/api/activity/recent?limit=20&severity=error` | Canonical activity stream for the Activity page — localized `title` + `subtitle`, machine `type` for filtering, `severity` (info/success/warning/error). Optional `severity` filters server-side; when `severity=error`, honors `errors_ack_at`. |
+| `POST` | `/api/dashboard/errors/ack` | Mark Errors card as seen for the current user. Persists `errors_ack_at` to `users.json`, invalidates summary cache. Drives the dashboard "Очистить" pill on the Errors tile. |
 | `GET` | `/api/activity/{id}?verbose=1` | Single event lookup with raw payload + source (admin debug). |
 | `GET` | `/api/config` | System configuration (secrets masked as `***`) |
 | `GET` | `/api/logs?lines=100&agent=main` | Fetch logs (optional filters) |

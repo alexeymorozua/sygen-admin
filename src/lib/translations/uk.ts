@@ -31,6 +31,11 @@ const uk: Record<string, string> = {
   "dashboard.registered": "зареєстровано",
   "dashboard.filterErrors": "Тільки помилки",
   "dashboard.clearFilter": "Скинути фільтр",
+  "dashboard.clearErrors": "Очистити",
+  "dashboard.clearErrorsTitle": "Позначити помилки як переглянуті",
+  "dashboard.clearErrorsSuccess": "Лічильник помилок скинуто",
+  "dashboard.clearErrorsFailed": "Не вдалося очистити помилки",
+  "dashboard.loadingErrors": "Завантаження помилок…",
 
   // Agents
   "agents.title": "Агенти",
