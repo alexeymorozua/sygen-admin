@@ -22,7 +22,7 @@ const en: Record<string, string> = {
   "dashboard.uptime": "Uptime",
   "dashboard.activeTasks": "Active Tasks",
   "dashboard.failedLast24h": "Failed (24h)",
-  "dashboard.online": "online",
+  "dashboard.online": "active (30m)",
   "dashboard.running": "running",
   "dashboard.active": "active",
   "dashboard.paused": "paused",

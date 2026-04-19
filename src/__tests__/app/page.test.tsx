@@ -126,7 +126,7 @@ describe("DashboardPage", () => {
 
     const agentsTile = screen.getByTestId("counter-Agents");
     expect(within(agentsTile).getByText("1/2")).toBeInTheDocument();
-    expect(within(agentsTile).getByText(/1 online/)).toBeInTheDocument();
+    expect(within(agentsTile).getByText(/1 active \(30m\)/)).toBeInTheDocument();
     expect(screen.getByTestId("counter-Agents-icon").tagName.toLowerCase()).toBe("svg");
 
     const tasksTile = screen.getByTestId("counter-Active Tasks");
