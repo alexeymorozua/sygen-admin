@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
 import React from "react";
 import type {
@@ -350,5 +350,244 @@ describe("ChatContext.loadSessionHistory — race with WS messages", () => {
     const merged = result.current.messagesBySession["dup-sess"];
     expect(merged).toHaveLength(1);
     expect(merged[0].id).toBe("shared");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Reconnect + stuck-streaming watchdog (0.3.10)
+// ---------------------------------------------------------------------------
+
+describe("ChatContext — WS reconnect refetch", () => {
+  it("force-replaces history when WS transitions connected → disconnected → connected", async () => {
+    const { SygenAPI } = await import("@/lib/api");
+    const getMock = SygenAPI.getChatHistoryPage as ReturnType<typeof vi.fn>;
+    getMock.mockClear();
+
+    const { result } = renderHook(() => useChat(), { wrapper });
+    await waitFor(() => expect(hoist.captured).not.toBeNull());
+
+    // Initial connect + select session (fires the default non-force load).
+    fireConnected();
+    act(() => {
+      result.current.setActiveSessionId("reconn-sess");
+    });
+    await act(async () => {
+      hoist.historyResolve({ messages: [], has_more: false, total: 0 });
+    });
+    expect(getMock).toHaveBeenCalledTimes(1);
+
+    // Simulate WS hiccup: disconnected → connected (a real reconnect).
+    act(() => {
+      hoist.captured?.onDisconnected?.();
+      hoist.captured?.onStatusChange?.("disconnected");
+    });
+    act(() => {
+      hoist.captured?.onStatusChange?.("connected");
+    });
+    await act(async () => {
+      hoist.historyResolve({ messages: [], has_more: false, total: 0 });
+    });
+
+    // A second REST call must have been dispatched for the active session.
+    expect(getMock).toHaveBeenCalledTimes(2);
+    expect(getMock.mock.calls[1][0]).toBe("reconn-sess");
+  });
+
+  it("drops streaming placeholder on reconnect and rehydrates with server state", async () => {
+    const { SygenAPI } = await import("@/lib/api");
+    const getMock = SygenAPI.getChatHistoryPage as ReturnType<typeof vi.fn>;
+    getMock.mockClear();
+
+    const { result } = renderHook(() => useChat(), { wrapper });
+    await waitFor(() => expect(hoist.captured).not.toBeNull());
+    fireConnected();
+
+    act(() => {
+      result.current.setActiveSessionId("stale-sess");
+    });
+    await act(async () => {
+      hoist.historyResolve({ messages: [], has_more: false, total: 0 });
+    });
+
+    // Start a stream: adds a user msg + agent placeholder with isStreaming=true.
+    await act(async () => {
+      await result.current.sendMessage("hello");
+    });
+    expect(result.current.isStreaming).toBe(true);
+    const pre = result.current.messagesBySession["stale-sess"] || [];
+    expect(pre.some((m) => m.isStreaming)).toBe(true);
+
+    // WS dies mid-stream — isStreaming must stay true so the Stop button
+    // stays visible while the auto-reconnect is in flight.
+    act(() => {
+      hoist.captured?.onDisconnected?.();
+      hoist.captured?.onStatusChange?.("disconnected");
+    });
+    expect(result.current.isStreaming).toBe(true);
+
+    // WS comes back; the reconnect refetch lands with the canonical pair
+    // of server-saved messages.
+    act(() => {
+      hoist.captured?.onStatusChange?.("connected");
+    });
+    await act(async () => {
+      hoist.historyResolve({
+        messages: [
+          {
+            id: "srv-user",
+            sender: "user",
+            content: "hello",
+            timestamp: "2026-04-19T12:00:00Z",
+          },
+          {
+            id: "srv-agent",
+            sender: "agent",
+            agentName: "main",
+            content: "hi back",
+            timestamp: "2026-04-19T12:00:05Z",
+          },
+        ],
+        has_more: false,
+        total: 2,
+      });
+    });
+    await waitFor(() => {
+      const post = result.current.messagesBySession["stale-sess"] || [];
+      // Placeholder (isStreaming=true) gone, server messages present.
+      expect(post.some((m) => m.isStreaming)).toBe(false);
+      expect(post.some((m) => m.id === "srv-user")).toBe(true);
+      expect(post.some((m) => m.id === "srv-agent")).toBe(true);
+    });
+    expect(result.current.isStreaming).toBe(false);
+  });
+});
+
+describe("ChatContext — stuck-streaming 120s watchdog", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("fires a notice and force-refetches when no streaming event arrives for 120s", async () => {
+    const { SygenAPI } = await import("@/lib/api");
+    const getMock = SygenAPI.getChatHistoryPage as ReturnType<typeof vi.fn>;
+    getMock.mockClear();
+
+    const { result } = renderHook(() => useChat(), { wrapper });
+    // Use vi.waitFor so fake timers don't block the initial mount polls.
+    await vi.waitFor(() => expect(hoist.captured).not.toBeNull());
+    act(() => {
+      hoist.captured?.onConnected?.(["main"], "admin");
+      hoist.captured?.onStatusChange?.("connected");
+    });
+
+    const notices: { msg: string; type: string }[] = [];
+    act(() => {
+      result.current.setChatNoticeCallback((msg, type) => {
+        notices.push({ msg, type });
+      });
+      result.current.setActiveSessionId("stuck-sess");
+    });
+    // Initial session load.
+    await act(async () => {
+      hoist.historyResolve({ messages: [], has_more: false, total: 0 });
+    });
+    getMock.mockClear();
+
+    // Kick off a stream.
+    await act(async () => {
+      await result.current.sendMessage("work");
+    });
+    expect(result.current.isStreaming).toBe(true);
+
+    // Advance 125s with NO streaming events arriving. Watchdog polls at 5s;
+    // at the first tick past 120s it recovers.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(125_000);
+    });
+
+    expect(result.current.isStreaming).toBe(false);
+    const placeholderStillStreaming = (
+      result.current.messagesBySession["stuck-sess"] || []
+    ).some((m) => m.isStreaming);
+    expect(placeholderStillStreaming).toBe(false);
+
+    // Watchdog triggered both a force-replace refetch and a toast notice.
+    expect(getMock).toHaveBeenCalled();
+    const [, lastOpts] = getMock.mock.calls.at(-1) || [];
+    expect(lastOpts?.limit).toBe(50);
+    expect(notices.some((n) => n.type === "warning")).toBe(true);
+  });
+
+  it("does not fire the watchdog when streaming events keep arriving", async () => {
+    const { SygenAPI } = await import("@/lib/api");
+    const getMock = SygenAPI.getChatHistoryPage as ReturnType<typeof vi.fn>;
+    getMock.mockClear();
+
+    const { result } = renderHook(() => useChat(), { wrapper });
+    await vi.waitFor(() => expect(hoist.captured).not.toBeNull());
+    act(() => {
+      hoist.captured?.onConnected?.(["main"], "admin");
+      hoist.captured?.onStatusChange?.("connected");
+    });
+    act(() => {
+      result.current.setActiveSessionId("live-sess");
+    });
+    await act(async () => {
+      hoist.historyResolve({ messages: [], has_more: false, total: 0 });
+    });
+    getMock.mockClear();
+
+    await act(async () => {
+      await result.current.sendMessage("work");
+    });
+    expect(result.current.isStreaming).toBe(true);
+
+    // Fire a text_delta every ~60s for 200s total. Each one resets the
+    // last-event timestamp, so the 120s threshold is never crossed.
+    for (let t = 60; t <= 200; t += 60) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(60_000);
+        hoist.captured?.onTextDelta?.("chunk", {
+          sessionId: "live-sess",
+          agent: "main",
+        });
+      });
+    }
+
+    expect(result.current.isStreaming).toBe(true);
+    expect(getMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("ChatContext — Stop button state contract", () => {
+  it("keeps isStreaming=true across a WS disconnect so the Stop button stays rendered", async () => {
+    const { result } = renderHook(() => useChat(), { wrapper });
+    await waitFor(() => expect(hoist.captured).not.toBeNull());
+    fireConnected();
+    act(() => {
+      result.current.setActiveSessionId("stop-sess");
+    });
+    await act(async () => {
+      hoist.historyResolve({ messages: [], has_more: false, total: 0 });
+    });
+
+    await act(async () => {
+      await result.current.sendMessage("streaming test");
+    });
+    // Stop button in chat/page.tsx:1021 renders iff isStreaming===true.
+    expect(result.current.isStreaming).toBe(true);
+
+    // WS drops while the stream is in flight. The old behavior reset
+    // isStreaming here, which hid the Stop button and made the send field
+    // look idle. The fix: keep it until the reconnect refetch (or the 120s
+    // watchdog) has authoritative info to decide.
+    act(() => {
+      hoist.captured?.onDisconnected?.();
+      hoist.captured?.onStatusChange?.("disconnected");
+    });
+    expect(result.current.isStreaming).toBe(true);
   });
 });

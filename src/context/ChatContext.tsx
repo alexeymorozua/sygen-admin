@@ -69,13 +69,19 @@ interface ChatContextValue {
   ) => void;
   abortStreaming: () => void;
   loadSessions: (agent: string) => Promise<void>;
-  loadSessionHistory: (sessionId: string, opts?: { force?: boolean }) => Promise<void>;
+  loadSessionHistory: (
+    sessionId: string,
+    opts?: { force?: boolean; replace?: boolean },
+  ) => Promise<void>;
   loadOlderMessages: (sessionId: string) => Promise<void>;
   removeSessionData: (sessionId: string) => void;
 
   // Notification bridge
   setNotificationCallback: (cb: ((n: SygenNotification) => void) | null) => void;
   setChatMessageCallback: (cb: ((msg: WSChatMessage) => void) | null) => void;
+  setChatNoticeCallback: (
+    cb: ((msg: string, type: "info" | "warning" | "error") => void) | null,
+  ) => void;
 
   // Refs for external use
   wsRef: React.MutableRefObject<SygenWebSocket | null>;
@@ -129,6 +135,22 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const prevAgentRef = useRef(selectedAgent);
   const notificationCallbackRef = useRef<((n: SygenNotification) => void) | null>(null);
   const chatMessageCallbackRef = useRef<((msg: WSChatMessage) => void) | null>(null);
+  const chatNoticeCallbackRef = useRef<
+    ((msg: string, type: "info" | "warning" | "error") => void) | null
+  >(null);
+  // Timestamp (ms) of the most recent streaming event for the *own* active
+  // stream. Updated by text_delta / tool_activity / system_status / result
+  // handlers. The watchdog effect uses it to detect a server-stuck stream
+  // after WS reconnect when the server never sends `result` for a stream
+  // whose underlying agent task already finished.
+  const lastStreamEventRef = useRef<number>(0);
+  // Mirror activeSessionId into a ref so refs-driven callbacks (watchdog,
+  // reconnect refetch) can read the current value without re-creating.
+  const activeSessionIdRef = useRef<string | null>(null);
+  // Tracks whether we've ever observed a connected WS. Used to distinguish
+  // the initial handshake from a reconnect — only reconnects need a history
+  // refetch, because initial load already runs via loadSessionHistory().
+  const wasConnectedRef = useRef(false);
 
   // Derived — memoize so consumers don't re-render every tick when empty.
   const messages = useMemo(
@@ -232,16 +254,25 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           }
         },
         onDisconnected: () => {
-          setIsStreaming(false);
+          // Sibling streams cannot resume without the server re-publishing
+          // them, so wipe their placeholders. For *own* streams we deliberately
+          // keep `isStreaming=true` + the placeholder intact: the WS auto-
+          // reconnects within seconds, and the accompanying reconnect-refetch
+          // effect will replace local state with the authoritative server
+          // history once it lands. If the reconnect never comes the 120s
+          // watchdog cleans up. Dropping isStreaming here would hide the Stop
+          // button mid-stream every time the WS hiccups, which is confusing
+          // and makes the user think their message was lost.
           setAgentStatus(null);
-          streamingIdRef.current = null;
-          streamingSessionRef.current = null;
           siblingStreamingRef.current.clear();
         },
         onTextDelta: (text, ctx) => {
           const target = resolveStreamTarget(ctx) ?? ensureSiblingPlaceholder(ctx);
           if (!target) return;
-          if (target.own) setAgentStatus(null);
+          if (target.own) {
+            setAgentStatus(null);
+            lastStreamEventRef.current = Date.now();
+          }
           updateStreamingMessage(target.session, target.id, (msg) => ({
             ...msg,
             content: msg.content + text,
@@ -250,7 +281,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         onToolActivity: (tool, ctx) => {
           const target = resolveStreamTarget(ctx) ?? ensureSiblingPlaceholder(ctx);
           if (!target) return;
-          if (target.own) setAgentStatus(`Using tool: ${tool}`);
+          if (target.own) {
+            setAgentStatus(`Using tool: ${tool}`);
+            lastStreamEventRef.current = Date.now();
+          }
           updateStreamingMessage(target.session, target.id, (msg) => ({
             ...msg,
             toolActivity: tool,
@@ -270,6 +304,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             setAgentStatus(null);
             streamingIdRef.current = null;
             streamingSessionRef.current = null;
+            lastStreamEventRef.current = Date.now();
           } else if (ctx.sessionId) {
             siblingStreamingRef.current.delete(ctx.sessionId);
           }
@@ -313,6 +348,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           const ownSession = streamingSessionRef.current;
           if (!ctx.sessionId || ctx.sessionId === ownSession) {
             setAgentStatus(data);
+            lastStreamEventRef.current = Date.now();
           }
         },
         onChatMessage: (msg: WSChatMessage) => {
@@ -370,49 +406,61 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   const loadSessionHistory = useCallback(async (
     sessionId: string,
-    opts?: { force?: boolean },
+    opts?: { force?: boolean; replace?: boolean },
   ) => {
     // The cached-once guard is there to avoid re-fetching on every mount of
     // <ChatPage/>, not to block explicit refreshes. ``force: true`` bypasses
-    // it for two cases:
+    // it for three cases:
     //   1. User pressed the Refresh button — they expect a fresh pull.
     //   2. PWA resumed from the background on iOS — WS was killed by the OS
     //      while suspended and any messages sent from other devices during
     //      that window are only in the persisted history now.
-    // Merge-by-id still protects against duplicating live messages.
+    //   3. WS reconnect after mid-stream disconnect — server is authoritative.
+    // ``replace: true`` additionally drops local `isStreaming=true` placeholders
+    // before merging: after a WS reconnect those placeholders (user msg, empty
+    // agent bubble) are stale — the server already saved the real pair under
+    // its own ids, and keeping ours would duplicate the conversation visually.
     if (!opts?.force && historyLoadedRef.current.has(sessionId)) return;
     historyLoadedRef.current.add(sessionId);
     try {
       const page = await SygenAPI.getChatHistoryPage(sessionId, { limit: 50 });
       setSessionHasMore((prev) => ({ ...prev, [sessionId]: page.has_more }));
-      if (page.messages.length > 0) {
-        const restMsgs: ChatMsg[] = page.messages.map((m) => ({
-          id: m.id,
-          sender: m.sender,
-          agentName: m.agentName,
-          content: m.content,
-          timestamp: m.timestamp,
-          files: m.files as FileAttachment[] | undefined,
-          kind: m.kind,
-          meta: m.meta,
-        }));
-        // Merge instead of overwrite: a WS message that arrived between the
-        // REST request and its resolve must not be discarded. Dedupe by id,
-        // then sort by timestamp so order is stable regardless of which side
-        // landed first.
-        setMessagesBySession((prev) => {
-          const liveMsgs = prev[sessionId] || [];
-          const seen = new Set(restMsgs.map((m) => m.id));
-          const extras = liveMsgs.filter((m) => !seen.has(m.id));
-          const merged = [...restMsgs, ...extras];
-          merged.sort((a, b) => {
-            const ta = Date.parse(a.timestamp || "") || 0;
-            const tb = Date.parse(b.timestamp || "") || 0;
-            return ta - tb;
-          });
-          return { ...prev, [sessionId]: merged };
-        });
+      const restMsgs: ChatMsg[] = page.messages.map((m) => ({
+        id: m.id,
+        sender: m.sender,
+        agentName: m.agentName,
+        content: m.content,
+        timestamp: m.timestamp,
+        files: m.files as FileAttachment[] | undefined,
+        kind: m.kind,
+        meta: m.meta,
+      }));
+      if (page.messages.length === 0 && !opts?.replace) {
+        // Nothing to merge and caller didn't ask for a replace-sweep.
+        return;
       }
+      // Merge instead of overwrite: a WS message that arrived between the
+      // REST request and its resolve must not be discarded. Dedupe by id,
+      // then sort by timestamp so order is stable regardless of which side
+      // landed first.
+      setMessagesBySession((prev) => {
+        const liveMsgs = prev[sessionId] || [];
+        // On replace, purge placeholder/streaming messages — server state is
+        // authoritative after a reconnect, and any partial local draft was
+        // generated with a client-only id that the server never saw.
+        const baseLive = opts?.replace
+          ? liveMsgs.filter((m) => !m.isStreaming)
+          : liveMsgs;
+        const seen = new Set(restMsgs.map((m) => m.id));
+        const extras = baseLive.filter((m) => !seen.has(m.id));
+        const merged = [...restMsgs, ...extras];
+        merged.sort((a, b) => {
+          const ta = Date.parse(a.timestamp || "") || 0;
+          const tb = Date.parse(b.timestamp || "") || 0;
+          return ta - tb;
+        });
+        return { ...prev, [sessionId]: merged };
+      });
     } catch {
       historyLoadedRef.current.delete(sessionId);
     }
@@ -473,10 +521,85 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   // Load history when session is selected
   useEffect(() => {
+    activeSessionIdRef.current = activeSessionId;
     if (activeSessionId) {
       loadSessionHistory(activeSessionId);
     }
   }, [activeSessionId, loadSessionHistory]);
+
+  // Refetch active session history when the WS transitions back to connected
+  // after a previous successful connect. The server-side persistence layer
+  // saves user + agent messages even when the stream drops mid-flight (core
+  // 1.3.41+), so the authoritative way to recover from a killed stream is to
+  // replace local state with whatever the server persisted. This also clears
+  // stale `isStreaming=true` placeholders so the Stop button / "..." bubble
+  // disappear once the real reply lands.
+  useEffect(() => {
+    if (wsStatus !== "connected") return;
+    const isReconnect = wasConnectedRef.current;
+    wasConnectedRef.current = true;
+    if (!isReconnect) return;
+    const sid = activeSessionIdRef.current;
+    if (!sid) return;
+    loadSessionHistory(sid, { force: true, replace: true }).then(() => {
+      // After the replace-sweep the placeholder for our own in-flight stream
+      // is gone (it was a client-only id never seen by the server). Any
+      // post-reconnect text_delta for this session will fall through to the
+      // sibling path and get a fresh placeholder, which is the correct
+      // behavior — the server treats reconnected clients as new consumers of
+      // already-persisted messages, not as resumed stream owners. So drop
+      // our own refs and clear isStreaming to take down the Stop button.
+      streamingIdRef.current = null;
+      streamingSessionRef.current = null;
+      lastStreamEventRef.current = 0;
+      setIsStreaming(false);
+      setAgentStatus(null);
+    });
+    chatNoticeCallbackRef.current?.(
+      "Connection restored, refreshing history",
+      "info",
+    );
+  }, [wsStatus, loadSessionHistory]);
+
+  // Watchdog: if an own stream has not received any streaming event for
+  // 120 s while `isStreaming=true`, assume the server-side stream was lost
+  // and force-recover. Clears the placeholder, resets isStreaming, and pulls
+  // fresh history from the server so the user can send the next message.
+  useEffect(() => {
+    if (!isStreaming) return;
+    // Arm the timestamp lazily: consumers that start a stream without going
+    // through sendMessage (e.g. sendFileMessage) still get a fresh anchor.
+    if (lastStreamEventRef.current === 0) {
+      lastStreamEventRef.current = Date.now();
+    }
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - lastStreamEventRef.current;
+      if (elapsed <= 120_000) return;
+      const sid = streamingSessionRef.current;
+      const id = streamingIdRef.current;
+      if (sid && id) {
+        updateStreamingMessage(sid, id, (msg) => ({
+          ...msg,
+          isStreaming: false,
+          toolActivity: null,
+        }));
+      }
+      streamingIdRef.current = null;
+      streamingSessionRef.current = null;
+      setIsStreaming(false);
+      setAgentStatus(null);
+      lastStreamEventRef.current = 0;
+      chatNoticeCallbackRef.current?.(
+        "Connection lost, refreshing history",
+        "warning",
+      );
+      const active = activeSessionIdRef.current;
+      if (active) {
+        loadSessionHistory(active, { force: true, replace: true });
+      }
+    }, 5_000);
+    return () => clearInterval(interval);
+  }, [isStreaming, updateStreamingMessage, loadSessionHistory]);
 
   // Reset when server changes
   useEffect(() => {
@@ -593,6 +716,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
       streamingIdRef.current = agentMsgId;
       streamingSessionRef.current = sessionId;
+      lastStreamEventRef.current = Date.now();
       setIsStreaming(true);
       setAgentStatus(null);
 
@@ -633,6 +757,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
       streamingIdRef.current = agentMsgId;
       streamingSessionRef.current = sessionId;
+      lastStreamEventRef.current = Date.now();
       setIsStreaming(true);
       setAgentStatus(null);
 
@@ -656,6 +781,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     setAgentStatus(null);
     streamingIdRef.current = null;
     streamingSessionRef.current = null;
+    lastStreamEventRef.current = 0;
   }, [selectedAgent, updateStreamingMessage]);
 
   const removeSessionData = useCallback((sessionId: string) => {
@@ -681,6 +807,13 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const setChatMessageCallback = useCallback(
     (cb: ((msg: WSChatMessage) => void) | null) => {
       chatMessageCallbackRef.current = cb;
+    },
+    []
+  );
+
+  const setChatNoticeCallback = useCallback(
+    (cb: ((msg: string, type: "info" | "warning" | "error") => void) | null) => {
+      chatNoticeCallbackRef.current = cb;
     },
     []
   );
@@ -717,6 +850,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       removeSessionData,
       setNotificationCallback,
       setChatMessageCallback,
+      setChatNoticeCallback,
       wsRef,
       streamingIdRef,
       streamingSessionRef,
@@ -747,6 +881,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       setActiveSessionId,
       setNotificationCallback,
       setChatMessageCallback,
+      setChatNoticeCallback,
     ]
   );
 

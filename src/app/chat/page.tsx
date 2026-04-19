@@ -122,7 +122,21 @@ export default function ChatPage() {
     abortStreaming,
     removeSessionData,
     streamingIdRef,
+    setChatNoticeCallback,
   } = chat;
+
+  // Bridge ChatContext notices (reconnect / stuck-stream recovery) to toast.
+  // The Toast provider sits below ChatProvider in the layout tree, so the
+  // context can't read it directly — instead it hands us a callback to wire
+  // up here, where both providers are reachable.
+  useEffect(() => {
+    setChatNoticeCallback((msg, type) => {
+      if (type === "error") toast.error(msg);
+      else if (type === "warning") toast.warning(msg);
+      else toast.info(msg);
+    });
+    return () => setChatNoticeCallback(null);
+  }, [setChatNoticeCallback, toast]);
 
   // Handle ?agent= / ?session= URL params (used by desktop notification click).
   useEffect(() => {
