@@ -139,6 +139,48 @@ describe("fetchAPI — 401 retry with cookie refresh", () => {
     await expect(SygenAPI.getAgents()).rejects.toThrow("Session expired");
     expect(locationSpy.href).toBe("/login");
   });
+
+  it("does NOT redirect to /login when core is unreachable (5xx / network)", async () => {
+    const fetchSpy = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/api/auth/refresh")) {
+        return Promise.resolve({ ok: false, status: 502, json: () => Promise.resolve({}) });
+      }
+      return Promise.resolve({
+        ok: false,
+        status: 401,
+        statusText: "Unauthorized",
+        json: () => Promise.resolve({ error: "Unauthorized" }),
+      });
+    });
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const locationSpy = { href: "", pathname: "/" };
+    Object.defineProperty(window, "location", { value: locationSpy, writable: true });
+
+    await expect(SygenAPI.getAgents()).rejects.toThrow("Backend unavailable");
+    expect(locationSpy.href).toBe("");
+  });
+
+  it("does NOT redirect to /login when refresh fetch throws (network error)", async () => {
+    const fetchSpy = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/api/auth/refresh")) {
+        return Promise.reject(new TypeError("Failed to fetch"));
+      }
+      return Promise.resolve({
+        ok: false,
+        status: 401,
+        statusText: "Unauthorized",
+        json: () => Promise.resolve({ error: "Unauthorized" }),
+      });
+    });
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const locationSpy = { href: "", pathname: "/" };
+    Object.defineProperty(window, "location", { value: locationSpy, writable: true });
+
+    await expect(SygenAPI.getAgents()).rejects.toThrow("Backend unavailable");
+    expect(locationSpy.href).toBe("");
+  });
 });
 
 describe("getAgents / getCronJobs — data mapping", () => {

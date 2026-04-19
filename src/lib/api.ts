@@ -338,18 +338,26 @@ function mergeAuthHeaders(
 // Core fetch with JWT handling
 // ---------------------------------------------------------------------------
 
-let _refreshPromise: Promise<boolean> | null = null;
+let _refreshPromise: Promise<RefreshOutcome> | null = null;
 
-async function refreshAccessToken(): Promise<boolean> {
+// "ok" — refresh succeeded; "expired" — refresh token is invalid, user must
+// log in again; "transient" — server is unreachable or errored (5xx / network),
+// don't touch the session because retrying later will likely succeed. Core
+// restarts fall into "transient"; a 401/400 on /api/auth/refresh is "expired".
+type RefreshOutcome = "ok" | "expired" | "transient";
+
+async function refreshAccessToken(): Promise<RefreshOutcome> {
   try {
     const res = await fetch(`${getApiUrl()}/api/auth/refresh`, {
       method: "POST",
       credentials: "include",
       headers: mergeAuthHeaders("POST", undefined),
     });
-    return res.ok;
+    if (res.ok) return "ok";
+    if (res.status === 400 || res.status === 401 || res.status === 403) return "expired";
+    return "transient";
   } catch {
-    return false;
+    return "transient";
   }
 }
 
@@ -367,9 +375,8 @@ async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> 
     if (!_refreshPromise) {
       _refreshPromise = refreshAccessToken().finally(() => { _refreshPromise = null; });
     }
-    const pending = _refreshPromise;
-    const refreshed = await pending;
-    if (refreshed) {
+    const outcome = await _refreshPromise;
+    if (outcome === "ok") {
       const retry = await fetch(`${baseUrl}${endpoint}`, {
         ...options,
         credentials: "include",
@@ -379,6 +386,15 @@ async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> 
         const json = await retry.json();
         return json.data !== undefined ? json.data : json;
       }
+      if (retry.status !== 401) {
+        throw new Error(`HTTP ${retry.status}`);
+      }
+      // retry still 401 after a successful refresh — treat as expired.
+    }
+    if (outcome === "transient") {
+      // Core is restarting or unreachable. Don't clear cookies, don't bounce
+      // to /login — a later request will retry and succeed.
+      throw new Error("Backend unavailable");
     }
     clearUserState();
     if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
