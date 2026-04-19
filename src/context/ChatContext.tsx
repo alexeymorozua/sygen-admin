@@ -75,6 +75,7 @@ interface ChatContextValue {
 
   // Notification bridge
   setNotificationCallback: (cb: ((n: SygenNotification) => void) | null) => void;
+  setChatMessageCallback: (cb: ((msg: WSChatMessage) => void) | null) => void;
 
   // Refs for external use
   wsRef: React.MutableRefObject<SygenWebSocket | null>;
@@ -127,6 +128,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const historyLoadedRef = useRef<Set<string>>(new Set());
   const prevAgentRef = useRef(selectedAgent);
   const notificationCallbackRef = useRef<((n: SygenNotification) => void) | null>(null);
+  const chatMessageCallbackRef = useRef<((msg: WSChatMessage) => void) | null>(null);
 
   // Derived — memoize so consumers don't re-render every tick when empty.
   const messages = useMemo(
@@ -311,6 +313,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             kind: msg.kind,
             meta: msg.meta,
           });
+          chatMessageCallbackRef.current?.(msg);
         },
         onStatusChange: setWsStatus,
         onNotification: (notification) => {
@@ -595,6 +598,13 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
+  const setChatMessageCallback = useCallback(
+    (cb: ((msg: WSChatMessage) => void) | null) => {
+      chatMessageCallbackRef.current = cb;
+    },
+    []
+  );
+
   // ---------------------------------------------------------------------------
   // Context value
   // ---------------------------------------------------------------------------
@@ -626,6 +636,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       loadOlderMessages,
       removeSessionData,
       setNotificationCallback,
+      setChatMessageCallback,
       wsRef,
       streamingIdRef,
       streamingSessionRef,
@@ -655,6 +666,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       removeSessionData,
       setActiveSessionId,
       setNotificationCallback,
+      setChatMessageCallback,
     ]
   );
 

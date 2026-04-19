@@ -14,6 +14,7 @@ import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import InstallPWA from "@/components/InstallPWA";
 import PwaTopBar from "@/components/PwaTopBar";
 import ViewportLock from "@/components/ViewportLock";
+import DesktopNotificationsMount from "@/components/DesktopNotificationsMount";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -117,6 +118,7 @@ export default function RootLayout({
                 <ToastProvider>
                   <ConfirmProvider>
                     <ServiceWorkerRegister />
+                    <DesktopNotificationsMount />
                     <ViewportLock />
                     <PwaTopBar />
                     <AppShell>{children}</AppShell>

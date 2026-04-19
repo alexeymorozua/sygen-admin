@@ -122,14 +122,15 @@ export default function ChatPage() {
     streamingIdRef,
   } = chat;
 
-  // Handle ?agent= URL param
+  // Handle ?agent= / ?session= URL params (used by desktop notification click).
   useEffect(() => {
     const agent = searchParams.get("agent");
-    if (agent) {
-      setSelectedAgent(agent);
-      window.history.replaceState({}, "", "/chat");
-    }
-  }, [searchParams, setSelectedAgent]);
+    const session = searchParams.get("session");
+    if (!agent && !session) return;
+    if (agent) setSelectedAgent(agent);
+    if (session) setActiveSessionId(session);
+    window.history.replaceState({}, "", "/chat");
+  }, [searchParams, setSelectedAgent, setActiveSessionId]);
 
   // Track which agents have avatars (to avoid 404 requests)
   const [agentAvatars, setAgentAvatars] = useState<Set<string>>(new Set());

@@ -405,6 +405,12 @@ const uk: Record<string, string> = {
   "notifications.severityFilter": "Фільтр за важливістю",
   "notifications.allSeveritiesDisabled":
     "Усі рівні важливості вимкнено. Увімкніть хоча б один у фільтрі вище, щоб бачити сповіщення.",
+  "notifications.desktop.enable": "Увімкнути сповіщення",
+  "notifications.desktop.on": "Сповіщення увімкнено",
+  "notifications.desktop.off": "Сповіщення вимкнено",
+  "notifications.desktop.blocked": "Сповіщення заблоковано браузером",
+  "notifications.desktop.blockedHint": "Дозвольте сповіщення в налаштуваннях сайту",
+  "notifications.desktop.unsupported": "Сповіщення не підтримуються",
 
   // Connection
   "connection.manageServers": "Керувати серверами",

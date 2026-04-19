@@ -402,6 +402,12 @@ const en: Record<string, string> = {
   "notifications.severity.warning": "Warning",
   "notifications.severity.info": "Info",
   "notifications.severity.silent": "Silent",
+  "notifications.desktop.enable": "Enable notifications",
+  "notifications.desktop.on": "Notifications on",
+  "notifications.desktop.off": "Notifications off",
+  "notifications.desktop.blocked": "Notifications blocked by browser",
+  "notifications.desktop.blockedHint": "Allow notifications in site settings",
+  "notifications.desktop.unsupported": "Notifications not supported",
   "notifications.severityFilter": "Severity filter",
   "notifications.allSeveritiesDisabled":
     "All severities are turned off. Enable at least one in the filter above to see notifications.",

@@ -31,6 +31,7 @@ import ConnectionStatus from "./ConnectionStatus";
 import SygenLogo from "./SygenLogo";
 import ServerSwitcher from "./ServerSwitcher";
 import LanguageSwitcher from "./LanguageSwitcher";
+import NotificationToggle from "./NotificationToggle";
 import { useNotifications } from "@/context/NotificationContext";
 
 interface NavItem {
@@ -135,6 +136,7 @@ export default function Sidebar() {
           {theme === "dark" ? "Light Mode" : "Dark Mode"}
         </button>
         <LanguageSwitcher />
+        <NotificationToggle />
         <ConnectionStatus />
       </div>
     </>
