@@ -1,68 +1,110 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { Bot, ListTodo, Clock, Activity, Cpu, HardDrive, MemoryStick, Server, Circle, LogIn, Terminal, Webhook as WebhookIcon, AlertTriangle } from "lucide-react";
-import StatusCard from "@/components/StatusCard";
+import {
+  Bot,
+  ListTodo,
+  Clock,
+  Activity,
+  Cpu,
+  HardDrive,
+  MemoryStick,
+  Server,
+  Circle,
+  LogIn,
+  Terminal,
+  Webhook as WebhookIcon,
+  AlertTriangle,
+  CheckCircle2,
+  Info,
+  XCircle,
+  type LucideIcon,
+} from "lucide-react";
 import { RefreshButton } from "@/components/RefreshButton";
-import { LoadingSpinner, ErrorState } from "@/components/LoadingState";
-import { SygenAPI, type ActivityRecentEvent, type DashboardSummary } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { ErrorState } from "@/components/LoadingState";
+import {
+  SygenAPI,
+  type ActivityRecentEvent,
+  type DashboardSummary,
+  type DashboardSummarySystem,
+} from "@/lib/api";
+import { cn, formatDate } from "@/lib/utils";
 import { useServer } from "@/context/ServerContext";
 import { checkServerHealth } from "@/lib/servers";
 import { useTranslation } from "@/lib/i18n";
 
-const HISTORY_MAX = 30; // 30 data points (~5 min at 10s interval)
-const REFRESH_INTERVAL = 10_000; // 10 seconds
+const REFRESH_INTERVAL = 10_000;
 
-interface MetricHistory {
-  cpu: number[];
-  ram: number[];
-  disk: number[];
+type ThresholdLevel = "ok" | "warn" | "critical";
+
+function thresholdLevel(value: number): ThresholdLevel {
+  if (value >= 80) return "critical";
+  if (value >= 50) return "warn";
+  return "ok";
 }
 
-function Sparkline({ data, color, height = 32 }: { data: number[]; color: string; height?: number }) {
-  if (data.length < 2) return null;
-  const max = Math.max(...data, 1);
-  const min = Math.min(...data, 0);
-  const range = Math.max(max - min, 1);
-  const w = 120;
-  const points = data.map((v, i) => {
-    const x = (i / (data.length - 1)) * w;
-    const y = height - ((v - min) / range) * (height - 4) - 2;
-    return `${x},${y}`;
-  });
-  const linePath = `M${points.join(" L")}`;
-  const areaPath = `${linePath} L${w},${height} L0,${height} Z`;
+const THRESHOLD_BAR: Record<ThresholdLevel, string> = {
+  ok: "bg-success",
+  warn: "bg-warning",
+  critical: "bg-danger",
+};
 
-  return (
-    <svg width={w} height={height} className="shrink-0">
-      <defs>
-        <linearGradient id={`grad-${color}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.3" />
-          <stop offset="100%" stopColor={color} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <path d={areaPath} fill={`url(#grad-${color})`} />
-      <path d={linePath} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" />
-    </svg>
-  );
+const THRESHOLD_TEXT: Record<ThresholdLevel, string> = {
+  ok: "text-success",
+  warn: "text-warning",
+  critical: "text-danger",
+};
+
+function iconForEventType(type: string): LucideIcon {
+  if (type.startsWith("task")) return ListTodo;
+  if (type.startsWith("cron")) return Clock;
+  if (type.startsWith("agent")) return Bot;
+  if (type.startsWith("webhook")) return WebhookIcon;
+  if (type === "auth_login" || type === "login") return LogIn;
+  return Terminal;
 }
 
-function iconForEventType(type: string, className: string) {
-  const props = { size: 14, className: `shrink-0 mt-0.5 ${className}` };
-  if (type.startsWith("task")) return <ListTodo {...props} />;
-  if (type.startsWith("cron")) return <Clock {...props} />;
-  if (type.startsWith("agent")) return <Bot {...props} />;
-  if (type.startsWith("webhook")) return <WebhookIcon {...props} />;
-  if (type === "auth_login" || type === "login") return <LogIn {...props} />;
-  return <Terminal {...props} />;
+interface SeverityStyle {
+  border: string;
+  iconBg: string;
+  iconText: string;
+  Icon: LucideIcon;
 }
 
-function severityColorClass(severity: ActivityRecentEvent["severity"]): string {
-  if (severity === "error") return "text-danger";
-  if (severity === "warning") return "text-warning";
-  if (severity === "success") return "text-success";
-  return "text-brand-400";
+function severityStyle(severity: ActivityRecentEvent["severity"]): SeverityStyle {
+  switch (severity) {
+    case "error":
+      return { border: "border-l-danger", iconBg: "bg-danger/15", iconText: "text-danger", Icon: XCircle };
+    case "warning":
+      return { border: "border-l-warning", iconBg: "bg-warning/15", iconText: "text-warning", Icon: AlertTriangle };
+    case "success":
+      return { border: "border-l-success", iconBg: "bg-success/15", iconText: "text-success", Icon: CheckCircle2 };
+    default:
+      return { border: "border-l-brand-400", iconBg: "bg-brand-400/15", iconText: "text-brand-400", Icon: Info };
+  }
+}
+
+function useCountUp(target: number, duration = 600): number {
+  const [display, setDisplay] = useState(target);
+  const displayRef = useRef(target);
+  displayRef.current = display;
+
+  useEffect(() => {
+    const start = displayRef.current;
+    if (start === target) return;
+    const t0 = performance.now();
+    let raf = 0;
+    const step = (now: number) => {
+      const p = Math.min(1, (now - t0) / duration);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setDisplay(Math.round(start + (target - start) * eased));
+      if (p < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [target, duration]);
+
+  return display;
 }
 
 export default function DashboardPage() {
@@ -73,7 +115,6 @@ export default function DashboardPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [serverStatuses, setServerStatuses] = useState<Record<string, { online: boolean }>>({});
-  const [metricHistory, setMetricHistory] = useState<MetricHistory>({ cpu: [], ram: [], disk: [] });
   const refreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadData = useCallback(async (silent = false) => {
@@ -82,11 +123,6 @@ export default function DashboardPage() {
     try {
       const data = await SygenAPI.getDashboardSummary();
       setSummary(data);
-      setMetricHistory((prev) => ({
-        cpu: [...prev.cpu, data.system.cpu_percent].slice(-HISTORY_MAX),
-        ram: [...prev.ram, data.system.ram_percent].slice(-HISTORY_MAX),
-        disk: [...prev.disk, data.system.disk_percent].slice(-HISTORY_MAX),
-      }));
     } catch (err) {
       if (!silent) setError(err instanceof Error ? err.message : "Failed to load dashboard");
     } finally {
@@ -97,18 +133,18 @@ export default function DashboardPage() {
 
   useEffect(() => { loadData(); }, [loadData, refreshKey]);
 
-  // Auto-refresh
   useEffect(() => {
     refreshRef.current = setInterval(() => loadData(true), REFRESH_INTERVAL);
     return () => { if (refreshRef.current) clearInterval(refreshRef.current); };
   }, [loadData]);
 
-  // Reset history on server switch
   useEffect(() => {
-    setMetricHistory({ cpu: [], ram: [], disk: [] });
-  }, [activeServer.id]);
+    const onFocus = () => loadData(true);
+    if (typeof window === "undefined") return;
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [loadData]);
 
-  // Check all server statuses
   useEffect(() => {
     if (servers.length <= 1) return;
     let cancelled = false;
@@ -126,28 +162,24 @@ export default function DashboardPage() {
     return () => { cancelled = true; };
   }, [servers]);
 
-  if (loading) return <LoadingSpinner />;
-  if (error || !summary) return <ErrorState message={error || "No data"} onRetry={loadData} />;
-
-  const { system, counters, recent_activity } = summary;
+  if (error && !summary) return <ErrorState message={error} onRetry={loadData} />;
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
       <div className="flex items-center justify-between mb-4 md:mb-6">
-        <h1 className="text-2xl font-bold">{t('dashboard.title')}</h1>
+        <h1 className="text-2xl font-bold">{t("dashboard.title")}</h1>
         <RefreshButton
           loading={refreshing}
           onClick={() => loadData()}
-          title={t('dashboard.refresh')}
+          title={t("dashboard.refresh")}
         />
       </div>
 
-      {/* Connected Servers */}
       {servers.length > 1 && (
         <div className="bg-bg-card border border-border rounded-xl p-4 mb-4 md:mb-6">
           <h2 className="text-sm font-semibold text-text-secondary mb-3 flex items-center gap-2">
             <Server size={14} />
-            {t('dashboard.connectedServers')}
+            {t("dashboard.connectedServers")}
           </h2>
           <div className="flex flex-wrap gap-2">
             {servers.map((server) => {
@@ -164,7 +196,17 @@ export default function DashboardPage() {
                 >
                   <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: server.color }} />
                   <span className="font-medium">{server.name}</span>
-                  <Circle size={6} className={cn("shrink-0", status?.online ? "fill-success text-success" : status ? "fill-danger text-danger" : "fill-text-secondary text-text-secondary")} />
+                  <Circle
+                    size={6}
+                    className={cn(
+                      "shrink-0",
+                      status?.online
+                        ? "fill-success text-success"
+                        : status
+                        ? "fill-danger text-danger"
+                        : "fill-text-secondary text-text-secondary"
+                    )}
+                  />
                 </button>
               );
             })}
@@ -172,74 +214,252 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Status Cards — driven by counters from /api/dashboard/summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 md:mb-8">
-        <StatusCard title={t('nav.agents')} value={`${counters.agents_online}/${counters.agents_total}`} icon={Bot} trend={`${counters.agents_online} ${t('dashboard.online')}`} />
-        <StatusCard title={t('dashboard.activeTasks')} value={counters.active_tasks} icon={ListTodo} trend={`${counters.active_tasks} ${t('dashboard.running')}`} />
-        <StatusCard title={t('nav.cron')} value={counters.running_crons} icon={Clock} trend={`${counters.running_crons} ${t('dashboard.active')}`} />
-        <StatusCard title={t('dashboard.failedLast24h')} value={counters.failed_last_24h} icon={AlertTriangle} trend="" />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-        {/* Recent Activity — backend-localized title/subtitle/severity */}
-        <div className="bg-bg-card border border-border rounded-xl p-5">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <Activity size={18} className="text-brand-400" />
-            {t('dashboard.recentActivity')}
-          </h2>
-          <div className="space-y-3">
-            {recent_activity.length === 0 && (
-              <p className="text-sm text-text-secondary py-4 text-center">{t('dashboard.noRecentActivity')}</p>
-            )}
-            {recent_activity.slice(0, 8).map((event) => (
-              <div key={event.id} className="flex items-start gap-3 py-2 border-b border-border/50 last:border-0">
-                {iconForEventType(event.type, severityColorClass(event.severity))}
-                <div className="min-w-0">
-                  <p className="text-sm text-text-primary truncate">{event.title}</p>
-                  <p className="text-xs text-text-secondary">{event.subtitle}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* System Health */}
-        <div className="bg-bg-card border border-border rounded-xl p-5">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <Cpu size={18} className="text-brand-400" />
-            {t('dashboard.systemHealth')}
-          </h2>
-          <div className="space-y-5">
-            <HealthBar label="CPU" value={system.cpu_percent} icon={Cpu} history={metricHistory.cpu} color="#00c853" />
-            <HealthBar label="RAM" value={system.ram_percent} icon={MemoryStick} history={metricHistory.ram} color="#ffa726" />
-            <HealthBar label="Disk" value={system.disk_percent} icon={HardDrive} history={metricHistory.disk} color="#42a5f5" />
-            <div className="pt-3 border-t border-border/50">
-              <p className="text-xs text-text-secondary">{t('dashboard.uptime')}</p>
-              <p className="text-sm font-medium">{system.uptime_human}</p>
+      {loading || !summary ? (
+        <DashboardSkeleton />
+      ) : (
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 mb-4 md:mb-6">
+            <div className="lg:col-span-1">
+              <SystemHero system={summary.system} t={t} />
+            </div>
+            <div className="lg:col-span-2 grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+              <CounterTile
+                label={t("nav.agents")}
+                value={`${summary.counters.agents_online}/${summary.counters.agents_total}`}
+                icon={Bot}
+                hint={`${summary.counters.agents_online} ${t("dashboard.online")}`}
+              />
+              <CounterTile
+                label={t("dashboard.activeTasks")}
+                value={summary.counters.active_tasks}
+                icon={ListTodo}
+                hint={t("dashboard.running")}
+              />
+              <CounterTile
+                label={t("nav.cron")}
+                value={summary.counters.running_crons}
+                icon={Clock}
+                hint={t("dashboard.active")}
+              />
+              <CounterTile
+                label={t("dashboard.failedLast24h")}
+                value={summary.counters.failed_last_24h}
+                icon={AlertTriangle}
+                alert={summary.counters.failed_last_24h > 0}
+              />
             </div>
           </div>
-        </div>
+
+          <ActivityCard events={summary.recent_activity} t={t} />
+        </>
+      )}
+    </div>
+  );
+}
+
+interface TFn {
+  (key: string): string;
+}
+
+function SystemHero({ system, t }: { system: DashboardSummarySystem; t: TFn }) {
+  return (
+    <div
+      data-testid="system-hero"
+      className="bg-bg-card border border-border rounded-xl p-5 h-full flex flex-col"
+    >
+      <h2 className="text-sm font-semibold text-text-secondary mb-4 flex items-center gap-2">
+        <Cpu size={14} className="text-brand-400" />
+        {t("dashboard.systemHealth")}
+      </h2>
+      <div className="space-y-4 flex-1">
+        <MetricBar label="CPU" value={system.cpu_percent} icon={Cpu} />
+        <MetricBar label="RAM" value={system.ram_percent} icon={MemoryStick} />
+        <MetricBar label="Disk" value={system.disk_percent} icon={HardDrive} />
+      </div>
+      <div className="pt-3 mt-4 border-t border-border/50">
+        <p className="text-xs text-text-secondary">{t("dashboard.uptime")}</p>
+        <p className="text-sm font-medium">{system.uptime_human}</p>
       </div>
     </div>
   );
 }
 
-function HealthBar({ label, value, icon: Icon, history, color }: { label: string; value: number; icon: typeof Cpu; history: number[]; color: string }) {
-  const barColor = value > 80 ? "bg-danger" : value > 60 ? "bg-warning" : "bg-success";
+function MetricBar({ label, value, icon: Icon }: { label: string; value: number; icon: LucideIcon }) {
+  const level = thresholdLevel(value);
   return (
-    <div>
+    <div data-testid={`metric-${label.toLowerCase()}`} data-level={level}>
       <div className="flex items-center justify-between mb-1.5">
         <span className="text-sm text-text-secondary flex items-center gap-1.5">
           <Icon size={14} />
           {label}
         </span>
-        <div className="flex items-center gap-3">
-          <Sparkline data={history} color={color} height={20} />
-          <span className="text-sm font-medium w-10 text-right">{value}%</span>
+        <span className={cn("text-sm font-medium tabular-nums", THRESHOLD_TEXT[level])}>
+          {value}%
+        </span>
+      </div>
+      <div className="w-full h-1.5 bg-bg-primary rounded-full overflow-hidden">
+        <div
+          data-testid={`metric-${label.toLowerCase()}-bar`}
+          className={cn("h-full rounded-full transition-all duration-500", THRESHOLD_BAR[level])}
+          style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function CounterTile({
+  label,
+  value,
+  icon: Icon,
+  hint,
+  alert,
+}: {
+  label: string;
+  value: string | number;
+  icon: LucideIcon;
+  hint?: string;
+  alert?: boolean;
+}) {
+  const numericValue = typeof value === "number" ? value : null;
+  const isAlerting = alert && numericValue !== null && numericValue > 0;
+  return (
+    <div
+      data-testid={`counter-${label}`}
+      className={cn(
+        "bg-bg-card border rounded-xl p-4 transition-colors",
+        isAlerting ? "border-danger/40 hover:border-danger/70" : "border-border hover:border-accent/50"
+      )}
+    >
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[11px] text-text-secondary font-semibold uppercase tracking-wider truncate">
+          {label}
+        </span>
+        <Icon
+          data-testid={`counter-${label}-icon`}
+          size={16}
+          className={cn("shrink-0", isAlerting ? "text-danger" : "text-brand-400")}
+        />
+      </div>
+      <div
+        className={cn(
+          "text-2xl md:text-3xl font-bold tabular-nums leading-none",
+          isAlerting ? "text-danger" : "text-text-primary"
+        )}
+      >
+        {numericValue !== null ? <CountUp value={numericValue} /> : value}
+      </div>
+      {hint && <p className="text-xs text-text-secondary mt-2 truncate">{hint}</p>}
+    </div>
+  );
+}
+
+function CountUp({ value }: { value: number }) {
+  const display = useCountUp(value);
+  return <>{display}</>;
+}
+
+function ActivityCard({ events, t }: { events: ActivityRecentEvent[]; t: TFn }) {
+  return (
+    <div className="bg-bg-card border border-border rounded-xl p-5">
+      <h2 className="text-sm font-semibold text-text-secondary mb-4 flex items-center gap-2">
+        <Activity size={14} className="text-brand-400" />
+        {t("dashboard.recentActivity")}
+      </h2>
+      {events.length === 0 ? (
+        <p className="text-sm text-text-secondary py-6 text-center">
+          {t("dashboard.noRecentActivity")}
+        </p>
+      ) : (
+        <ul className="space-y-2">
+          {events.slice(0, 8).map((event) => (
+            <ActivityItem key={event.id} event={event} />
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function ActivityItem({ event }: { event: ActivityRecentEvent }) {
+  const sev = severityStyle(event.severity);
+  const TypeIcon = iconForEventType(event.type);
+  // Backend subtitle is "{actor} · {relative_time}". Split so we can put the
+  // time in its own right-aligned column and avoid cramming both into one line.
+  const dotIdx = event.subtitle.indexOf(" · ");
+  const actor = dotIdx >= 0 ? event.subtitle.slice(0, dotIdx) : event.subtitle;
+  const time = formatDate(event.timestamp);
+  return (
+    <li
+      data-testid={`activity-${event.id}`}
+      data-severity={event.severity}
+      className={cn(
+        "flex items-start gap-3 rounded-lg border-l-2 bg-bg-primary/40 px-3 py-2 transition-colors hover:bg-bg-primary/60",
+        sev.border
+      )}
+    >
+      <div className={cn("shrink-0 mt-0.5 rounded-md p-1.5", sev.iconBg)}>
+        <TypeIcon size={14} className={sev.iconText} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm text-text-primary truncate">{event.title}</p>
+        <p className="text-xs text-text-secondary truncate">{actor}</p>
+      </div>
+      <span className="shrink-0 text-xs text-text-secondary tabular-nums whitespace-nowrap pl-2">
+        {time}
+      </span>
+    </li>
+  );
+}
+
+function DashboardSkeleton() {
+  return (
+    <div data-testid="dashboard-skeleton">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 mb-4 md:mb-6">
+        <div className="lg:col-span-1 bg-bg-card border border-border rounded-xl p-5 animate-pulse">
+          <div className="h-3 bg-bg-primary rounded w-1/3 mb-4" />
+          <div className="space-y-4">
+            {[0, 1, 2].map((i) => (
+              <div key={i}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="h-3 bg-bg-primary rounded w-1/4" />
+                  <div className="h-3 bg-bg-primary rounded w-8" />
+                </div>
+                <div className="h-1.5 bg-bg-primary rounded w-full" />
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 pt-3 border-t border-border/50">
+            <div className="h-3 bg-bg-primary rounded w-1/4 mb-1.5" />
+            <div className="h-3 bg-bg-primary rounded w-1/3" />
+          </div>
+        </div>
+        <div className="lg:col-span-2 grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="bg-bg-card border border-border rounded-xl p-4 animate-pulse">
+              <div className="flex items-center justify-between mb-2">
+                <div className="h-3 bg-bg-primary rounded w-1/2" />
+                <div className="h-4 w-4 bg-bg-primary rounded" />
+              </div>
+              <div className="h-7 bg-bg-primary rounded w-1/3 mb-2" />
+              <div className="h-3 bg-bg-primary rounded w-2/3" />
+            </div>
+          ))}
         </div>
       </div>
-      <div className="w-full h-2 bg-bg-primary rounded-full overflow-hidden">
-        <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${value}%` }} />
+      <div className="bg-bg-card border border-border rounded-xl p-5 animate-pulse">
+        <div className="h-3 bg-bg-primary rounded w-1/4 mb-4" />
+        <div className="space-y-2">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="flex items-start gap-3 rounded-lg bg-bg-primary/40 px-3 py-2">
+              <div className="h-7 w-7 bg-bg-primary rounded-md" />
+              <div className="flex-1 space-y-1.5">
+                <div className="h-3 bg-bg-primary rounded w-2/3" />
+                <div className="h-3 bg-bg-primary rounded w-1/3" />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
