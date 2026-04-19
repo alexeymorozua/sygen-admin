@@ -228,8 +228,11 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between mb-4 md:mb-6">
         <h1 className="text-2xl font-bold">{t("dashboard.title")}</h1>
         <RefreshButton
-          loading={refreshing}
-          onClick={() => loadData()}
+          loading={refreshing || (activityFilter === "error" && errorEventsLoading)}
+          onClick={() => {
+            loadData();
+            if (activityFilter === "error") loadErrorEvents();
+          }}
           title={t("dashboard.refresh")}
         />
       </div>

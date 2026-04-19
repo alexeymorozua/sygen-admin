@@ -146,6 +146,7 @@ export default function TasksPage() {
     abortRef.current?.abort();
     const ctrl = new AbortController();
     abortRef.current = ctrl;
+    setLoading(true);
     try {
       const data = await SygenAPI.getTasks();
       if (ctrl.signal.aborted) return;

@@ -25,6 +25,7 @@ export default function RagSection() {
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
+    setLoading(true);
     try {
       const data = await SygenAPI.getRagStatus();
       setStatus(data);

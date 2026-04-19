@@ -30,6 +30,7 @@ export default function MemoryPage() {
   const [loadingContent, setLoadingContent] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [reloadToken, setReloadToken] = useState(0);
   const { success, error: toastError } = useToast();
   const { confirm } = useConfirm();
   const { t } = useTranslation();
@@ -106,7 +107,7 @@ export default function MemoryPage() {
       .catch(() => { if (!cancelled) setContent("(Failed to load content)"); })
       .finally(() => { if (!cancelled) setLoadingContent(false); });
     return () => { cancelled = true; };
-  }, [selected, agentParam]);
+  }, [selected, agentParam, reloadToken]);
 
   const selectModule = async (mod: MemoryModule) => {
     if (dirty && !(await confirm({ message: t('memory.discardConfirm') }))) return;
@@ -151,7 +152,13 @@ export default function MemoryPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">{t('memory.title')}</h1>
         <div className="flex items-center gap-3">
-          <RefreshButton loading={loadingModules} onClick={() => loadModules(selectedAgent)} />
+          <RefreshButton
+            loading={loadingModules || loadingContent}
+            onClick={() => {
+              loadModules(selectedAgent);
+              setReloadToken((n) => n + 1);
+            }}
+          />
           {dirty && (
             <button
               type="button"

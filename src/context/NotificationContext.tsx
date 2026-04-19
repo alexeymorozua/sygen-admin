@@ -101,6 +101,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   // Load notifications from server
   const loadNotifications = useCallback(async () => {
+    setLoading(true);
     try {
       const [notifs, count] = await Promise.all([
         SygenAPI.getNotifications(50, false, enabledSeverities),

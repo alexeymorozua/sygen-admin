@@ -412,7 +412,8 @@ export default function FilesPage() {
             <button
               type="button"
               onClick={loadFiles}
-              className="p-2 hover:bg-bg-card rounded-lg transition-colors text-text-secondary"
+              disabled={loading}
+              className="p-2 hover:bg-bg-card rounded-lg transition-colors text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
             </button>
