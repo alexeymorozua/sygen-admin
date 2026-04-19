@@ -21,6 +21,8 @@ import {
   MessageSquare,
   Pencil,
   Check,
+  Archive,
+  ArchiveRestore,
 } from "lucide-react";
 import StreamingMessage from "@/components/StreamingMessage";
 import AttachmentPreviewModal from "@/components/AttachmentPreviewModal";
@@ -160,6 +162,9 @@ export default function ChatPage() {
   const [showCommandMenu, setShowCommandMenu] = useState(false);
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
+  const [sidebarView, setSidebarView] = useState<"active" | "archived">("active");
+  const [archivedSessions, setArchivedSessions] = useState<ChatSession[]>([]);
+  const [loadingArchived, setLoadingArchived] = useState(false);
 
   // Reset initial scroll flag when session changes
   useEffect(() => {
@@ -486,6 +491,7 @@ export default function ChatPage() {
       try {
         await SygenAPI.deleteChatSession(sessionId);
         setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+        setArchivedSessions((prev) => prev.filter((s) => s.id !== sessionId));
         if (activeSessionId === sessionId) {
           setActiveSessionId(null);
         }
@@ -495,6 +501,60 @@ export default function ChatPage() {
       }
     },
     [activeSessionId, t, setSessions, setActiveSessionId, removeSessionData, confirm]
+  );
+
+  const loadArchivedSessions = useCallback(async () => {
+    if (!selectedAgent) return;
+    setLoadingArchived(true);
+    try {
+      const data = await SygenAPI.getChatSessions(selectedAgent, { archivedOnly: true });
+      setArchivedSessions(data);
+    } catch {
+      setArchivedSessions([]);
+    } finally {
+      setLoadingArchived(false);
+    }
+  }, [selectedAgent]);
+
+  useEffect(() => {
+    if (sidebarView === "archived") {
+      loadArchivedSessions();
+    }
+  }, [sidebarView, loadArchivedSessions]);
+
+  const handleArchiveSession = useCallback(
+    async (sessionId: string) => {
+      try {
+        const updated = await SygenAPI.archiveChatSession(sessionId);
+        setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+        setArchivedSessions((prev) => {
+          const without = prev.filter((s) => s.id !== sessionId);
+          return [updated, ...without];
+        });
+        if (activeSessionId === sessionId) {
+          setActiveSessionId(null);
+        }
+      } catch {
+        // Ignore
+      }
+    },
+    [activeSessionId, setSessions, setActiveSessionId]
+  );
+
+  const handleUnarchiveSession = useCallback(
+    async (sessionId: string) => {
+      try {
+        const updated = await SygenAPI.unarchiveChatSession(sessionId);
+        setArchivedSessions((prev) => prev.filter((s) => s.id !== sessionId));
+        setSessions((prev) => {
+          const without = prev.filter((s) => s.id !== sessionId);
+          return [updated, ...without];
+        });
+      } catch {
+        // Ignore
+      }
+    },
+    [setSessions]
   );
 
   const statusVariant =
@@ -591,32 +651,64 @@ export default function ChatPage() {
         {/* Sessions header */}
         <div className="px-3 py-2 border-b border-border flex items-center justify-between">
           <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
-            {t('chat.sessions')}
+            {sidebarView === "archived" ? t('chat.archive') : t('chat.sessions')}
           </h3>
+          {sidebarView === "active" && (
+            <button
+              type="button"
+              onClick={handleNewChat}
+              className="flex items-center gap-1 px-2 py-1 text-xs hover:bg-white/10 rounded-lg transition-colors text-brand-400"
+              title={t('chat.newChat')}
+            >
+              <Plus size={14} />
+              <span>{t('chat.newChat')}</span>
+            </button>
+          )}
+        </div>
+
+        {/* Active / Archive tabs */}
+        <div className="px-3 py-1.5 border-b border-border flex gap-1">
           <button
             type="button"
-            onClick={handleNewChat}
-            className="flex items-center gap-1 px-2 py-1 text-xs hover:bg-white/10 rounded-lg transition-colors text-brand-400"
-            title={t('chat.newChat')}
+            onClick={() => setSidebarView("active")}
+            className={cn(
+              "flex-1 text-xs py-1 rounded-md transition-colors",
+              sidebarView === "active"
+                ? "bg-white/10 text-brand-400"
+                : "text-text-secondary hover:bg-white/5",
+            )}
           >
-            <Plus size={14} />
-            <span>{t('chat.newChat')}</span>
+            {t('chat.active')}
+          </button>
+          <button
+            type="button"
+            onClick={() => setSidebarView("archived")}
+            className={cn(
+              "flex-1 text-xs py-1 rounded-md transition-colors flex items-center justify-center gap-1",
+              sidebarView === "archived"
+                ? "bg-white/10 text-brand-400"
+                : "text-text-secondary hover:bg-white/5",
+            )}
+          >
+            <Archive size={11} />
+            {t('chat.archive')}
           </button>
         </div>
 
         {/* Sessions list */}
         <div className="flex-1 overflow-y-auto min-h-0">
-          {loadingSessions && (
+          {(sidebarView === "active" ? loadingSessions : loadingArchived) && (
             <div className="flex items-center justify-center py-6">
               <Loader2 size={18} className="animate-spin text-text-secondary" />
             </div>
           )}
-          {!loadingSessions && sessions.length === 0 && (
+          {!((sidebarView === "active" ? loadingSessions : loadingArchived))
+            && (sidebarView === "active" ? sessions : archivedSessions).length === 0 && (
             <p className="px-3 py-4 text-xs text-text-secondary text-center">
-              {t('chat.noSessions')}
+              {sidebarView === "archived" ? t('chat.noArchive') : t('chat.noSessions')}
             </p>
           )}
-          {sessions.map((session) => (
+          {(sidebarView === "active" ? sessions : archivedSessions).map((session) => (
             <div
               key={session.id}
               className={cn(
@@ -656,17 +748,34 @@ export default function ChatPage() {
                   {formatSessionTime(session.updated_at)}
                 </p>
               </div>
+              {sidebarView === "active" && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditingSessionId(session.id);
+                    setEditingTitle(session.title);
+                  }}
+                  className="p-1.5 lg:p-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 hover:text-brand-400 hover:bg-white/5 rounded transition-all"
+                  title={t('chat.renameSession')}
+                >
+                  <Pencil size={12} />
+                </button>
+              )}
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setEditingSessionId(session.id);
-                  setEditingTitle(session.title);
+                  if (sidebarView === "archived") {
+                    handleUnarchiveSession(session.id);
+                  } else {
+                    handleArchiveSession(session.id);
+                  }
                 }}
                 className="p-1.5 lg:p-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 hover:text-brand-400 hover:bg-white/5 rounded transition-all"
-                title={t('chat.renameSession')}
+                title={sidebarView === "archived" ? t('chat.unarchiveSession') : t('chat.archiveSession')}
               >
-                <Pencil size={12} />
+                {sidebarView === "archived" ? <ArchiveRestore size={12} /> : <Archive size={12} />}
               </button>
               <button
                 type="button"

@@ -165,6 +165,8 @@ export interface ChatSession {
   updated_at: number;
   provider_override?: string | null;
   model_override?: string | null;
+  archived?: boolean;
+  archived_at?: number;
 }
 
 export interface AvailableProvider {
@@ -1131,10 +1133,43 @@ export class SygenAPI {
 
   // ---- Chat Sessions ----
 
-  static async getChatSessions(agentId?: string): Promise<ChatSession[]> {
+  static async getChatSessions(
+    agentId?: string,
+    opts: { includeArchived?: boolean; archivedOnly?: boolean } = {},
+  ): Promise<ChatSession[]> {
     if (USE_MOCK) return [];
-    const params = agentId ? `?agent=${encodeURIComponent(agentId)}` : "";
-    return fetchAPI<ChatSession[]>(`/api/chat/sessions${params}`);
+    const qs = new URLSearchParams();
+    if (agentId) qs.set("agent", agentId);
+    if (opts.archivedOnly) qs.set("archived_only", "1");
+    else if (opts.includeArchived) qs.set("include_archived", "1");
+    const query = qs.toString() ? `?${qs.toString()}` : "";
+    return fetchAPI<ChatSession[]>(`/api/chat/sessions${query}`);
+  }
+
+  static async archiveChatSession(sessionId: string): Promise<ChatSession> {
+    if (USE_MOCK) {
+      return {
+        id: sessionId, agent: "main", title: "", created_at: 0,
+        updated_at: Date.now() / 1000, archived: true, archived_at: Date.now() / 1000,
+      };
+    }
+    return fetchAPI<ChatSession>(
+      `/api/chat/sessions/${encodeURIComponent(sessionId)}/archive`,
+      { method: "POST" },
+    );
+  }
+
+  static async unarchiveChatSession(sessionId: string): Promise<ChatSession> {
+    if (USE_MOCK) {
+      return {
+        id: sessionId, agent: "main", title: "", created_at: 0,
+        updated_at: Date.now() / 1000, archived: false,
+      };
+    }
+    return fetchAPI<ChatSession>(
+      `/api/chat/sessions/${encodeURIComponent(sessionId)}/unarchive`,
+      { method: "POST" },
+    );
   }
 
   static async createChatSession(agentId: string, title?: string): Promise<ChatSession> {
