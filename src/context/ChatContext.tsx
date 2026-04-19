@@ -459,7 +459,23 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           const tb = Date.parse(b.timestamp || "") || 0;
           return ta - tb;
         });
-        return { ...prev, [sessionId]: merged };
+        // Safety net: during a protocol transition the server and the client
+        // may briefly persist the same turn under two different ids (server
+        // generated + client autosave). Collapse near-duplicates by
+        // (sender, content) within 60 s, preferring the earliest arrival so
+        // ordering stays stable across reloads.
+        const deduped: ChatMsg[] = [];
+        for (const msg of merged) {
+          const ts = Date.parse(msg.timestamp || "") || 0;
+          const twin = deduped.find(
+            (d) =>
+              d.sender === msg.sender &&
+              (d.content || "") === (msg.content || "") &&
+              Math.abs((Date.parse(d.timestamp || "") || 0) - ts) < 60_000,
+          );
+          if (!twin) deduped.push(msg);
+        }
+        return { ...prev, [sessionId]: deduped };
       });
     } catch {
       historyLoadedRef.current.delete(sessionId);
@@ -693,17 +709,19 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // Add user message
+      // Generate ids up-front so the server persists under the same id we
+      // store locally — prevents duplicates on reload.
+      const userMsgId = `msg-${uuid()}`;
+      const agentMsgId = `msg-${uuid()}`;
+
       const userMsg: ChatMsg = {
-        id: `msg-${uuid()}`,
+        id: userMsgId,
         sender: "user",
         content: text,
         timestamp: new Date().toISOString(),
       };
       addMessage(sessionId, userMsg);
 
-      // Add placeholder agent message
-      const agentMsgId = `msg-${uuid()}`;
       const agentMsg: ChatMsg = {
         id: agentMsgId,
         sender: "agent",
@@ -720,7 +738,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       setIsStreaming(true);
       setAgentStatus(null);
 
-      wsRef.current.sendMessage(selectedAgent, text, sessionId);
+      wsRef.current.sendMessage(selectedAgent, text, sessionId, {
+        userMsgId,
+        assistantMsgId: agentMsgId,
+      });
     },
     [activeSessionId, selectedAgent, wsStatus, addMessage]
   );
@@ -734,8 +755,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     ) => {
       if (files.length === 0) return;
       const caption = options?.caption ?? "";
+      const userMsgId = `msg-${uuid()}`;
+      const agentMsgId = `msg-${uuid()}`;
       const fileMsg: ChatMsg = {
-        id: `msg-${uuid()}`,
+        id: userMsgId,
         sender: "user",
         content: caption,
         timestamp: new Date().toISOString(),
@@ -743,8 +766,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       };
       addMessage(sessionId, fileMsg);
 
-      // Add placeholder agent message
-      const agentMsgId = `msg-${uuid()}`;
       const agentMsg: ChatMsg = {
         id: agentMsgId,
         sender: "agent",
@@ -761,7 +782,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       setIsStreaming(true);
       setAgentStatus(null);
 
-      wsRef.current?.sendMessage(selectedAgent, prompt, sessionId);
+      wsRef.current?.sendMessage(selectedAgent, prompt, sessionId, {
+        userMsgId,
+        assistantMsgId: agentMsgId,
+      });
     },
     [selectedAgent, addMessage]
   );

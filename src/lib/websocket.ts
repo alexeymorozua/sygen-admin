@@ -178,10 +178,17 @@ export class SygenWebSocket {
     this.setStatus("disconnected");
   }
 
-  sendMessage(agent: string, text: string, sessionId?: string | null): void {
+  sendMessage(
+    agent: string,
+    text: string,
+    sessionId?: string | null,
+    ids?: { userMsgId?: string; assistantMsgId?: string },
+  ): void {
     if (this.ws?.readyState !== WebSocket.OPEN) return;
     const payload: Record<string, unknown> = { type: "message", agent, text };
     if (sessionId) payload.session_id = sessionId;
+    if (ids?.userMsgId) payload.user_msg_id = ids.userMsgId;
+    if (ids?.assistantMsgId) payload.assistant_msg_id = ids.assistantMsgId;
     this.ws.send(JSON.stringify(payload));
   }
 
